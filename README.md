@@ -37,8 +37,14 @@ Agente de chat ultra-rápido e inteligente para Twitch, construído com a **Goog
 
 ## 🛠️ Comandos do Agent
 - `!ask <pergunta>`: Invocação direta do Gemini com pesquisa web.
-- `!wiki <termo>`: Resumo enciclopédico moderno.
-- `!ping`: Verificação de latência e status do sistema.
+- `!pesquisa <query>`: Pesquisa profunda na web com resumo dos resultados.
+- `!wiki <termo>`: Explicação enciclopédica descontraída.
+- `!clima <cidade>`: Previsão do tempo em tempo real via Grounding.
+- `!historia <tema>`: Geração criativa de contos e lore gamer.
+- `!traduzir <texto>`: Tradução precisa para PT-BR.
+- `!imaginar <descrição>`: Geração de imagens via Imagen 3 (Em breve).
+- `!falar <texto>`: Síntese de voz (TTS) de alta fidelidade (Em breve).
+- `!ping`: Verificação de status e latência.
 
 ---
 *Developed with 🤖 by Gemini CLI - 2026*
