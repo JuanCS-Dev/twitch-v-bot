@@ -28,6 +28,16 @@ class AgentComponent(commands.Component):
     def __init__(self, bot: "ProducerBot") -> None:
         self.bot = bot
 
+    async def component_check(self, ctx: commands.Context) -> bool:
+        """Restringe o uso do bot apenas ao Dono do canal e Inscritos (Subs)."""
+        is_owner = str(ctx.author.id) == OWNER_ID
+        is_sub = ctx.author.is_subscriber
+        
+        if not (is_owner or is_sub):
+            # Opcional: Logar tentativa de acesso não autorizado
+            return False
+        return True
+
     @commands.command(name="ask")
     async def ask(self, ctx: commands.Context) -> None:
         query = ctx.message.text.removeprefix("!ask").strip()
@@ -61,7 +71,11 @@ class ProducerBot(commands.Bot):
 
     async def event_message(self, message: twitchio.ChatMessage) -> None:
         if message.echo: return
-        if "bom dia" in message.text.lower() and not message.text.startswith("!"):
+        
+        # Inteligência Proativa: Apenas para Subs ou Owner
+        is_authorized = str(message.author.id) == OWNER_ID or message.author.is_subscriber
+        
+        if is_authorized and "bom dia" in message.text.lower() and not message.text.startswith("!"):
             ans = await agent_inference("Dê um bom dia gamer e rápido", message.author.name, client, context)
             await message.reply(ans)
             return
