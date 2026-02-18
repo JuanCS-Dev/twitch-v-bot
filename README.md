@@ -28,7 +28,7 @@ Agente de chat ultra-rápido e inteligente para Twitch, construído com a **Goog
 1. Configure os segredos no Secret Manager (`twitch-client-secret`).
 2. Defina as variáveis de ambiente baseadas no `.env.example`.
 3. Instale as dependências: `pip install -r bot/requirements.txt`.
-4. Execute: `python bot/bot.py`.
+4. Execute: `python bot/main.py`.
 
 ### Dashboard
 1. `cd dashboard`
@@ -36,15 +36,14 @@ Agente de chat ultra-rápido e inteligente para Twitch, construído com a **Goog
 3. `npm run dev`
 
 ## 🛠️ Comandos do Agent
-- `!ask <pergunta>`: Invocação direta do Gemini com pesquisa web.
-- `!pesquisa <query>`: Pesquisa profunda na web com resumo dos resultados.
-- `!wiki <termo>`: Explicação enciclopédica descontraída.
-- `!clima <cidade>`: Previsão do tempo em tempo real via Grounding.
-- `!historia <tema>`: Geração criativa de contos e lore gamer.
-- `!traduzir <texto>`: Tradução precisa para PT-BR.
-- `!imaginar <descrição>`: Geração de imagens via Imagen 3 (Em breve).
-- `!falar <texto>`: Síntese de voz (TTS) de alta fidelidade (Em breve).
-- `!ping`: Verificação de status e latência.
+- `!ask <pergunta>`: Consulta geral com grounding web.
+- `!status`: Uptime e snapshot do estado atual do co-streamer.
+- `!scene`: Exibe a observabilidade da live (jogo, filme, serie, YouTube, X, tema).
+- `!scene <tipo> <descricao>`: Atualiza um contexto da live (owner).
+- `!scene clear <tipo>`: Limpa um contexto da live (owner).
+- `!vibe <texto>`: Ajusta a vibe da live (owner).
+- `!style <texto>`: Ajusta o estilo de conversa do bot para tom mais generalista (owner).
+- Auto-observabilidade: links de YouTube/X enviados por owner/mod podem atualizar contexto automaticamente, com filtro conservador por dominio + termos sensiveis + metadata (oEmbed); o bot salva descricao sanitizada.
 
 ---
 *Developed with 🤖 by Gemini CLI - 2026*

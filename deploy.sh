@@ -1,47 +1,47 @@
-#!/bin/bash
-# 🤖 Twitch V-Bot Production Deploy Script (v2026)
-# Este script segue os padrões da Vértice Code para infraestrutura resiliente.
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 1. Configurações Iniciais
-PROJECT_ID=$(gcloud config get-value project)
-REGION="us-central1" # Localização padrão para baixa latência
-SERVICE_NAME="twitch-v-bot"
-IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME:latest"
-SA_NAME="twitch-bot-sa"
+# Twitch V-Bot deploy (Cloud Run)
+# Requisitos:
+# - gcloud autenticado e projeto selecionado
+# - service account com acesso ao Vertex AI + Secret Manager
+# - segredo twitch-client-secret criado no projeto
 
-echo "🚀 Iniciando deploy do Invisible Producer em $PROJECT_ID..."
+PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project)}"
+REGION="${REGION:-us-central1}"
+SERVICE_NAME="${SERVICE_NAME:-twitch-v-bot}"
+SA_NAME="${SA_NAME:-twitch-bot-sa}"
+IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+SERVICE_ACCOUNT="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# 2. Habilitar APIs (Garante que nada falhe no meio)
-echo "🔗 Habilitando APIs necessárias..."
-gcloud services enable 
-    run.googleapis.com 
-    artifactregistry.googleapis.com 
-    cloudbuild.googleapis.com 
-    secretmanager.googleapis.com 
-    aiplatform.googleapis.com
+echo "Iniciando deploy em ${PROJECT_ID} (${REGION})"
 
-# 3. Build da Imagem
-echo "📦 Construindo imagem Docker via Cloud Build..."
-gcloud builds submit --tag "$IMAGE_NAME" .
+echo "Habilitando APIs necessarias..."
+gcloud services enable \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudbuild.googleapis.com \
+  secretmanager.googleapis.com \
+  aiplatform.googleapis.com
 
-# 4. Deploy no Cloud Run
-# Configurações Críticas:
-# --no-cpu-throttling: Essencial para manter WebSockets vivos
-# --min-instances 1: Evita cold-starts e desconexão
-# --port 8080: Alinhado com nosso HealthHandler
-echo "🌍 Fazendo deploy no Cloud Run (CPU Always-On)..."
-gcloud run deploy "$SERVICE_NAME" 
-    --image "$IMAGE_NAME" 
-    --region "$REGION" 
-    --service-account "$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" 
-    --min-instances 1 
-    --max-instances 1 
-    --cpu 1 
-    --memory 512Mi 
-    --port 8080 
-    --no-cpu-throttling 
-    --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,TWITCH_CLIENT_ID=SEU_CLIENT_ID,TWITCH_BOT_ID=SEU_BOT_ID,TWITCH_OWNER_ID=SEU_OWNER_ID,TWITCH_CHANNEL_ID=SEU_CHANNEL_ID" 
-    --no-allow-unauthenticated
+echo "Build da imagem..."
+gcloud builds submit --tag "${IMAGE_NAME}" .
 
-echo "✅ Deploy concluído com sucesso!"
-echo "💡 Lembre-se de configurar os segredos no Secret Manager antes de rodar."
+echo "Deploy no Cloud Run..."
+gcloud run deploy "${SERVICE_NAME}" \
+  --image "${IMAGE_NAME}" \
+  --region "${REGION}" \
+  --service-account "${SERVICE_ACCOUNT}" \
+  --port 8080 \
+  --min-instances 1 \
+  --max-instances 1 \
+  --cpu 1 \
+  --memory 512Mi \
+  --timeout 3600 \
+  --concurrency 200 \
+  --no-cpu-throttling \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},TWITCH_CLIENT_ID=SEU_CLIENT_ID,TWITCH_BOT_ID=SEU_BOT_ID,TWITCH_OWNER_ID=SEU_OWNER_ID,TWITCH_CHANNEL_ID=SEU_CHANNEL_ID" \
+  --no-allow-unauthenticated
+
+echo "Deploy concluido."
+echo "Confirme se o segredo twitch-client-secret existe e se a SA tem role secretAccessor."
