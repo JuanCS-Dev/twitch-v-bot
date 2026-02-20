@@ -1,5 +1,0 @@
-{
-  "name": "Twitch Bot Command Center",
-  "description": "A comprehensive dashboard to monitor, configure, and test your Gemini-powered Twitch Bot. Features real-time analytics visualization, system prompt configuration, and a Gemini 3 Flash playground.",
-  "requestFramePermissions": []
-}

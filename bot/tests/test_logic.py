@@ -2,7 +2,7 @@ import unittest
 import asyncio
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from bot.logic import (
     EMPTY_RESPONSE_FALLBACK,
     MAX_REPLY_LINES,
@@ -10,7 +10,10 @@ from bot.logic import (
     agent_inference,
     build_dynamic_prompt,
     enforce_reply_limits,
+    extract_grounding_metadata,
     extract_response_text,
+    has_grounding_signal,
+    is_rate_limited_inference_error,
 )
 
 class TestBotLogic(unittest.TestCase):
@@ -32,6 +35,7 @@ class TestBotLogic(unittest.TestCase):
         self.assertIn("Historico recente:", p)
         self.assertIn("ViewerA: Que filme e esse?", p)
         self.assertIn("Ultima resposta do Byte:", p)
+        self.assertIn("Relogio servidor UTC:", p)
         self.assertIn("Usuario Juan: Oi", p)
 
     def test_recent_chat_memory_is_bounded(self):
@@ -76,6 +80,57 @@ class TestBotLogic(unittest.TestCase):
         )
         self.assertEqual(extract_response_text(response), "Resposta vinda de parts")
 
+    def test_extract_grounding_metadata_from_candidate(self):
+        response = SimpleNamespace(
+            text="ok",
+            candidates=[
+                SimpleNamespace(
+                    grounding_metadata=SimpleNamespace(
+                        web_search_queries=["macaquinho push no japao hoje"],
+                        grounding_chunks=[
+                            SimpleNamespace(web=SimpleNamespace(uri="https://example.com/noticia"))
+                        ],
+                    ),
+                    citation_metadata=None,
+                )
+            ],
+        )
+
+        metadata = extract_grounding_metadata(response, use_grounding=True)
+        self.assertTrue(metadata["enabled"])
+        self.assertTrue(metadata["has_grounding_signal"])
+        self.assertEqual(metadata["query_count"], 1)
+        self.assertEqual(metadata["source_count"], 1)
+        self.assertGreaterEqual(metadata["chunk_count"], 1)
+        self.assertTrue(has_grounding_signal(metadata))
+
+    @patch("asyncio.to_thread")
+    def test_agent_inference_with_metadata(self, mock_thread):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+        mock_resp = SimpleNamespace(
+            text="Resposta com grounding",
+            candidates=[
+                SimpleNamespace(
+                    grounding_metadata=SimpleNamespace(
+                        web_search_queries=["ia hoje no mundo"],
+                        grounding_chunks=[SimpleNamespace(web=SimpleNamespace(uri="https://news.example/ia"))],
+                    ),
+                    citation_metadata=None,
+                )
+            ],
+        )
+        mock_thread.return_value = mock_resp
+
+        answer, metadata = loop.run_until_complete(
+            agent_inference("Oi", "Juan", client, context, return_metadata=True)
+        )
+        self.assertEqual(answer, "Resposta com grounding")
+        self.assertTrue(metadata["enabled"])
+        self.assertTrue(metadata["has_grounding_signal"])
+        self.assertEqual(metadata["query_count"], 1)
+
     @patch('asyncio.to_thread')
     def test_agent_inference_failure(self, mock_thread):
         loop = asyncio.get_event_loop()
@@ -113,6 +168,26 @@ class TestBotLogic(unittest.TestCase):
         res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, EMPTY_RESPONSE_FALLBACK)
 
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("asyncio.to_thread")
+    def test_agent_inference_retries_on_429_then_succeeds(self, mock_thread, mock_sleep):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+
+        recovered_response = SimpleNamespace(text="Resposta apos retry 429", candidates=[])
+        mock_thread.side_effect = [Exception("429 RESOURCE_EXHAUSTED"), recovered_response]
+
+        async def fake_sleep(_):
+            return None
+
+        mock_sleep.side_effect = fake_sleep
+
+        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        self.assertEqual(res, "Resposta apos retry 429")
+        self.assertEqual(mock_thread.call_count, 2)
+        mock_sleep.assert_called_once()
+
     def test_enforce_reply_limits(self):
         raw = "\n".join(f"Linha {n}" for n in range(1, 15))
         limited = enforce_reply_limits(raw)
@@ -148,6 +223,11 @@ class TestBotLogic(unittest.TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(agent_inference("", "Juan", None, None))
         self.assertEqual(res, "")
+
+    def test_rate_limit_error_detector(self):
+        self.assertTrue(is_rate_limited_inference_error(Exception("429 RESOURCE_EXHAUSTED")))
+        self.assertTrue(is_rate_limited_inference_error(Exception("Resource exhausted. Please try again later.")))
+        self.assertFalse(is_rate_limited_inference_error(Exception("invalid prompt")))
 
 if __name__ == '__main__':
     unittest.main()

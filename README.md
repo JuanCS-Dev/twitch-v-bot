@@ -29,6 +29,13 @@ Also supported:
 - `@byte <question>`
 - `!byte <question>`
 
+IRC owner-only channel management:
+
+- `byte canais` / `byte channels`
+- `byte join <channel_login>`
+- `byte part <channel_login>`
+- Dashboard terminal commands: `list`, `join <channel_login>`, `part <channel_login>`
+
 ## Operating Modes
 
 ### `TWITCH_CHAT_MODE=irc` (recommended for demos)
@@ -36,6 +43,9 @@ Also supported:
 - Connects with user token as a regular viewer account.
 - No streamer authorization required for basic read/reply behavior.
 - Typical scopes: `chat:read`, `chat:edit`.
+- Supports multiple channels:
+  - Static config: `TWITCH_CHANNEL_LOGINS=channel_a,channel_b`
+  - Runtime updates from chat (owner-only): `byte join ...` / `byte part ...`
 
 ### `TWITCH_CHAT_MODE=eventsub` (official cloud path)
 
@@ -52,11 +62,29 @@ Also supported:
 3. Run locally: `python bot/main.py`.
 4. Deploy on Cloud Run: `./deploy.sh`.
 
+For dashboard channel terminal in Cloud Run, set:
+
+- `BYTE_DASHBOARD_ADMIN_TOKEN_SECRET_NAME=byte-dashboard-admin-token`
+
 ## Cloud Run Notes
 
 - The container listens on `0.0.0.0:$PORT`.
 - Health endpoint: `GET /`.
 - Recommended timeout for long-lived chat connections: `3600s`.
+
+## Real-Time Observability
+
+- Dashboard UI: `GET /dashboard`
+- JSON snapshot API: `GET /api/observability`
+- Channel terminal API: `POST /api/channel-control` (requires `X-Byte-Admin-Token`)
+- Health probe: `GET /` or `GET /healthz`
+
+The dashboard is intentionally lightweight (vanilla HTML/CSS/JS) and shows:
+
+- Live counters (messages, triggers, interactions, replies, errors).
+- Active chatters and latency (`avg` / `p95`).
+- Route distribution, context state, timeline (30 min), and recent events.
+- Admin terminal to switch joined channels without using Twitch chat.
 
 ## Cost Snapshot and Monthly Estimate
 

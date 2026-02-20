@@ -20,6 +20,7 @@ Main goals:
 - Serious/technical mode that can split into up to 2 chat messages.
 - Automatic live context updates from trusted YouTube/X links.
 - Token refresh flow for IRC mode when refresh credentials are configured.
+- Real-time observability dashboard and JSON telemetry endpoint.
 
 ## 3. Architecture
 
@@ -28,6 +29,8 @@ Main goals:
 - `bot/main.py`: Twitch integration, mode routing, health endpoint, token handling.
 - `bot/logic.py`: LLM orchestration, prompt construction, response limits, live context memory.
 - `bot/byte_semantics.py`: trigger parsing, prompt enrichment rules, reply splitting heuristics.
+- `bot/observability.py`: in-memory telemetry state, timeline, counters, and snapshot generation.
+- `dashboard/`: lightweight static UI for real-time monitoring (`index.html`, `styles.css`, `app.js`).
 
 ### Infrastructure Components
 
@@ -74,6 +77,7 @@ Use this for official cloud chatbot architecture.
 
 - `TWITCH_BOT_LOGIN`
 - `TWITCH_CHANNEL_LOGIN`
+- `TWITCH_CHANNEL_LOGINS` (optional, comma-separated, overrides single-channel login)
 - `TWITCH_USER_TOKEN`
 - Optional but recommended:
   - `TWITCH_REFRESH_TOKEN`
@@ -132,6 +136,12 @@ Expected behavior:
 
 - Health server on `0.0.0.0:$PORT` (default `8080`).
 - Twitch connection starts based on selected mode.
+
+### 7.1 Runtime HTTP Endpoints
+
+- `GET /` and `GET /healthz`: returns `AGENT_ONLINE`.
+- `GET /api/observability`: returns a live JSON snapshot for metrics and context.
+- `GET /dashboard`: serves the real-time web dashboard.
 
 ## 8. Cloud Run Deployment
 
@@ -282,6 +292,16 @@ python -m unittest bot.tests.test_scientific
 
 - For IRC user token, use `chat:read chat:edit`.
 - For EventSub official path, use chat bot scopes (`user:read:chat`, `user:write:chat`, `user:bot`) plus broadcaster scope (`channel:bot`) when required.
+
+### How to test Byte in multiple channels without redeploy
+
+- Keep IRC mode enabled.
+- Seed channels with `TWITCH_CHANNEL_LOGINS=channel_a,channel_b` (optional).
+- While Byte is online, owner can manage channels from chat:
+  - `byte canais` (or `byte channels`)
+  - `byte join <channel_login>`
+  - `byte part <channel_login>`
+- Byte answers in the same channel where it was triggered.
 
 ### Bot disconnects after token expiry
 

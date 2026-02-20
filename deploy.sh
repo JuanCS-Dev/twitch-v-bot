@@ -39,6 +39,7 @@ ENV_VARS=(
   "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
   "TWITCH_CHAT_MODE=${TWITCH_CHAT_MODE}"
 )
+SECRET_VARS=()
 
 if [[ -n "${TWITCH_OWNER_ID:-}" ]]; then
   ENV_VARS+=("TWITCH_OWNER_ID=${TWITCH_OWNER_ID}")
@@ -46,6 +47,10 @@ fi
 
 if [[ -n "${BYTE_TRIGGER:-}" ]]; then
   ENV_VARS+=("BYTE_TRIGGER=${BYTE_TRIGGER}")
+fi
+
+if [[ -n "${BYTE_DASHBOARD_ADMIN_TOKEN_SECRET_NAME:-}" ]]; then
+  SECRET_VARS+=("BYTE_DASHBOARD_ADMIN_TOKEN=${BYTE_DASHBOARD_ADMIN_TOKEN_SECRET_NAME}:latest")
 fi
 
 if [[ "${TWITCH_CHAT_MODE}" == "eventsub" ]]; then
@@ -92,6 +97,10 @@ else
 fi
 
 ENV_VARS_CSV="$(IFS=,; echo "${ENV_VARS[*]}")"
+SECRET_VARS_CSV=""
+if [[ "${#SECRET_VARS[@]}" -gt 0 ]]; then
+  SECRET_VARS_CSV="$(IFS=,; echo "${SECRET_VARS[*]}")"
+fi
 
 echo "Iniciando deploy em ${PROJECT_ID} (${REGION})"
 
@@ -116,20 +125,28 @@ fi
 gcloud builds submit --tag "${IMAGE_NAME}" .
 
 echo "Deploy no Cloud Run..."
-gcloud run deploy "${SERVICE_NAME}" \
-  --image "${IMAGE_NAME}" \
-  --region "${REGION}" \
-  --service-account "${SERVICE_ACCOUNT}" \
-  --port 8080 \
-  --min-instances 1 \
-  --max-instances 1 \
-  --cpu 1 \
-  --memory 512Mi \
-  --timeout "${TIMEOUT_SECONDS}" \
-  --concurrency 200 \
-  --no-cpu-throttling \
-  --set-env-vars "${ENV_VARS_CSV}" \
+DEPLOY_ARGS=(
+  --image "${IMAGE_NAME}"
+  --region "${REGION}"
+  --service-account "${SERVICE_ACCOUNT}"
+  --port 8080
+  --min-instances 1
+  --max-instances 1
+  --cpu 1
+  --memory 512Mi
+  --timeout "${TIMEOUT_SECONDS}"
+  --concurrency 200
+  --no-cpu-throttling
+  --set-env-vars "${ENV_VARS_CSV}"
   --no-allow-unauthenticated
+)
+
+if [[ -n "${SECRET_VARS_CSV}" ]]; then
+  DEPLOY_ARGS+=(--set-secrets "${SECRET_VARS_CSV}")
+fi
+
+gcloud run deploy "${SERVICE_NAME}" \
+  "${DEPLOY_ARGS[@]}"
 
 echo "Deploy concluido."
 if [[ "${TWITCH_CHAT_MODE}" == "eventsub" ]]; then

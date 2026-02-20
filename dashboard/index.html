@@ -1,90 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gemini Bot MCP</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              charm: {
-                bg: '#131218',
-                card: '#1D1D26',
-                hover: '#282836',
-                border: '#363646',
-                text: '#E8E8EA',
-                subtext: '#8F8F9D',
-                pink: '#F25D94',
-                purple: '#A06CD5',
-                cyan: '#2AF2FF',
-                green: '#35D78D',
-                yellow: '#EFD05D',
-                red: '#FF5F5F',
-              }
-            },
-            fontFamily: {
-              sans: ['"JetBrains Mono"', 'monospace'],
-              mono: ['"JetBrains Mono"', 'monospace'],
-            },
-            boxShadow: {
-              'glow-pink': '0 0 10px rgba(242, 93, 148, 0.3)',
-              'glow-cyan': '0 0 10px rgba(42, 242, 255, 0.3)',
-            }
-          },
-        },
-      }
-    </script>
-    <style>
-      body {
-        background-color: #131218;
-        color: #E8E8EA;
-        font-family: 'JetBrains Mono', monospace;
-      }
-      /* Custom Scrollbar to match TUI vibe */
-      ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #131218; 
-        border-left: 1px solid #363646;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #363646; 
-        border: 2px solid #131218;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #F25D94; 
-      }
-      
-      .scanline {
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
-        background-size: 100% 4px;
-        pointer-events: none;
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "lucide-react": "https://esm.sh/lucide-react@^0.574.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+    <title>Byte Live Observability</title>
+    <link rel="stylesheet" href="/dashboard/styles.css" />
+  </head>
   <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <header class="topbar">
+      <div class="brand-head">
+        <p class="brand-kicker">BYTE // TWITCH OPERATIONS</p>
+        <h1>Byte Live Observability</h1>
+        <p>Neon telemetry for stream operations, response quality, and channel control.</p>
+      </div>
+      <div class="topbar-right">
+        <button id="refreshButton" class="refresh-button" type="button">Refresh</button>
+        <span id="botIdentity" class="chip">Byte</span>
+        <span id="connectionState" class="chip chip-warn">Connecting</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="cards" id="metricCards">
+        <article class="card tone-cyan">
+          <h2>Chat Messages</h2>
+          <p id="mChatMessages" class="metric">0</p>
+        </article>
+        <article class="card tone-cyan">
+          <h2>Byte Triggers</h2>
+          <p id="mByteTriggers" class="metric">0</p>
+        </article>
+        <article class="card tone-cyan">
+          <h2>Interactions</h2>
+          <p id="mInteractions" class="metric">0</p>
+        </article>
+        <article class="card tone-cyan">
+          <h2>Replies Sent</h2>
+          <p id="mReplies" class="metric">0</p>
+        </article>
+        <article class="card tone-purple">
+          <h2>Active Chatters (10m)</h2>
+          <p id="mActiveChatters" class="metric">0</p>
+        </article>
+        <article class="card tone-purple">
+          <h2>Active Chatters (60m)</h2>
+          <p id="mActiveChatters60m" class="metric">0</p>
+        </article>
+        <article class="card tone-purple">
+          <h2>Unique Chatters</h2>
+          <p id="mUniqueChatters" class="metric">0</p>
+        </article>
+        <article class="card tone-danger">
+          <h2>Errors</h2>
+          <p id="mErrors" class="metric">0</p>
+        </article>
+        <article class="card tone-cyan">
+          <h2>Avg Latency</h2>
+          <p id="mAvgLatency" class="metric">0 ms</p>
+        </article>
+        <article class="card tone-cyan">
+          <h2>P95 Latency</h2>
+          <p id="mP95Latency" class="metric">0 ms</p>
+        </article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <h2>Route Stats</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody id="routesBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Live Context</h2>
+          <dl class="kv">
+            <div><dt>Mode</dt><dd id="ctxMode">-</dd></div>
+            <div><dt>Uptime</dt><dd id="ctxUptime">-</dd></div>
+            <div><dt>Vibe</dt><dd id="ctxVibe">-</dd></div>
+            <div><dt>Last Event</dt><dd id="ctxLastEvent">-</dd></div>
+            <div><dt>Active Contexts</dt><dd id="ctxActiveContexts">0</dd></div>
+            <div><dt>Unique Chatters</dt><dd id="ctxUniqueChatters">0</dd></div>
+            <div><dt>Last Prompt</dt><dd id="ctxLastPrompt">-</dd></div>
+            <div><dt>Last Reply</dt><dd id="ctxLastReply">-</dd></div>
+          </dl>
+          <h3>Context Items</h3>
+          <ul id="contextItems" class="context-list"></ul>
+        </article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel terminal-panel">
+          <h2>Channel Terminal</h2>
+          <p class="panel-hint">
+            Commands: <code>list</code>, <code>join &lt;channel_login&gt;</code>, <code>part &lt;channel_login&gt;</code>
+          </p>
+          <div class="terminal-controls">
+            <label for="terminalAdminToken">Admin Token</label>
+            <input
+              id="terminalAdminToken"
+              type="password"
+              autocomplete="off"
+              placeholder="Optional if browser-authenticated"
+            />
+          </div>
+          <div class="terminal-controls">
+            <label for="terminalCommandInput">Command</label>
+            <div class="terminal-command-row">
+              <input id="terminalCommandInput" type="text" autocomplete="off" placeholder="list" />
+              <button id="terminalRunButton" class="refresh-button" type="button">Run</button>
+              <button id="terminalListButton" class="refresh-button" type="button">List</button>
+            </div>
+          </div>
+          <pre id="terminalOutput" class="terminal-output">Ready.</pre>
+        </article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <h2>Chat Analytics (10m / 60m)</h2>
+          <dl class="kv">
+            <div><dt>Messages (10m)</dt><dd id="aMessages10m">0</dd></div>
+            <div><dt>Messages (60m)</dt><dd id="aMessages60m">0</dd></div>
+            <div><dt>Msgs per Min (10m)</dt><dd id="aMpm10m">0</dd></div>
+            <div><dt>Msgs per Min (60m)</dt><dd id="aMpm60m">0</dd></div>
+            <div><dt>Avg Msg Len (10m)</dt><dd id="aAvgLen10m">0</dd></div>
+            <div><dt>Avg Msg Len (60m)</dt><dd id="aAvgLen60m">0</dd></div>
+            <div><dt>Prefixed Commands (60m)</dt><dd id="aCommands60m">0</dd></div>
+            <div><dt>Command Ratio (60m)</dt><dd id="aCommandRatio60m">0%</dd></div>
+            <div><dt>URL Messages (60m)</dt><dd id="aUrls60m">0</dd></div>
+            <div><dt>URL Ratio (60m)</dt><dd id="aUrlRatio60m">0%</dd></div>
+            <div><dt>Source IRC (60m)</dt><dd id="aSourceIrc60m">0</dd></div>
+            <div><dt>Source EventSub (60m)</dt><dd id="aSourceEventsub60m">0</dd></div>
+            <div><dt>Source Unknown (60m)</dt><dd id="aSourceUnknown60m">0</dd></div>
+            <div><dt>Byte Triggers (10m)</dt><dd id="aByteTriggers10m">0</dd></div>
+            <div><dt>Byte Triggers (60m)</dt><dd id="aByteTriggers60m">0</dd></div>
+          </dl>
+        </article>
+
+        <article class="panel">
+          <h2>Leaderboards</h2>
+          <h3>Top Chatters (60m)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Chatter</th>
+                  <th>Messages</th>
+                </tr>
+              </thead>
+              <tbody id="topChatters60mBody"></tbody>
+            </table>
+          </div>
+          <h3>Top Trigger Users (60m)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Triggers</th>
+                </tr>
+              </thead>
+              <tbody id="topTriggers60mBody"></tbody>
+            </table>
+          </div>
+          <h3>Top Chatters (Total)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Chatter</th>
+                  <th>Messages</th>
+                </tr>
+              </thead>
+              <tbody id="topChattersTotalBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <h2>Timeline (Last 30 min)</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>UTC</th>
+                  <th>Chat</th>
+                  <th>Triggers</th>
+                  <th>Replies</th>
+                  <th>LLM</th>
+                  <th>Errors</th>
+                </tr>
+              </thead>
+              <tbody id="timelineBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Recent Events</h2>
+          <ul id="eventsList" class="events-list"></ul>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span id="lastUpdate">Last update: -</span>
+      <span>Manual refresh mode</span>
+    </footer>
+
+    <script src="/dashboard/app.js" defer></script>
+    <script src="/dashboard/channel-terminal.js" defer></script>
+  </body>
 </html>
