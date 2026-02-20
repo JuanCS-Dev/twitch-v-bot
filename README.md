@@ -90,3 +90,11 @@ Guia de criacao visual: `docs/GITHUB_VISUAL_ASSETS_2026.md`
 - Nao commite `.env`, tokens ou client secrets.
 - Use Secret Manager para `TWITCH_CLIENT_SECRET`.
 - Revise staging com `git status --short` antes de push.
+
+## Licenca
+
+Este projeto e open-source sob a licenca MIT. Veja `LICENSE`.
+
+## Self-host
+
+Qualquer pessoa pode fazer deploy do Byte na propria conta GCP usando `deploy.sh`.
