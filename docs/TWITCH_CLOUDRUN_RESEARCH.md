@@ -1,89 +1,103 @@
-# Twitch API + Cloud Run Notes (Co-Streamer)
+# Byte - Twitch + Cloud Run Validation (2026)
 
-## Objetivo
-Evoluir o bot para atuar como co-streamer generalista, com observabilidade de tudo que aparece na live: jogos, filmes, series, videos do YouTube, posts do X e temas livres.
+## Escopo
 
-## Twitch API (Helix/EventSub)
+Validacao para o cenario de hoje:
 
-### Autenticacao base
-- Helix exige `Authorization: Bearer <token>` e `Client-Id`.
-- O `Client-Id` do header deve bater com o token OAuth.
+- Bot conectado em canal de terceiro (amigo), como viewer.
+- Leitura + resposta a comandos no chat (`byte ...`).
+- Deploy em Cloud Run com operacao estavel.
+- Duas trilhas: oficial (`eventsub`) e demo sem streamer (`irc`).
 
-### Rate limit
-- Twitch usa token-bucket por minuto.
-- Buckets separados para app token e user token.
-- Headers de controle:
-  - `Ratelimit-Limit`
-  - `Ratelimit-Remaining`
-  - `Ratelimit-Reset`
-- Ao receber `429`, usar `Ratelimit-Reset` para backoff.
+## Fontes oficiais consultadas
 
-### Endpoints mais uteis para observabilidade
-- `GET /helix/channels`
-  - Traz `title`, `game_name`, `tags`, `content_classification_labels`.
-  - Bom para snapshot do "estado editorial" da live.
-- `GET /helix/streams`
-  - Traz `viewer_count`, `started_at`, `title`, `tags`, `game_name`.
-  - Bom para detectar estado live e contexto atual.
-- `GET /helix/videos`
-  - Base para recuperar VODs e contexto historico.
-- `GET /helix/search/channels`
-  - Busca por nomes/categorias com `live_only`.
-- `GET /helix/chat/chatters`
-  - Lista chatters conectados (com escopo de moderacao).
+- Twitch Chat: `https://dev.twitch.tv/docs/chat/`
+- Twitch Auth/EventSub: `https://dev.twitch.tv/docs/chat/authenticating/`
+- Twitch IRC: `https://dev.twitch.tv/docs/chat/irc/`
+- Twitch EventSub types: `https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/`
+- Twitch Send Chat Message API: `https://dev.twitch.tv/docs/api/reference/#send-chat-message`
+- Cloud Run container contract: `https://cloud.google.com/run/docs/container-contract`
+- Cloud Run websockets: `https://cloud.google.com/run/docs/triggering/websockets`
+- Cloud Run request timeout: `https://cloud.google.com/run/docs/configuring/request-timeout`
 
-### EventSub
-- `POST /helix/eventsub/subscriptions`
-  - `transport.method=websocket` exige user access token e `session_id`.
-  - `transport.method=webhook` exige app access token.
-- `GET /helix/eventsub/subscriptions`
-  - Verifica custo, status e total de inscricoes.
-- `DELETE /helix/eventsub/subscriptions?id=...`
-  - Remove inscricoes antigas/invalidas.
+## Twitch - Regras 2026 relevantes
 
-## Cloud Run (servico HTTP + WebSocket)
+### 1) Caminho oficial cloud chatbot (EventSub + API)
 
-### Contrato de container
-- O container de ingress precisa escutar em `0.0.0.0:$PORT`.
-- Default de porta: `8080`.
-- Nao escutar em `127.0.0.1`.
+- Twitch reforca EventSub + API como caminho preferido para bots cloud.
+- Para canal de terceiro, o fluxo oficial com app token exige autorizacao do broadcaster.
 
-### Timeouts e WebSockets
-- WebSocket no Cloud Run e tratado como request HTTP longa.
+Escopos tipicos:
+
+- Bot account: `user:read:chat`, `user:write:chat`, `user:bot`
+- Broadcaster account: `channel:bot`
+
+Observacao:
+
+- Em `channel.chat.message` + envio via `POST /helix/chat/messages` com app token,
+  a doc exige `user:bot` + `channel:bot` (ou moderador).
+
+### 2) Trilha de demonstracao sem autorizacao do streamer (IRC)
+
+- Conectar a conta Byte via IRC como usuario normal.
+- Ler e responder chat com token de usuario do Byte.
+- Escopos recomendados no token de usuario: `chat:read`, `chat:edit`.
+- Nessa trilha nao depende de `channel:bot` do streamer para provar funcionamento basico.
+
+Limites/pragmatismo:
+
+- Continua sujeito aos limites de chat da Twitch.
+- Deve implementar reconexao e rate control minimo para estabilidade.
+- E trilha de demo/POC; para integracao cloud oficial ampla, preferir EventSub.
+
+### 3) Limites de chat
+
+- Existem limites de mensagem por janela e por canal.
+- Estourar limite pode silenciar mensagens por periodo.
+- Em volume alto, implementar backoff.
+
+## Cloud Run - Regras 2026 relevantes
+
+### 1) Container contract
+
+- Processo HTTP deve escutar em `0.0.0.0`.
+- Porta vem de `PORT` (default comum: `8080`).
+- Startup deve concluir dentro da janela suportada (doc cita ate 4 minutos).
+- Encerramento: `SIGTERM` antes de `SIGKILL`; ideal tratar graceful shutdown.
+
+### 2) Conexoes longas
+
+- WebSocket e request HTTP longa no Cloud Run.
 - Continua sujeito ao request timeout do servico.
-- Limite atual para timeout de request: ate 60 minutos.
-- Cliente deve implementar reconnect automatico.
+- Timeout maximo de request: `3600s` (60 min).
+- Cliente deve suportar reconnect.
 
-### Escala e estado
-- Session affinity ajuda, mas e best effort (nao garante mesma instancia).
-- Se houver multiplas instancias, sincronizar estado externo (ex: Redis/Memorystore Pub/Sub).
-- Concurrency suporta muitas conexoes (ate limite de cota do servico).
+## Status do projeto apos ajustes de hoje
 
-### Ciclo de vida
-- Instancia precisa ficar pronta em ate 4 min no startup.
-- Shutdown envia `SIGTERM` e depois `SIGKILL` (~10s).
-- Trap de `SIGTERM` e importante para flush/graceful shutdown.
+- Branding principal migrado para `Byte`.
+- Trigger por chat textual implementado: `byte ...`.
+- Comando de ficha tecnica de filme implementado.
+- Saida limitada por politica de resposta curta (maximo 8 linhas).
+- Modo `irc` implementado para demo sem streamer.
+- Health server compativel com Cloud Run (`0.0.0.0:$PORT`).
 
-## Implicacoes praticas para este bot
-- Manter contexto local para "agora da live" (jogo/filme/serie/youtube/x/topic).
-- Priorizar comandos do owner para atualizar contexto em tempo real.
-- Tratar respostas do LLM com estilo generalista e sem persona gamer caricata.
-- Para ingestao automatica de links:
-  - aceitar apenas fontes confiaveis (owner/mod);
-  - permitir somente hosts suportados (YouTube e X/Twitter);
-  - buscar metadata por oEmbed (titulo/autor/provedor) antes de persistir contexto;
-  - bloquear mensagens/URLs com termos sensiveis (NSFW/violencia explicita);
-  - manter denylist de dominios adultos.
-  - persistir apenas descricao sanitizada no contexto (evitar repetir URL bruta no chat).
-- Em deploy no Cloud Run:
-  - `--min-instances 1`
-  - timeout alinhado ao comportamento esperado do app
-  - estrategia de reconnect do cliente/chat
-- Para escala horizontal futura:
-  - mover contexto para Redis ou outro state store compartilhado.
+## Checklist de deploy (hoje)
 
-## Referencias oficiais
-- Twitch API Reference: `https://dev.twitch.tv/docs/api/reference`
-- Twitch API Guide (rate limits/pagination): `https://dev.twitch.tv/docs/api/guide`
-- Cloud Run Container Contract: `https://cloud.google.com/run/docs/container-contract`
-- Cloud Run WebSockets: `https://cloud.google.com/run/docs/triggering/websockets`
+### Trilha A (sem autorizacao do streamer)
+
+1. Definir `TWITCH_CHAT_MODE=irc`.
+2. Configurar `TWITCH_BOT_LOGIN`, `TWITCH_CHANNEL_LOGIN`, `TWITCH_USER_TOKEN`.
+3. Habilitar refresh automatico com `TWITCH_REFRESH_TOKEN` + `TWITCH_CLIENT_ID` + `TWITCH_CLIENT_SECRET` (ou Secret Manager).
+4. Confirmar token da conta Byte com `chat:read chat:edit`.
+5. Subir no Cloud Run com timeout ate `3600` e min-instances `1`.
+6. Validar no chat:
+   - `byte ajuda`
+   - `byte status`
+   - `byte qual a ficha tecnica do filme que estamos vendo?`
+
+### Trilha B (oficial cloud)
+
+1. Definir `TWITCH_CHAT_MODE=eventsub`.
+2. Confirmar scopes do bot: `user:read:chat user:write:chat user:bot`.
+3. Confirmar autorizacao do broadcaster: `channel:bot`.
+4. Garantir `TWITCH_CHANNEL_ID` apontando para o canal alvo.

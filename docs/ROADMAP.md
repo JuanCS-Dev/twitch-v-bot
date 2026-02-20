@@ -1,5 +1,5 @@
-# 🤖 Twitch V-Bot — Gemini 3 Flash + Vertex AI + Cloud Run
-> Roadmap de Produção 2026 · Invisible Producer Pattern · 94% Test Coverage
+# 🤖 Byte Twitch Bot — Gemini 3 Flash + Vertex AI + Cloud Run
+> Roadmap de Produção 2026 · Byte Pattern · 94% Test Coverage
 
 ---
 
@@ -60,7 +60,8 @@ Twitch Chat (EventSub WebSocket)
 ---
 
 ## 🛠️ Comandos Disruptivos (2026)
-- `!ask`: Inteligência com Grounding (Pesquisa Google).
+- `byte <pergunta>`: Inteligência com Grounding (Pesquisa Google).
+- `byte ficha tecnica <filme>`: Resumo técnico curto para o filme ativo.
 - `!vibe`: (Owner Only) Altera o tom de voz do bot dinamicamente.
 - `!status`: Diagnóstico de uptime e estado do agente.
 - `!wiki/!clima/!historia`: Comandos semânticos integrados.

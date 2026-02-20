@@ -1,18 +1,97 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Twitch V-Bot deploy (Cloud Run)
+# Byte Twitch Bot deploy (Cloud Run)
 # Requisitos:
 # - gcloud autenticado e projeto selecionado
 # - service account com acesso ao Vertex AI + Secret Manager
-# - segredo twitch-client-secret criado no projeto
+# - segredo twitch-client-secret criado no projeto (somente modo eventsub)
 
-PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project)}"
+PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}"
 REGION="${REGION:-us-central1}"
-SERVICE_NAME="${SERVICE_NAME:-twitch-v-bot}"
+SERVICE_NAME="${SERVICE_NAME:-byte-bot}"
 SA_NAME="${SA_NAME:-twitch-bot-sa}"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
 SERVICE_ACCOUNT="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-3600}"
+TWITCH_CHAT_MODE="${TWITCH_CHAT_MODE:-eventsub}"
+TEMP_DOCKERFILE_CREATED=0
+
+cleanup() {
+  if [[ "${TEMP_DOCKERFILE_CREATED}" == "1" ]]; then
+    rm -f Dockerfile
+  fi
+}
+
+trap cleanup EXIT
+
+require_env() {
+  local name="$1"
+  if [[ -z "${!name:-}" ]]; then
+    echo "Erro: variavel obrigatoria ausente: ${name}" >&2
+    exit 1
+  fi
+}
+
+require_env PROJECT_ID
+
+ENV_VARS=(
+  "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+  "TWITCH_CHAT_MODE=${TWITCH_CHAT_MODE}"
+)
+
+if [[ -n "${TWITCH_OWNER_ID:-}" ]]; then
+  ENV_VARS+=("TWITCH_OWNER_ID=${TWITCH_OWNER_ID}")
+fi
+
+if [[ -n "${BYTE_TRIGGER:-}" ]]; then
+  ENV_VARS+=("BYTE_TRIGGER=${BYTE_TRIGGER}")
+fi
+
+if [[ "${TWITCH_CHAT_MODE}" == "eventsub" ]]; then
+  require_env TWITCH_CLIENT_ID
+  require_env TWITCH_BOT_ID
+  require_env TWITCH_CHANNEL_ID
+  ENV_VARS+=(
+    "TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}"
+    "TWITCH_BOT_ID=${TWITCH_BOT_ID}"
+    "TWITCH_CHANNEL_ID=${TWITCH_CHANNEL_ID}"
+  )
+elif [[ "${TWITCH_CHAT_MODE}" == "irc" ]]; then
+  require_env TWITCH_BOT_LOGIN
+  require_env TWITCH_CHANNEL_LOGIN
+  require_env TWITCH_USER_TOKEN
+  ENV_VARS+=(
+    "TWITCH_BOT_LOGIN=${TWITCH_BOT_LOGIN}"
+    "TWITCH_CHANNEL_LOGIN=${TWITCH_CHANNEL_LOGIN}"
+    "TWITCH_USER_TOKEN=${TWITCH_USER_TOKEN}"
+    "TWITCH_IRC_HOST=${TWITCH_IRC_HOST:-irc.chat.twitch.tv}"
+    "TWITCH_IRC_PORT=${TWITCH_IRC_PORT:-6697}"
+    "TWITCH_IRC_TLS=${TWITCH_IRC_TLS:-true}"
+  )
+
+  if [[ -n "${TWITCH_REFRESH_TOKEN:-}" ]]; then
+    require_env TWITCH_CLIENT_ID
+    ENV_VARS+=(
+      "TWITCH_REFRESH_TOKEN=${TWITCH_REFRESH_TOKEN}"
+      "TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}"
+    )
+    if [[ -n "${TWITCH_CLIENT_SECRET:-}" ]]; then
+      ENV_VARS+=("TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}")
+    fi
+    if [[ -n "${TWITCH_CLIENT_SECRET_SECRET_NAME:-}" ]]; then
+      ENV_VARS+=("TWITCH_CLIENT_SECRET_SECRET_NAME=${TWITCH_CLIENT_SECRET_SECRET_NAME}")
+    fi
+    if [[ -n "${TWITCH_TOKEN_REFRESH_MARGIN_SECONDS:-}" ]]; then
+      ENV_VARS+=("TWITCH_TOKEN_REFRESH_MARGIN_SECONDS=${TWITCH_TOKEN_REFRESH_MARGIN_SECONDS}")
+    fi
+  fi
+else
+  echo "Erro: TWITCH_CHAT_MODE invalido: ${TWITCH_CHAT_MODE}. Use eventsub ou irc." >&2
+  exit 1
+fi
+
+ENV_VARS_CSV="$(IFS=,; echo "${ENV_VARS[*]}")"
 
 echo "Iniciando deploy em ${PROJECT_ID} (${REGION})"
 
@@ -25,6 +104,15 @@ gcloud services enable \
   aiplatform.googleapis.com
 
 echo "Build da imagem..."
+if [[ ! -f "Dockerfile" ]]; then
+  if [[ -f "bot/Dockerfile" ]]; then
+    cp bot/Dockerfile Dockerfile
+    TEMP_DOCKERFILE_CREATED=1
+  else
+    echo "Erro: Dockerfile nao encontrado na raiz nem em bot/Dockerfile." >&2
+    exit 1
+  fi
+fi
 gcloud builds submit --tag "${IMAGE_NAME}" .
 
 echo "Deploy no Cloud Run..."
@@ -37,11 +125,19 @@ gcloud run deploy "${SERVICE_NAME}" \
   --max-instances 1 \
   --cpu 1 \
   --memory 512Mi \
-  --timeout 3600 \
+  --timeout "${TIMEOUT_SECONDS}" \
   --concurrency 200 \
   --no-cpu-throttling \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},TWITCH_CLIENT_ID=SEU_CLIENT_ID,TWITCH_BOT_ID=SEU_BOT_ID,TWITCH_OWNER_ID=SEU_OWNER_ID,TWITCH_CHANNEL_ID=SEU_CHANNEL_ID" \
+  --set-env-vars "${ENV_VARS_CSV}" \
   --no-allow-unauthenticated
 
 echo "Deploy concluido."
-echo "Confirme se o segredo twitch-client-secret existe e se a SA tem role secretAccessor."
+if [[ "${TWITCH_CHAT_MODE}" == "eventsub" ]]; then
+  echo "Confirme se o segredo twitch-client-secret existe e se a SA tem role secretAccessor."
+else
+  if [[ -n "${TWITCH_REFRESH_TOKEN:-}" ]]; then
+    echo "Modo IRC ativo com refresh automatico: confira TWITCH_CLIENT_ID e segredo do client secret."
+  else
+    echo "Modo IRC ativo: confirme que TWITCH_USER_TOKEN esta valido."
+  fi
+fi

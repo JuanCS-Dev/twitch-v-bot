@@ -1,8 +1,17 @@
 import unittest
 import asyncio
 import time
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from bot.logic import StreamContext, build_dynamic_prompt, agent_inference
+from bot.logic import (
+    EMPTY_RESPONSE_FALLBACK,
+    MAX_REPLY_LINES,
+    StreamContext,
+    agent_inference,
+    build_dynamic_prompt,
+    enforce_reply_limits,
+    extract_response_text,
+)
 
 class TestBotLogic(unittest.TestCase):
 
@@ -15,10 +24,24 @@ class TestBotLogic(unittest.TestCase):
         ctx = StreamContext()
         ctx.update_content("game", "Zelda")
         ctx.update_content("movie", "Duna")
+        ctx.remember_user_message("ViewerA", "Que filme e esse?")
+        ctx.remember_bot_reply("Parece Duna Parte 2.")
         p = build_dynamic_prompt("Oi", "Juan", ctx)
         self.assertIn("Jogo: Zelda", p)
         self.assertIn("Filme: Duna", p)
+        self.assertIn("Historico recente:", p)
+        self.assertIn("ViewerA: Que filme e esse?", p)
+        self.assertIn("Ultima resposta do Byte:", p)
         self.assertIn("Usuario Juan: Oi", p)
+
+    def test_recent_chat_memory_is_bounded(self):
+        ctx = StreamContext()
+        for index in range(20):
+            ctx.remember_user_message("viewer", f"mensagem {index}")
+        formatted = ctx.format_recent_chat(limit=20)
+        self.assertIn("mensagem 19", formatted)
+        self.assertNotIn("viewer: mensagem 0", formatted)
+        self.assertLessEqual(len(ctx.recent_chat_entries), 12)
 
     def test_update_and_clear_content(self):
         ctx = StreamContext()
@@ -42,6 +65,17 @@ class TestBotLogic(unittest.TestCase):
         res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, "Olá!")
 
+    def test_extract_response_text_from_parts(self):
+        response = SimpleNamespace(
+            text=None,
+            candidates=[
+                SimpleNamespace(
+                    content=SimpleNamespace(parts=[SimpleNamespace(text="Resposta vinda de parts")]),
+                )
+            ],
+        )
+        self.assertEqual(extract_response_text(response), "Resposta vinda de parts")
+
     @patch('asyncio.to_thread')
     def test_agent_inference_failure(self, mock_thread):
         loop = asyncio.get_event_loop()
@@ -51,7 +85,64 @@ class TestBotLogic(unittest.TestCase):
         mock_thread.side_effect = Exception("Error")
         
         res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
-        self.assertIn("⚠️ Conexao com o modelo instavel", res)
+        self.assertIn("Conexao com o modelo instavel", res)
+
+    @patch('asyncio.to_thread')
+    def test_agent_inference_retries_without_grounding(self, mock_thread):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+
+        grounded_empty = SimpleNamespace(text=None, candidates=[])
+        nongrounded_text = SimpleNamespace(text="Resposta sem grounding", candidates=[])
+        mock_thread.side_effect = [grounded_empty, nongrounded_text]
+
+        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        self.assertEqual(res, "Resposta sem grounding")
+        self.assertEqual(mock_thread.call_count, 2)
+
+    @patch('asyncio.to_thread')
+    def test_agent_inference_empty_after_retries(self, mock_thread):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+
+        empty_response = SimpleNamespace(text=None, candidates=[])
+        mock_thread.side_effect = [empty_response, empty_response]
+
+        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        self.assertEqual(res, EMPTY_RESPONSE_FALLBACK)
+
+    def test_enforce_reply_limits(self):
+        raw = "\n".join(f"Linha {n}" for n in range(1, 15))
+        limited = enforce_reply_limits(raw)
+        self.assertEqual(len(limited.splitlines()), MAX_REPLY_LINES)
+
+    def test_enforce_reply_limits_preserves_word_boundary(self):
+        raw = " ".join(["palavra"] * 200)
+        limited = enforce_reply_limits(raw, max_lines=8, max_length=80)
+        self.assertLessEqual(len(limited), 80)
+        self.assertIn(limited[-1], ".!?")
+        self.assertFalse(limited.endswith("..."))
+        self.assertNotIn(" ..", limited)
+
+    def test_enforce_reply_limits_chat_contract(self):
+        raw = "\n".join(
+            [
+                "A laminina e uma proteina estrutural importante na matriz extracelular.",
+                "Ela atua na adesao celular e na organizacao da lamina basal.",
+                "Contribui para migracao e diferenciacao celular em varios tecidos.",
+                "Tambem participa de sinalizacao celular em processos de reparo.",
+                "Alteracoes de laminina podem impactar integridade de tecidos.",
+                "Sua estrutura molecular e alvo de estudo em biologia celular.",
+                "Tem relevancia em pesquisa de doencas neuromusculares.",
+                "Pode ser citada como ponte entre celulas e matriz extracelular.",
+                "Esta nona linha precisa ser cortada pelo limite de 8 linhas.",
+            ]
+        )
+        limited = enforce_reply_limits(raw)
+        self.assertLessEqual(len(limited), 460)
+        self.assertLessEqual(len(limited.splitlines()), 8)
 
     def test_agent_inference_empty(self):
         loop = asyncio.get_event_loop()
