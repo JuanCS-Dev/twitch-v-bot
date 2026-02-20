@@ -1,62 +1,92 @@
-# Byte - Twitch AI Chat Bot
+# Byte - Twitch AI Chat Agent
 
-`Byte` e um bot de chat da Twitch com Gemini 3 Flash (Vertex AI) e deploy em Cloud Run.
+![Byte Banner](assets/hero-banner-byte.png)
 
-## O que ele faz hoje
+`Byte` is a Twitch chat agent powered by Gemini 3 Flash (Vertex AI) and deployed on Cloud Run.
 
-- Conecta no canal como viewer (`irc`) ou modo oficial cloud (`eventsub`).
-- Responde ao trigger `byte ...` com resposta curta e direta.
-- Suporta comando de ficha tecnica e perguntas abertas.
-- Mantem resposta curta para chat (limite de linhas por resposta).
+## Architecture
 
-## Comandos de chat
+![Byte Architecture](assets/architecture-byte-flow.png)
 
-- `byte ajuda`
+## What Byte Does
+
+- Joins Twitch chat as a viewer (`irc`) or official cloud chatbot (`eventsub`).
+- Responds to natural trigger messages like `byte ...`, `@byte ...`, or `!byte ...`.
+- Keeps answers concise for live chat (hard limit: 8 lines per message).
+- Handles direct questions, movie fact-sheet prompts, and current-events prompts.
+- Supports serious/technical prompts with up to 2 chat messages when needed.
+
+## Chat Commands and Trigger Patterns
+
+- `byte help`
 - `byte status`
-- `byte ficha tecnica <filme>`
-- `byte qual a ficha tecnica do filme que estamos vendo?`
-- `byte <pergunta livre>`
+- `byte movie fact sheet <movie>`
+- `byte what is the movie fact sheet for what we are watching?`
+- `byte <free-form question>`
 
-## Modos de operacao
+Also supported:
 
-### `TWITCH_CHAT_MODE=irc` (demo sem autorizacao do streamer)
+- `@byte <question>`
+- `!byte <question>`
 
-- Usa IRC com token de usuario da conta Byte.
-- Scopes: `chat:read` e `chat:edit`.
-- Variaveis principais:
-  - `TWITCH_BOT_LOGIN`
-  - `TWITCH_CHANNEL_LOGIN`
-  - `TWITCH_USER_TOKEN`
-  - `TWITCH_REFRESH_TOKEN` (opcional, recomendado)
+## Operating Modes
 
-### `TWITCH_CHAT_MODE=eventsub` (oficial cloud chatbot)
+### `TWITCH_CHAT_MODE=irc` (recommended for demos)
 
-- Fluxo recomendado para producao cloud 2026.
-- Em canal de terceiro, requer autorizacao do broadcaster.
-- Scopes:
-  - Bot: `user:read:chat`, `user:write:chat`, `user:bot`
-  - Broadcaster: `channel:bot`
-- Variaveis principais:
-  - `TWITCH_CLIENT_ID`
-  - `TWITCH_BOT_ID`
-  - `TWITCH_CHANNEL_ID`
+- Connects with user token as a regular viewer account.
+- No streamer authorization required for basic read/reply behavior.
+- Typical scopes: `chat:read`, `chat:edit`.
 
-## Setup rapido
+### `TWITCH_CHAT_MODE=eventsub` (official cloud path)
 
-1. Copie `.env.example` para `.env` e preencha sem commitar secrets.
-2. Instale dependencias: `pip install -r bot/requirements.txt`.
-3. Rode local: `python bot/main.py`.
-4. Deploy Cloud Run: `./deploy.sh`.
+- Official Twitch cloud chatbot architecture.
+- For third-party channels, broadcaster authorization is required.
+- Typical scopes:
+  - Bot account: `user:read:chat`, `user:write:chat`, `user:bot`
+  - Broadcaster account: `channel:bot`
 
-## Deploy Cloud Run
+## Quick Start
 
-- Container escuta em `0.0.0.0:$PORT`.
-- Timeout recomendado para conexao longa: `3600s`.
-- Health endpoint em `GET /`.
+1. Copy `.env.example` into `.env` and fill required values.
+2. Install dependencies: `pip install -r bot/requirements.txt`.
+3. Run locally: `python bot/main.py`.
+4. Deploy on Cloud Run: `./deploy.sh`.
 
-## Visual Assets (placeholders prontos)
+## Cloud Run Notes
 
-Use esta estrutura para os assets visuais do GitHub:
+- The container listens on `0.0.0.0:$PORT`.
+- Health endpoint: `GET /`.
+- Recommended timeout for long-lived chat connections: `3600s`.
+
+## Cost Snapshot and Monthly Estimate
+
+Run live usage + projected monthly estimate (Cloud Run + Gemini):
+
+```bash
+CLOUD_RUN_SERVICE=byte-bot \
+REGION=us-central1 \
+GEMINI_MODEL_FILTER=gemini-3-flash-preview \
+./scripts/estimate_monthly_cost.sh
+```
+
+Run an end-of-day snapshot:
+
+```bash
+START_TIME="$(date -u +%Y-%m-%dT00:00:00Z)" \
+END_TIME="$(date -u +%Y-%m-%dT23:59:59Z)" \
+CLOUD_RUN_SERVICE=byte-bot \
+REGION=us-central1 \
+GEMINI_MODEL_FILTER=gemini-3-flash-preview \
+./scripts/estimate_monthly_cost.sh
+```
+
+## Documentation
+
+- Full documentation hub: `docs/INDEX.md`
+- Complete product + ops guide: `docs/DOCUMENTATION.md`
+- Visual asset direction for GitHub: `docs/GITHUB_VISUAL_ASSETS_2026.md`
+
+## Visual Assets Structure
 
 ```text
 assets/
@@ -67,34 +97,16 @@ assets/
   cloudrun-proof.png
 ```
 
-Tabela de placeholders:
+## Security
 
-| Asset | Path sugerido | Uso no README |
-|---|---|---|
-| Hero banner | `assets/hero-banner-byte.png` | Topo do README |
-| Demo GIF | `assets/demo-chat-loop.gif` | Secao "Como funciona" |
-| Arquitetura | `assets/architecture-byte-flow.png` | Secao tecnica |
-| Cards de comando | `assets/command-cards.png` | Secao comandos |
-| Deploy proof | `assets/cloudrun-proof.png` | Secao producao |
+- Do not commit `.env`, tokens, or client secrets.
+- Prefer Secret Manager for `TWITCH_CLIENT_SECRET`.
+- Check pending files before push: `git status --short`.
 
-Guia de criacao visual: `docs/GITHUB_VISUAL_ASSETS_2026.md`
+## License
 
-## Documentacao
+This project is open source under the MIT license. See `LICENSE`.
 
-- Setup anti-erro: `docs/SETUP_2026_ANTI_BURRO.md`
-- Validacao Twitch + Cloud Run: `docs/TWITCH_CLOUDRUN_RESEARCH.md`
-- Guia visual GitHub 2026: `docs/GITHUB_VISUAL_ASSETS_2026.md`
+## Self-Host
 
-## Seguranca
-
-- Nao commite `.env`, tokens ou client secrets.
-- Use Secret Manager para `TWITCH_CLIENT_SECRET`.
-- Revise staging com `git status --short` antes de push.
-
-## Licenca
-
-Este projeto e open-source sob a licenca MIT. Veja `LICENSE`.
-
-## Self-host
-
-Qualquer pessoa pode fazer deploy do Byte na propria conta GCP usando `deploy.sh`.
+Anyone can deploy Byte in their own GCP project using `deploy.sh`.
