@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, Mapping, TypedDict
 
 from bot.logic_constants import MAX_GROUNDING_QUERIES, MAX_GROUNDING_URLS
 
@@ -79,7 +79,7 @@ def extract_grounding_metadata(response: Any, use_grounding: bool) -> GroundingM
     return metadata
 
 
-def has_grounding_signal(metadata: dict[str, Any] | None) -> bool:
+def has_grounding_signal(metadata: Mapping[str, Any] | None) -> bool:
     if not metadata:
         return False
     if bool(metadata.get("has_grounding_signal")):

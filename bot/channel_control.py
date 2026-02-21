@@ -2,9 +2,10 @@ import asyncio
 import base64
 import binascii
 import hmac
+import inspect
 import threading
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Any
+from typing import Any, Coroutine, cast
 
 
 CHANNEL_CONTROL_TIMEOUT_SECONDS = 6.0
@@ -89,7 +90,7 @@ class IrcChannelControlBridge:
         with self._lock:
             return self._bot, self._loop
 
-    def _submit(self, coroutine: Any) -> Any:
+    def _submit(self, coroutine: Coroutine[Any, Any, Any]) -> Any:
         bot, loop = self._snapshot()
         if bot is None or loop is None or loop.is_closed() or not loop.is_running():
             raise RuntimeError("IRC runtime is not connected yet.")
@@ -151,4 +152,7 @@ class IrcChannelControlBridge:
         target = getattr(bot, method_name, None)
         if not callable(target):
             raise RuntimeError(f"IRC runtime method not available: {method_name}")
-        return await target(*args)
+        result = target(*args)
+        if not inspect.iscoroutine(result):
+            raise RuntimeError(f"IRC runtime method is not awaitable: {method_name}")
+        return await cast(Coroutine[Any, Any, Any], result)

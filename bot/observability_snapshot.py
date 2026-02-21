@@ -98,14 +98,18 @@ def build_observability_snapshot(
 
     get_uptime_minutes = getattr(stream_context, "get_uptime_minutes", None)
     if callable(get_uptime_minutes):
-        uptime_minutes = max(0, int(get_uptime_minutes()))
+        uptime_value = get_uptime_minutes()
+        if isinstance(uptime_value, (int, float, str)):
+            uptime_minutes = max(0, int(uptime_value))
+        else:
+            uptime_minutes = max(0, int((now - started_at) / 60))
     else:
         uptime_minutes = max(0, int((now - started_at) / 60))
 
     now_minute = int(now // 60)
     timeline = []
     for minute_key in range(now_minute - TIMELINE_WINDOW_MINUTES + 1, now_minute + 1):
-        bucket = minute_buckets.get(minute_key, {})
+        bucket: dict[str, int] = minute_buckets.get(minute_key) or {}
         timeline.append(
             {
                 "minute_epoch": minute_key * 60,

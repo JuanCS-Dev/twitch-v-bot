@@ -37,6 +37,7 @@ from bot.main import (
     build_irc_token_manager,
     resolve_irc_channel_logins,
     is_irc_auth_failure_line,
+    is_irc_notice_delivery_block,
 )
 
 
@@ -101,7 +102,7 @@ class TestBotProduction90Plus(unittest.TestCase):
 
         mock_handler._send_text.assert_called_with("AGENT_ONLINE", status_code=200)
 
-    @patch("bot.main.observability.snapshot")
+    @patch("bot.dashboard_server.observability.snapshot")
     def test_health_server_observability_endpoint(self, mock_snapshot):
         mock_snapshot.return_value = {"status": "ok"}
         mock_handler = MagicMock()
@@ -151,7 +152,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         mock_handler.headers = {}
         mock_handler._send_json = MagicMock()
 
-        with patch("bot.main.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"):
+        with patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"):
             HealthHandler.do_POST(mock_handler)
 
         mock_handler._send_json.assert_called_with(
@@ -159,7 +160,7 @@ class TestBotProduction90Plus(unittest.TestCase):
             status_code=403,
         )
 
-    @patch("bot.main.irc_channel_control.execute")
+    @patch("bot.dashboard_server.irc_channel_control.execute")
     def test_health_server_channel_control_post_executes_list_command(
         self, mock_execute
     ):
@@ -175,7 +176,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         mock_handler._read_json_payload = MagicMock(return_value={"command": "list"})
         mock_handler._send_json = MagicMock()
 
-        with patch("bot.main.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"):
+        with patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"):
             HealthHandler.do_POST(mock_handler)
 
         mock_execute.assert_called_with(action="list", channel_login="")
@@ -183,10 +184,43 @@ class TestBotProduction90Plus(unittest.TestCase):
             mock_execute.return_value, status_code=200
         )
 
+    @patch("bot.dashboard_server.irc_channel_control.execute")
+    def test_health_server_channel_control_post_maps_runtime_errors(
+        self, mock_execute
+    ):
+        cases = [
+            ("timeout", 503),
+            ("runtime_unavailable", 503),
+            ("runtime_error", 500),
+            ("invalid_action", 400),
+        ]
+        for error_code, expected_status in cases:
+            with self.subTest(error_code=error_code):
+                mock_execute.return_value = {
+                    "ok": False,
+                    "error": error_code,
+                    "message": "failure",
+                }
+                mock_handler = MagicMock()
+                mock_handler.path = "/api/channel-control"
+                mock_handler.headers = {"X-Byte-Admin-Token": "secret-token"}
+                mock_handler._read_json_payload = MagicMock(
+                    return_value={"command": "list"}
+                )
+                mock_handler._send_json = MagicMock()
+
+                with patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"):
+                    HealthHandler.do_POST(mock_handler)
+
+                mock_handler._send_json.assert_called_with(
+                    mock_execute.return_value,
+                    status_code=expected_status,
+                )
+
     @patch("google.cloud.secretmanager.SecretManagerServiceClient")
     def test_get_secret_coverage(self, mock_sm):
         """Cobre a função get_secret."""
-        with patch("bot.main.PROJECT_ID", "test-proj"):
+        with patch("bot.bootstrap_runtime.PROJECT_ID", "test-proj"):
             mock_client = mock_sm.return_value
             mock_client.access_secret_version.return_value.payload.data.decode.return_value = "top-secret"
             res = get_secret()
@@ -194,7 +228,7 @@ class TestBotProduction90Plus(unittest.TestCase):
 
     # ── Testes de Componentes (TwitchIO + Logic) ──────────────
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.eventsub_runtime.agent_inference", new_callable=AsyncMock)
     def test_agent_component_commands(self, mock_inf):
         """Cobre os comandos !ask, !vibe, !style, !scene e !status em AgentComponent."""
         comp = AgentComponent(bot=MagicMock())
@@ -217,7 +251,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         ctx_s.reply.assert_called()
 
         # Test !vibe (Owner check)
-        with patch("bot.main.OWNER_ID", "123"):
+        with patch("bot.eventsub_runtime.OWNER_ID", "123"):
             ctx_v = MagicMock()
             ctx_v.message.author.id = "123"
             ctx_v.message.text = "!vibe Chill"
@@ -272,9 +306,9 @@ class TestBotProduction90Plus(unittest.TestCase):
     def test_bot_initialization(self):
         """Cobre o __init__ do ByteBot."""
         with (
-            patch("bot.main.CLIENT_ID", "c"),
-            patch("bot.main.BOT_ID", "b"),
-            patch("bot.main.OWNER_ID", "o"),
+            patch("bot.eventsub_runtime.CLIENT_ID", "c"),
+            patch("bot.eventsub_runtime.BOT_ID", "b"),
+            patch("bot.eventsub_runtime.OWNER_ID", "o"),
         ):
             # Mockamos o super().__init__ (commands.Bot)
             with patch("twitchio.ext.commands.Bot.__init__", return_value=None):
@@ -308,7 +342,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertFalse(is_current_events_prompt(non_current))
         self.assertEqual(build_verifiable_prompt(non_current), non_current)
 
-    @patch("bot.main.observability.snapshot")
+    @patch("bot.status_runtime.observability.snapshot")
     def test_status_line_exposes_aggregate_metrics_only(self, mock_snapshot):
         mock_snapshot.return_value = {
             "bot": {"uptime_minutes": 14},
@@ -608,12 +642,12 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertTrue(is_intro_prompt("quem e voce?"))
         self.assertFalse(is_intro_prompt("status da live"))
 
-        with patch("bot.main.intro_template_index", 0):
+        with patch("bot.prompt_runtime.intro_template_index", 0):
             first = build_intro_reply()
             second = build_intro_reply()
             self.assertNotEqual(first, second)
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_intro_prompt_uses_template_without_llm(self, mock_inference):
         replies = []
 
@@ -627,7 +661,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertTrue(context.last_byte_reply)
         mock_inference.assert_not_called()
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_follow_up_prompt_passes_continuity_instruction_to_llm(
         self, mock_inference
     ):
@@ -646,7 +680,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         llm_prompt = mock_inference.await_args.args[0]
         self.assertIn("Instrucoes de continuidade", llm_prompt)
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_serious_prompt_can_reply_in_two_comments(self, mock_inference):
         mock_inference.return_value = (
             "Parte 1: revisao objetiva de mecanismo e evidencias atuais.\n"
@@ -667,7 +701,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertTrue(all(len(reply) <= 460 for reply in replies))
         self.assertTrue(context.last_byte_reply.startswith("Parte 2"))
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_low_quality_answer_triggers_retry_and_uses_revised_text(
         self, mock_inference
     ):
@@ -690,7 +724,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertTrue(replies)
         self.assertIn("Andy Serkis", replies[0])
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_low_quality_answer_uses_safe_fallback_when_retry_fails(
         self, mock_inference
     ):
@@ -713,7 +747,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertTrue(replies)
         self.assertEqual(replies[0], QUALITY_SAFE_FALLBACK)
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_current_events_delivery_keeps_confidence_and_source_labels(
         self, mock_inference
     ):
@@ -738,7 +772,7 @@ class TestBotProduction90Plus(unittest.TestCase):
         low_quality, reason = is_low_quality_answer(prompt, replies[0])
         self.assertFalse(low_quality, reason)
 
-    @patch("bot.main.agent_inference", new_callable=AsyncMock)
+    @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_current_events_unstable_model_forces_safe_fallback(self, mock_inference):
         mock_inference.side_effect = [
             "Conexao com o modelo instavel. Tente novamente em instantes.",
@@ -762,9 +796,9 @@ class TestBotProduction90Plus(unittest.TestCase):
 
     def test_auto_scene_update_for_trusted_link(self):
         with (
-            patch("bot.main.OWNER_ID", "123"),
+            patch("bot.scene_runtime.OWNER_ID", "123"),
             patch(
-                "bot.main.resolve_scene_metadata", new_callable=AsyncMock
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
             ) as mock_metadata,
         ):
             mock_metadata.return_value = {"title": "Review sem spoiler"}
@@ -782,7 +816,7 @@ class TestBotProduction90Plus(unittest.TestCase):
             )
 
     def test_auto_scene_blocks_sensitive_content(self):
-        with patch("bot.main.OWNER_ID", "123"):
+        with patch("bot.scene_runtime.OWNER_ID", "123"):
             msg = MagicMock()
             msg.text = "video nude https://youtube.com/watch?v=abc123"
             msg.author.id = "123"
@@ -795,9 +829,9 @@ class TestBotProduction90Plus(unittest.TestCase):
 
     def test_auto_scene_update_for_x_link(self):
         with (
-            patch("bot.main.OWNER_ID", "123"),
+            patch("bot.scene_runtime.OWNER_ID", "123"),
             patch(
-                "bot.main.resolve_scene_metadata", new_callable=AsyncMock
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
             ) as mock_metadata,
         ):
             mock_metadata.return_value = {"author_name": "CinemaCentral"}
@@ -816,9 +850,9 @@ class TestBotProduction90Plus(unittest.TestCase):
 
     def test_auto_scene_blocks_sensitive_metadata(self):
         with (
-            patch("bot.main.OWNER_ID", "123"),
+            patch("bot.scene_runtime.OWNER_ID", "123"),
             patch(
-                "bot.main.resolve_scene_metadata", new_callable=AsyncMock
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
             ) as mock_metadata,
         ):
             mock_metadata.return_value = {"title": "analise nsfw de trailer"}
@@ -834,10 +868,10 @@ class TestBotProduction90Plus(unittest.TestCase):
 
     def test_auto_scene_requires_metadata(self):
         with (
-            patch("bot.main.OWNER_ID", "123"),
-            patch("bot.main.AUTO_SCENE_REQUIRE_METADATA", True),
+            patch("bot.scene_runtime.OWNER_ID", "123"),
+            patch("bot.scene_runtime.AUTO_SCENE_REQUIRE_METADATA", True),
             patch(
-                "bot.main.resolve_scene_metadata", new_callable=AsyncMock
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
             ) as mock_metadata,
         ):
             mock_metadata.return_value = None
@@ -852,7 +886,7 @@ class TestBotProduction90Plus(unittest.TestCase):
             self.assertEqual(context.live_observability["youtube"], "")
 
     def test_auto_scene_ignores_untrusted_user(self):
-        with patch("bot.main.OWNER_ID", "123"):
+        with patch("bot.scene_runtime.OWNER_ID", "123"):
             msg = MagicMock()
             msg.text = "Olha https://youtube.com/watch?v=abc123"
             msg.author.id = "999"
@@ -864,8 +898,8 @@ class TestBotProduction90Plus(unittest.TestCase):
             self.assertEqual(updates, [])
             self.assertEqual(context.live_observability["youtube"], "")
 
-    @patch("bot.main.auto_update_scene_from_message", new_callable=AsyncMock)
-    @patch("bot.main.handle_byte_prompt_text", new_callable=AsyncMock)
+    @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
+    @patch("bot.irc_handlers.handle_byte_prompt_text", new_callable=AsyncMock)
     def test_irc_replies_to_the_source_channel(
         self, mock_handle_prompt, mock_auto_scene
     ):
@@ -893,10 +927,10 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertIn("PRIVMSG #canal_b :ok no canal certo\r\n", payload)
         self.assertNotIn("PRIVMSG #canal_a :ok no canal certo\r\n", payload)
 
-    @patch("bot.main.auto_update_scene_from_message", new_callable=AsyncMock)
+    @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
     def test_irc_owner_can_manage_channels_without_redeploy(self, mock_auto_scene):
         mock_auto_scene.return_value = []
-        with patch("bot.main.OWNER_ID", "42"):
+        with patch("bot.irc_runtime.OWNER_ID", "42"):
             bot = IrcByteBot(
                 host="irc.chat.twitch.tv",
                 port=6697,
@@ -914,6 +948,12 @@ class TestBotProduction90Plus(unittest.TestCase):
 
             owner_join = "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte join canal_b"
             self.loop.run_until_complete(bot._handle_privmsg(owner_join))
+            self.assertNotIn("canal_b", bot.channel_logins)
+
+            join_confirmation_line = (
+                ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv JOIN #canal_b"
+            )
+            self.loop.run_until_complete(bot._handle_membership_event(join_confirmation_line))
             self.assertIn("canal_b", bot.channel_logins)
 
             owner_list = "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte canais"
@@ -921,6 +961,12 @@ class TestBotProduction90Plus(unittest.TestCase):
 
             owner_part = "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte part canal_b"
             self.loop.run_until_complete(bot._handle_privmsg(owner_part))
+            self.assertIn("canal_b", bot.channel_logins)
+
+            part_confirmation_line = (
+                ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv PART #canal_b"
+            )
+            self.loop.run_until_complete(bot._handle_membership_event(part_confirmation_line))
             self.assertEqual(bot.channel_logins, ["canal_a"])
 
             payload = "".join(writer.lines)
@@ -929,7 +975,198 @@ class TestBotProduction90Plus(unittest.TestCase):
             self.assertIn("Canais ativos: #canal_a, #canal_b.", payload)
             self.assertIn("PART #canal_b\r\n", payload)
 
-    @patch("bot.main.urlopen")
+    def test_irc_admin_join_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+
+        join_task = self.loop.create_task(bot.admin_join_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+        self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
+        self.assertNotIn("canal_b", bot.channel_logins)
+
+        confirmation_line = (
+            ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv JOIN #canal_b"
+        )
+        self.loop.run_until_complete(bot._handle_membership_event(confirmation_line))
+        success, message, channels = self.loop.run_until_complete(join_task)
+
+        self.assertTrue(success)
+        self.assertEqual(message, "Joined #canal_b.")
+        self.assertEqual(channels, ["canal_a", "canal_b"])
+
+    def test_irc_admin_join_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+
+        self.assertFalse(success)
+        self.assertEqual(message, "Failed to join #canal_b.")
+        self.assertEqual(channels, ["canal_a"])
+        self.assertNotIn("canal_b", bot.channel_logins)
+        self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
+
+    def test_irc_admin_join_requires_confirmation_ready_runtime(self):
+        bot = IrcByteBot(
+            host="irc.chat.twitch.tv",
+            port=6697,
+            use_tls=True,
+            bot_login="byte_agent",
+            channel_logins=["canal_a"],
+            user_token="token",
+        )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+
+        self.assertFalse(success)
+        self.assertIn("IRC runtime unavailable for confirmed channel control.", message)
+        self.assertEqual(channels, ["canal_a"])
+        self.assertNotIn("JOIN #canal_b\r\n", "".join(writer.lines))
+
+    def test_irc_admin_part_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+
+        part_task = self.loop.create_task(bot.admin_part_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+        self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
+        self.assertIn("canal_b", bot.channel_logins)
+
+        confirmation_line = (
+            ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv PART #canal_b"
+        )
+        self.loop.run_until_complete(bot._handle_membership_event(confirmation_line))
+        success, message, channels = self.loop.run_until_complete(part_task)
+
+        self.assertTrue(success)
+        self.assertEqual(message, "Left #canal_b.")
+        self.assertEqual(channels, ["canal_a"])
+
+    def test_irc_admin_part_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_part_channel("canal_b")
+        )
+
+        self.assertFalse(success)
+        self.assertEqual(message, "Failed to leave #canal_b.")
+        self.assertEqual(channels, ["canal_a", "canal_b"])
+        self.assertIn("canal_b", bot.channel_logins)
+        self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
+        self.assertNotIn("canal_b", bot._pending_part_events)
+
+    @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
+    def test_irc_part_source_channel_reports_failure_when_part_fails(
+        self, mock_auto_scene
+    ):
+        mock_auto_scene.return_value = []
+        with patch("bot.irc_runtime.OWNER_ID", "42"):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+            writer = DummyIrcWriter()
+            bot.writer = writer
+            bot._part_channel = AsyncMock(return_value=False)
+
+            owner_part_source = (
+                "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan "
+                "PRIVMSG #canal_a :byte part canal_a"
+            )
+            self.loop.run_until_complete(bot._handle_privmsg(owner_part_source))
+
+            bot._part_channel.assert_awaited_once_with("canal_a")
+            payload = "".join(writer.lines)
+            self.assertIn(
+                "Solicitacao recebida: tentando sair de #canal_a.",
+                payload,
+            )
+            self.assertIn("Nao consegui sair de #canal_a.", payload)
+
+    @patch("bot.irc_handlers.observability.record_error")
+    def test_irc_notice_blocked_delivery_records_observability_error(
+        self, mock_record_error
+    ):
+        bot = IrcByteBot(
+            host="irc.chat.twitch.tv",
+            port=6697,
+            use_tls=True,
+            bot_login="byte_agent",
+            channel_logins=["canal_a"],
+            user_token="token",
+        )
+        line = (
+            "@msg-id=msg_requires_verified_phone_number :tmi.twitch.tv NOTICE "
+            "#canal_a :Your phone number must be verified to chat in this channel."
+        )
+
+        self.loop.run_until_complete(bot._handle_notice_line(line))
+
+        mock_record_error.assert_called_once_with(
+            category="irc_notice",
+            details=(
+                "#canal_a msg_requires_verified_phone_number: "
+                "Your phone number must be verified to chat in this channel."
+            ),
+        )
+
+    @patch("bot.twitch_tokens.urlopen")
     def test_token_manager_force_refresh_rotates_tokens(self, mock_urlopen):
         mock_urlopen.return_value = DummyHTTPResponse(
             {
@@ -970,25 +1207,36 @@ class TestBotProduction90Plus(unittest.TestCase):
             is_irc_auth_failure_line(":tmi.twitch.tv 001 byte_agent :Welcome, GLHF!")
         )
 
+    def test_irc_notice_delivery_block_detector(self):
+        self.assertTrue(
+            is_irc_notice_delivery_block("msg_requires_verified_phone_number", "")
+        )
+        self.assertTrue(
+            is_irc_notice_delivery_block(
+                "", "Your phone number must be verified to chat in this channel."
+            )
+        )
+        self.assertFalse(is_irc_notice_delivery_block("", "Welcome, GLHF!"))
+
     def test_resolve_irc_channel_logins_prefers_multi_channel_env(self):
         with (
-            patch("bot.main.TWITCH_CHANNEL_LOGINS_RAW", "canal_a,canal_b"),
-            patch("bot.main.TWITCH_CHANNEL_LOGIN", "canal_c"),
+            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGINS_RAW", "canal_a,canal_b"),
+            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGIN", "canal_c"),
         ):
             channels = resolve_irc_channel_logins()
         self.assertEqual(channels, ["canal_a", "canal_b"])
 
-    @patch("bot.main.get_secret")
+    @patch("bot.bootstrap_runtime.get_secret")
     def test_build_irc_token_manager_with_secret_manager(self, mock_get_secret):
         mock_get_secret.return_value = "secret_from_sm"
         with (
-            patch("bot.main.TWITCH_USER_TOKEN", "access_token"),
-            patch("bot.main.TWITCH_REFRESH_TOKEN", "refresh_token"),
-            patch("bot.main.CLIENT_ID", "client_id"),
-            patch("bot.main.TWITCH_CLIENT_SECRET_INLINE", ""),
-            patch("bot.main.PROJECT_ID", "proj"),
-            patch("bot.main.TWITCH_CLIENT_SECRET_NAME", "twitch-client-secret"),
-            patch("bot.main.TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", 300),
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", "proj"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "twitch-client-secret"),
+            patch("bot.bootstrap_runtime.TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", 300),
         ):
             manager = build_irc_token_manager()
 
@@ -996,17 +1244,17 @@ class TestBotProduction90Plus(unittest.TestCase):
         self.assertEqual(manager.client_secret, "secret_from_sm")
         self.assertEqual(manager.client_id, "client_id")
 
-    @patch("bot.main.get_secret")
+    @patch("bot.bootstrap_runtime.get_secret")
     def test_build_irc_token_manager_raises_without_client_secret(
         self, mock_get_secret
     ):
         mock_get_secret.return_value = ""
         with (
-            patch("bot.main.TWITCH_USER_TOKEN", "access_token"),
-            patch("bot.main.TWITCH_REFRESH_TOKEN", "refresh_token"),
-            patch("bot.main.CLIENT_ID", "client_id"),
-            patch("bot.main.TWITCH_CLIENT_SECRET_INLINE", ""),
-            patch("bot.main.PROJECT_ID", ""),
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", ""),
         ):
             with self.assertRaises(RuntimeError):
                 build_irc_token_manager()

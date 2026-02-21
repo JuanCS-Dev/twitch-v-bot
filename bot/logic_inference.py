@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Literal, overload
 
 from google.genai import types
 
@@ -16,7 +16,12 @@ from bot.logic_constants import (
     UNSTABLE_CONNECTION_FALLBACK,
 )
 from bot.logic_context import build_dynamic_prompt, build_system_instruction, enforce_reply_limits
-from bot.logic_grounding import empty_grounding_metadata, extract_grounding_metadata, extract_response_text
+from bot.logic_grounding import (
+    GroundingMetadata,
+    empty_grounding_metadata,
+    extract_grounding_metadata,
+    extract_response_text,
+)
 
 logger = logging.getLogger("ByteBot")
 
@@ -24,6 +29,34 @@ logger = logging.getLogger("ByteBot")
 def is_rate_limited_inference_error(error: Exception) -> bool:
     message = str(error).lower()
     return "429" in message or "resource_exhausted" in message or "resource exhausted" in message
+
+
+@overload
+async def agent_inference(
+    user_msg: str,
+    author_name: str,
+    client: Any,
+    context: Any,
+    enable_grounding: bool = True,
+    enable_live_context: bool = True,
+    max_lines: int = MAX_REPLY_LINES,
+    max_length: int = MAX_REPLY_LENGTH,
+    return_metadata: Literal[False] = False,
+) -> str: ...
+
+
+@overload
+async def agent_inference(
+    user_msg: str,
+    author_name: str,
+    client: Any,
+    context: Any,
+    enable_grounding: bool = True,
+    enable_live_context: bool = True,
+    max_lines: int = MAX_REPLY_LINES,
+    max_length: int = MAX_REPLY_LENGTH,
+    return_metadata: Literal[True] = True,
+) -> tuple[str, GroundingMetadata]: ...
 
 
 async def agent_inference(
@@ -36,7 +69,7 @@ async def agent_inference(
     max_lines: int = MAX_REPLY_LINES,
     max_length: int = MAX_REPLY_LENGTH,
     return_metadata: bool = False,
-):
+) -> str | tuple[str, GroundingMetadata]:
     if not user_msg:
         if return_metadata:
             return "", empty_grounding_metadata(enabled=enable_grounding)

@@ -3,7 +3,47 @@ import re
 IRC_PRIVMSG_PATTERN = re.compile(
     r"^(?:@(?P<tags>[^ ]+) )?:(?P<author>[^!]+)![^ ]+ PRIVMSG #(?P<channel>[^ ]+) :(?P<message>.*)$"
 )
+IRC_NOTICE_PATTERN = re.compile(
+    r"^(?:@(?P<tags>[^ ]+) )?:[^ ]+ NOTICE (?P<target>[^ ]+) :(?P<message>.*)$",
+    re.IGNORECASE,
+)
+IRC_JOIN_PATTERN = re.compile(
+    r"^(?:@(?P<tags>[^ ]+) )?:(?P<author>[^!]+)![^ ]+ JOIN #(?P<channel>[^ ]+)$",
+    re.IGNORECASE,
+)
+IRC_PART_PATTERN = re.compile(
+    r"^(?:@(?P<tags>[^ ]+) )?:(?P<author>[^!]+)![^ ]+ PART #(?P<channel>[^ ]+)(?: :(?P<reason>.*))?$",
+    re.IGNORECASE,
+)
 IRC_WELCOME_PATTERN = re.compile(r"^:[^ ]+\s001\s", re.IGNORECASE)
+IRC_NOTICE_DELIVERY_BLOCK_IDS = {
+    "msg_bad_characters",
+    "msg_banned",
+    "msg_channel_blocked",
+    "msg_channel_suspended",
+    "msg_duplicate",
+    "msg_emoteonly",
+    "msg_followersonly",
+    "msg_followersonly_followed",
+    "msg_r9k",
+    "msg_requires_verified_phone_number",
+    "msg_slowmode",
+    "msg_subsonly",
+    "msg_suspended",
+    "msg_timedout",
+}
+IRC_NOTICE_DELIVERY_BLOCK_HINTS = (
+    "banned",
+    "followers-only",
+    "followers only",
+    "phone number must be verified",
+    "requires a verified phone number",
+    "room is no longer available",
+    "subscribers-only",
+    "subscribers only",
+    "timed out",
+    "you are permanently banned",
+)
 
 
 class IrcAuthor:
@@ -39,3 +79,12 @@ def parse_irc_tags(raw_tags: str) -> dict[str, str]:
 def flatten_chat_text(text: str) -> str:
     lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
     return " | ".join(lines)
+
+
+def is_irc_notice_delivery_block(msg_id: str, message: str) -> bool:
+    normalized_id = (msg_id or "").strip().lower()
+    if normalized_id in IRC_NOTICE_DELIVERY_BLOCK_IDS:
+        return True
+
+    lowered_message = (message or "").strip().lower()
+    return any(marker in lowered_message for marker in IRC_NOTICE_DELIVERY_BLOCK_HINTS)

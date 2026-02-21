@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Mapping
 
 
 ReplyFn = Callable[[str], Awaitable[None]]
@@ -32,7 +32,7 @@ class BytePromptRuntime:
     extract_movie_title: Callable[[str], str]
     build_movie_fact_sheet_query: Callable[[str], str]
     build_llm_enhanced_prompt: Callable[..., str]
-    has_grounding_signal: Callable[[dict], bool]
+    has_grounding_signal: Callable[[Mapping[str, Any] | None], bool]
     normalize_current_events_reply_contract: Callable[..., str]
     is_low_quality_answer: Callable[[str, str], tuple[bool, str]]
     build_quality_rewrite_prompt: Callable[..., str]

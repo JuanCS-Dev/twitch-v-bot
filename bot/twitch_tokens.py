@@ -37,7 +37,7 @@ class TwitchTokenManager:
         settings: TwitchTokenManagerSettings | None = None,
         observability: Any | None = None,
         logger: Any | None = None,
-        urlopen_fn: Callable[..., Any] = urlopen,
+        urlopen_fn: Callable[..., Any] | None = None,
     ) -> None:
         self.access_token = access_token.strip().removeprefix("oauth:")
         self.refresh_token = refresh_token.strip()
@@ -47,7 +47,7 @@ class TwitchTokenManager:
         self.settings = settings or TwitchTokenManagerSettings()
         self.observability = observability
         self.logger = logger
-        self.urlopen_fn = urlopen_fn
+        self.urlopen_fn = urlopen_fn or urlopen
         self.expires_at_monotonic: float | None = None
         self.validated_once = False
 
