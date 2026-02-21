@@ -95,6 +95,9 @@ async def handle_byte_prompt_text(
     serious_mode = runtime.is_serious_technical_prompt(normalized_prompt)
     follow_up_mode = runtime.is_follow_up_prompt(normalized_prompt)
     current_events_mode = runtime.is_current_events_prompt(normalized_prompt)
+    high_risk_current_events_mode = current_events_mode and runtime.is_high_risk_current_events_prompt(
+        normalized_prompt
+    )
     sent_replies: list[str] = []
     interaction_started_at = time.perf_counter()
     server_time_instruction = runtime.build_server_time_anchor_instruction()
@@ -171,39 +174,27 @@ async def handle_byte_prompt_text(
         normalized_prompt,
         server_time_instruction=server_time_instruction,
     )
+    if high_risk_current_events_mode:
+        inference_prompt = (
+            f"{inference_prompt}\n"
+            "Instrucao tecnica obrigatoria: use Google Search grounding nativo antes de responder. "
+            f"Se nao houver evidencia verificavel, retorne exatamente: '{runtime.quality_safe_fallback}'"
+        )
+
+    # Follow-up curto privilegia continuidade e baixa latencia; grounding fica para temas serios ou evento atual direto.
+    enable_grounding = serious_mode or (current_events_mode and not follow_up_mode)
     inference_result = await runtime.agent_inference(
         inference_prompt,
         author_name,
         runtime.client,
         runtime.context,
         enable_live_context=runtime.enable_live_context_learning,
+        enable_grounding=enable_grounding,
         max_lines=runtime.serious_reply_max_lines if serious_mode else runtime.max_reply_lines,
         max_length=runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length,
         return_metadata=True,
     )
     answer, grounding_metadata = unwrap_inference_result(inference_result)
-    if (
-        current_events_mode
-        and runtime.is_high_risk_current_events_prompt(normalized_prompt)
-        and isinstance(grounding_metadata, dict)
-        and not runtime.has_grounding_signal(grounding_metadata)
-    ):
-        forced_grounding_prompt = (
-            f"{inference_prompt}\n"
-            "Instrucao tecnica obrigatoria: use Google Search grounding nativo antes de responder. "
-            f"Se nao houver evidencia verificavel, retorne exatamente: '{runtime.quality_safe_fallback}'"
-        )
-        forced_result = await runtime.agent_inference(
-            forced_grounding_prompt,
-            author_name,
-            runtime.client,
-            runtime.context,
-            enable_live_context=runtime.enable_live_context_learning,
-            max_lines=runtime.serious_reply_max_lines if serious_mode else runtime.max_reply_lines,
-            max_length=runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length,
-            return_metadata=True,
-        )
-        answer, grounding_metadata = unwrap_inference_result(forced_result)
 
     answer = runtime.normalize_current_events_reply_contract(
         normalized_prompt,
@@ -226,6 +217,7 @@ async def handle_byte_prompt_text(
             runtime.client,
             runtime.context,
             enable_live_context=runtime.enable_live_context_learning,
+            enable_grounding=enable_grounding,
             max_lines=runtime.serious_reply_max_lines if serious_mode else runtime.max_reply_lines,
             max_length=runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length,
             return_metadata=True,
@@ -252,16 +244,6 @@ async def handle_byte_prompt_text(
     else:
         runtime.observability.record_quality_gate(outcome="pass", reason="ok")
 
-    if serious_mode:
-        parts = runtime.extract_multi_reply_parts(answer, max_parts=2)
-        if not parts:
-            await tracked_reply(answer)
-            log_interaction(f"llm_serious_single{quality_route_suffix}")
-            return
-        for part in parts:
-            await tracked_reply(part)
-        log_interaction(f"llm_serious_split{quality_route_suffix}")
-        return
-
     await tracked_reply(answer)
-    log_interaction(f"llm_default{quality_route_suffix}")
+    route_prefix = "llm_serious" if serious_mode else "llm_default"
+    log_interaction(f"{route_prefix}{quality_route_suffix}")

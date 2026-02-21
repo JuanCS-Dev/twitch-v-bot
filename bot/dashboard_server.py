@@ -2,14 +2,17 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
-from urllib.parse import urlparse
 
 from bot.channel_control import is_dashboard_admin_authorized, parse_terminal_command
-from bot.logic import BOT_BRAND, context
-from bot.observability import observability
+from bot.dashboard_server_routes import (
+    CHANNEL_CONTROL_IRC_ONLY_ACTIONS,
+    build_observability_payload,
+    handle_get,
+    handle_post,
+    handle_put,
+)
 from bot.runtime_config import (
     BYTE_DASHBOARD_ADMIN_TOKEN,
-    BYTE_VERSION,
     DASHBOARD_DIR,
     TWITCH_CHAT_MODE,
     irc_channel_control,
@@ -18,6 +21,7 @@ from bot.runtime_config import (
 
 class HealthHandler(BaseHTTPRequestHandler):
     MAX_CONTROL_BODY_BYTES = 4096
+    CHANNEL_CONTROL_IRC_ONLY_ACTIONS = CHANNEL_CONTROL_IRC_ONLY_ACTIONS
 
     def _send_bytes(
         self, payload: bytes, content_type: str, status_code: int = 200
@@ -57,19 +61,29 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def _read_json_payload(self) -> dict[str, Any]:
+    def _send_forbidden(self) -> None:
+        self._send_json(
+            {"ok": False, "error": "forbidden", "message": "Forbidden"},
+            status_code=403,
+        )
+
+    def _read_json_payload(self, *, allow_empty: bool = False) -> dict[str, Any]:
         raw_length = str(self.headers.get("Content-Length", "0") or "0")
         try:
             content_length = int(raw_length)
         except ValueError as error:
             raise ValueError("Invalid Content-Length header.") from error
         if content_length <= 0:
+            if allow_empty:
+                return {}
             raise ValueError("Request body is required.")
         if content_length > self.MAX_CONTROL_BODY_BYTES:
             raise ValueError("Request body is too large.")
 
         payload_bytes = self.rfile.read(content_length)
         if not payload_bytes:
+            if allow_empty:
+                return {}
             raise ValueError("Request body is empty.")
         try:
             payload = json.loads(payload_bytes.decode("utf-8"))
@@ -92,100 +106,44 @@ class HealthHandler(BaseHTTPRequestHandler):
         )
         return True
 
-    def do_GET(self):
-        parsed_path = urlparse(self.path or "/")
-        route = parsed_path.path or "/"
-        if route in {"/", "/healthz"}:
-            self._send_text("AGENT_ONLINE", status_code=200)
-            return
+    def _build_observability_payload(self) -> dict[str, Any]:
+        return build_observability_payload()
 
-        protected_dashboard_routes = {
-            "/api/observability",
-            "/dashboard",
-            "/dashboard/",
-            "/dashboard/app.js",
-            "/dashboard/styles.css",
-            "/dashboard/channel-terminal.js",
-        }
-        if route in protected_dashboard_routes and not self._dashboard_authorized():
-            if route.startswith("/dashboard"):
-                self._send_dashboard_auth_challenge()
-            else:
-                self._send_json(
-                    {"ok": False, "error": "forbidden", "message": "Forbidden"},
-                    status_code=403,
-                )
-            return
-
-        if route == "/api/observability":
-            snapshot = observability.snapshot(
-                bot_brand=BOT_BRAND,
-                bot_version=BYTE_VERSION,
-                bot_mode=TWITCH_CHAT_MODE,
-                stream_context=context,
-            )
-            self._send_json(snapshot, status_code=200)
-            return
-
-        if route in {"/dashboard", "/dashboard/"}:
-            self._send_dashboard_asset("index.html", "text/html; charset=utf-8")
-            return
-        if route == "/dashboard/app.js":
-            self._send_dashboard_asset(
-                "app.js", "application/javascript; charset=utf-8"
-            )
-            return
-        if route == "/dashboard/styles.css":
-            self._send_dashboard_asset("styles.css", "text/css; charset=utf-8")
-            return
-        if route == "/dashboard/channel-terminal.js":
-            self._send_dashboard_asset(
-                "channel-terminal.js", "application/javascript; charset=utf-8"
-            )
-            return
-
-        self._send_text("Not Found", status_code=404)
-
-    def do_POST(self):
-        parsed_path = urlparse(self.path or "/")
-        route = parsed_path.path or "/"
-        if route != "/api/channel-control":
-            self._send_text("Not Found", status_code=404)
-            return
-
-        if not is_dashboard_admin_authorized(self.headers, BYTE_DASHBOARD_ADMIN_TOKEN):
-            self._send_json(
-                {"ok": False, "error": "forbidden", "message": "Forbidden"},
-                status_code=403,
-            )
-            return
-
-        try:
-            payload = self._read_json_payload()
-        except ValueError as error:
-            self._send_json(
-                {"ok": False, "error": "invalid_request", "message": str(error)},
-                status_code=400,
-            )
-            return
-
+    def _handle_channel_control(self, payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
         action = str(payload.get("action", "") or "").strip().lower()
         channel_login = str(payload.get("channel", "") or "").strip()
         command_text = str(payload.get("command", "") or "").strip()
         if command_text:
-            try:
-                action, channel_login = parse_terminal_command(command_text)
-            except ValueError as error:
-                self._send_json(
-                    {"ok": False, "error": "invalid_command", "message": str(error)},
-                    status_code=400,
+            action, channel_login = parse_terminal_command(command_text)
+
+        if TWITCH_CHAT_MODE != "irc":
+            if action in self.CHANNEL_CONTROL_IRC_ONLY_ACTIONS:
+                return (
+                    {
+                        "ok": False,
+                        "error": "unsupported_mode",
+                        "message": "Channel control de runtime so funciona em TWITCH_CHAT_MODE=irc.",
+                        "mode": TWITCH_CHAT_MODE,
+                        "action": action,
+                    },
+                    409,
                 )
-                return
+            if action == "list":
+                return (
+                    {
+                        "ok": True,
+                        "action": "list",
+                        "channels": [],
+                        "mode": TWITCH_CHAT_MODE,
+                        "message": "Sem runtime IRC ativo neste modo. join/part ficam bloqueados em eventsub.",
+                    },
+                    200,
+                )
 
         result = irc_channel_control.execute(action=action, channel_login=channel_login)
+        result["mode"] = TWITCH_CHAT_MODE
         if result.get("ok"):
-            self._send_json(result, status_code=200)
-            return
+            return result, 200
 
         error_code = str(result.get("error", "") or "")
         if error_code in {"runtime_unavailable", "timeout"}:
@@ -194,7 +152,16 @@ class HealthHandler(BaseHTTPRequestHandler):
             status_code = 500
         else:
             status_code = 400
-        self._send_json(result, status_code=status_code)
+        return result, status_code
+
+    def do_GET(self) -> None:
+        handle_get(self)
+
+    def do_PUT(self) -> None:
+        handle_put(self)
+
+    def do_POST(self) -> None:
+        handle_post(self)
 
     def log_message(self, format: str, *args: object) -> None:
         return

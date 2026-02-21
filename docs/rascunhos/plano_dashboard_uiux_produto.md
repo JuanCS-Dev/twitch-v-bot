@@ -30,6 +30,22 @@ Problemas centrais:
 - Controle de canais orientado a "terminal", ruim para usuario nao tecnico.
 - Falta de fluxo transacional forte para switch de canal (estado intermediario, confirmacao, rollback visual).
 
+### 2.1 Baseline confirmado (funcionando hoje)
+
+- Endpoint de controle ativo: `POST /api/channel-control` (nao existe GET equivalente).
+- Payload aceito no backend: `{ command }` e `{ action, channel }`.
+- Acoes suportadas: `list`, `join`, `part`.
+- `join/part` aguardam confirmacao no runtime IRC e retornam `channels` atualizado na resposta.
+- O frontend atual ja possui acao de sincronizacao manual (`List`), que mapeia para `list`.
+- `GET /api/observability` nao expoe bloco de channel control (`active_channel`, `pending_action`).
+
+### 2.2 Limites atuais do contrato (nao tratar como bug)
+
+- Nao existe `active_channel` no payload atual de `/api/channel-control`.
+- Nao existe `request_id` no payload atual de `/api/channel-control`.
+- Nao existe `GET /api/channel-control` no backend atual.
+- UI dependente desses campos deve ser classificada como evolucao de backend, nao como requisito ja disponivel.
+
 ## 3) Pesquisa visual Twitch (insumos reais)
 
 Fontes consultadas:
@@ -55,7 +71,7 @@ Principio de produto:
 Nova hierarquia da pagina:
 1. Header utilitario (brand, status bot, ambiente, refresh).
 2. Bloco primario "Controle de Canais" (hero funcional).
-3. Cards KPI essenciais (saude, mensagens, erros, latencia, canal ativo).
+3. Cards KPI essenciais (saude, mensagens, erros, latencia, canais conectados).
 4. Observabilidade operacional (eventos recentes e alertas).
 5. Analytics detalhado (tabelas e historico).
 6. Rodape tecnico (timestamp, versao frontend, latencia de API).
@@ -141,25 +157,33 @@ Estados de UI por acao:
 
 ### 6.2 Requisitos de robustez
 
-- Bloqueio de concorrencia: 1 operacao de canal por vez.
-- Idempotencia: mesmo request nao duplica efeito.
-- Timeout explicito (ex: 12s) + mensagem clara.
-- Reconciliacao obrigatoria: apos `join/part/switch`, executar `list` para confirmar estado real.
-- Guard de resposta atrasada: ignorar resposta com `request_id` antigo.
-- Botao de emergencia: "Recarregar estado de canais".
-- Feedback de erro acionavel (motivo + proximo passo).
+- 1 operacao por vez na UI (estado `busy`) e sem submit concorrente.
+- Timeout explicito (12s) com erro acionavel e opcao de retry.
+- Pos `join/part`: usar `channels` da propria resposta como fonte primaria de estado.
+- Sincronizacao manual obrigatoria: acao "Sincronizar estado" deve disparar `list`.
+- Em falha/timeout: preservar ultimo estado confirmado e orientar reconciliacao via `list`.
+- Nao inferir "canal ativo" sem dado real de backend; exibir apenas canais conectados.
 
-### 6.3 Contrato recomendado de API
+### 6.3 Contrato de API (AS-IS obrigatorio)
 
-Evoluir de comando textual para payload estruturado:
+Contrato AS-IS (obrigatorio para Fase 2):
 - `POST /api/channel-control`
-  - request: `{ action, channel, request_id }`
-  - response: `{ ok, request_id, channels, active_channel, message, error_code }`
-- `GET /api/channel-control`
-  - response: `{ ok, channels, active_channel, pending_action }`
+  - request: `{ command }` ou `{ action, channel }`
+  - response sucesso: `{ ok, action, channels, message }`
+  - response erro: `{ ok: false, error, message }`
+- `GET /api/observability`
+  - permanece separado do controle de canais
+  - nao retorna `active_channel`/`pending_action`
 
 Compatibilidade:
 - Manter suporte a `command` no backend durante transicao.
+
+### 6.4 Evolucao de contrato (somente com milestone de backend)
+
+- Introduzir `request_id` apenas com suporte real no backend e testes de idempotencia.
+- Expor `active_channel` apenas quando o runtime publicar esse dado de forma consistente.
+- Avaliar `GET /api/channel-control` somente se houver necessidade operacional comprovada.
+- Habilitar guard de resposta atrasada apenas quando `request_id` existir ponta-a-ponta.
 
 ## 7) Refatoracao tecnica (escalabilidade e <= 300 linhas)
 
@@ -189,7 +213,8 @@ Regras:
 
 Fase 0 - Descoberta e alinhamento (0.5 dia)
 - Inventario de componentes atuais.
-- Congelar escopo MVP de Operacao.
+- Congelar escopo MVP de Operacao com contrato AS-IS.
+- Registrar explicitamente limites: sem `GET /api/channel-control`, sem `request_id`, sem `active_channel` inferido.
 - Definir metricas de sucesso.
 
 Fase 1 - Fundacao visual (1-2 dias)
@@ -199,8 +224,14 @@ Fase 1 - Fundacao visual (1-2 dias)
 
 Fase 2 - Canal control UX first (1-2 dias)
 - Substituir terminal por painel guiado de acoes.
-- Implementar estados de loading/confirmacao/erro/reconciliacao.
+- Implementar estados de loading/confirmacao/erro/reconciliacao usando apenas contrato AS-IS.
+- Adicionar acao "Sincronizar estado" mapeada para `list`.
 - Adicionar trilha de auditoria visivel de ultimas operacoes.
+
+Fase 2.5 - Evolucao backend opcional (0.5-1 dia)
+- Incluir `request_id` no backend e frontend apenas se idempotencia for requisito de produto.
+- Expor `active_channel` no contrato apenas com fonte canonica no runtime.
+- Criar `GET /api/channel-control` apenas se polling for necessario apos medir uso real.
 
 Fase 3 - Modularizacao JS (1-2 dias)
 - Separar `app.js` e `channel-terminal.js` por features.
@@ -222,6 +253,8 @@ Fase 5 - QA final e hardening (1 dia)
 - Controle de canais e o primeiro bloco da dashboard em todos os breakpoints.
 - Troca de canal confirma estado real apos reconciliacao.
 - Nao existe estado "parece conectado" quando backend diverge.
+- Frontend nao chama endpoint inexistente (`GET /api/channel-control`).
+- Frontend nao depende de `active_channel` nem `request_id` antes da milestone de backend.
 - Tema claro e escuro funcionam com tokens semanticos.
 - Navegacao e operacao completa apenas com teclado.
 - Nenhum arquivo de app ultrapassa 300 linhas.
@@ -236,6 +269,8 @@ Checklist funcional:
 - Switch com falha intermediaria.
 - Timeout de API com recuperacao.
 - Refresh durante operacao em andamento.
+- Acao "Sincronizar estado" faz `list` e reconcilia UI.
+- Nenhuma chamada para `GET /api/channel-control` no fluxo MVP.
 
 Checklist UX:
 - Usuario novo encontra "trocar canal" em <= 5s.
@@ -261,3 +296,42 @@ Risco: aumento de complexidade JS.
 - Fluxo de canal robusto e auditavel.
 - Arquitetura modular com limite de tamanho por arquivo.
 - Suite minima de testes e checklist de QA documentado.
+
+## 13) Adendo: Auditoria de Observabilidade e Controle (Zero Mock)
+
+*Auditoria realizada sobre `/bot/dashboard_server.py`, `/bot/observability_state.py` e `/bot/channel_control.py`.*
+
+### A. Oportunidades de Observabilidade (Dados Reais Disponíveis)
+O `observability_state.py` expõe métricas valiosas que o frontend MVP atual subutiliza ou agrupa sem hierarquia. Podemos expô-las de forma visualmente rica (tipografia limpa, cards estruturados), sem gerar mocks:
+1. **Agent Health & Quality Gates:** O state rastreia `quality_checks_total`, outcomes de retry/fallback, falhas de auth e `token_refreshes_total`. 
+   - *Sugestão:* Criar um painel de "System Health" exibindo a taxa de rejeição/correção do LLM e a saúde das credenciais em tempo real.
+2. **Live AI Activity:** O state expõe `last_prompt` e `last_reply`. 
+   - *Sugestão:* Um feed minimalista listando a última interação do bot, permitindo leitura rápida do operador sobre o que a IA acabou de processar.
+3. **Métricas de Engajamento Estrito:** A contagem de `trigger_user_totals` (quem mais invoca o bot) e volume segmentado por rotas (`route_counts`, diferenciando queries dinâmicas de comandos estáticos).
+4. **Log Direcionado e Filtrável:** Os eventos em `recent_events` já possuem nível (`INFO`, `WARN`, `ERROR`) e categoria explícita.
+   - *Sugestão:* Uma tabela de eventos profissional com filtros rápidos (chips visuais), abandonando a lista de texto plano atual.
+
+### B. Oportunidades de Controle (Ações Reais Disponíveis)
+O `channel_control.py` processa comandos transacionais precisos via API POST (`list`, `join`, `part`), sem necessidade de alterar a lógica interna de IRC.
+1. **Fim do Terminal Falso:** Substituir o bloco "Channel Terminal" (comandos em texto) por um genuíno "Channel Manager" visual.
+2. **Ações Guiadas (Zero CLI):** Listagem automática dos canais conectados (via action `list`) renderizados em cards/chips com botão nativo "Disconnect", exigindo apenas 1 clique.
+3. **Feedback Transacional:** Ao engatilhar "Connect", a UI deve assumir estado transitório claro (spinner leve ou skeleton mode nas tabelas) interpretando os erros nativos e convertendo em alertas humanos visíveis na tela.
+
+### C. Refinamento de UI/UX (Profissionalismo e Leveza)
+1. **Sem Renderização Pesada:** Nenhuma dependência de Canvas, re-renders exagerados ou frameworks pesados. As microanimações baseadas exclusivamente em transições leves CSS (`transform` e `opacity`). Exemplo: elevação sutil `translateY(-2px)` e highlights ao hover.
+2. **Linguagem Visual Twitch:** Utilização consciente dos tokens inspirados no branding (`#9147FF`, temas focados em alto contraste - claro autêntico e escuro). A tipografia seguirá hierarquias estritas (pesos fortes para KPIs), garantindo altíssima legibilidade ("crispness") sem "embaçar" a tela.
+3. **Responsividade Pura:** O bloco gerencial "Channel Manager" deve continuar absoluto no mobile. Paineis de dados intensos ganham controle nativo de `overflow-x` (scroll horizontal) sem poluir ou quebrar a coluna principal.
+
+## 14) Guia de execucao sem ambiguidade (obrigatorio)
+
+Fazer:
+1. Implementar UX de canais com o contrato atual (`POST /api/channel-control` + `list/join/part`).
+2. Tratar `channels` da resposta como estado oficial do frontend.
+3. Manter suporte a `command` durante toda a migracao.
+4. Cobrir fluxo com testes unitarios e smoke manual (join/part/list/timeout/forbidden).
+
+Nao fazer:
+1. Nao criar chamadas para `GET /api/channel-control` antes de existir backend.
+2. Nao inventar `active_channel`, `pending_action` ou `request_id` no frontend sem contrato real.
+3. Nao esconder erro de runtime; sempre exibir feedback acionavel para operador.
+4. Nao introduzir acoplamento que quebre a regra de modulos e limite de tamanho por arquivo.

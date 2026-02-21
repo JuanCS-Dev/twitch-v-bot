@@ -2,6 +2,12 @@
 
 Goal: define a visual kit that makes `Byte` look premium, technical, and clearly built for live streaming.
 
+Related docs:
+
+- [Documentation index](INDEX.md)
+- [Project README](../README.md)
+- [Complete product guide](DOCUMENTATION.md)
+
 ## Quick Benchmark (Observed Repo Patterns)
 
 References reviewed:

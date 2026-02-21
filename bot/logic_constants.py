@@ -1,7 +1,7 @@
 import os
 
 BOT_BRAND = "Byte"
-MAX_REPLY_LINES = 8
+MAX_REPLY_LINES = 4
 MAX_REPLY_LENGTH = 460
 MAX_RECENT_CHAT_ENTRIES = 12
 MAX_RECENT_CHAT_PREVIEW_CHARS = 140
@@ -23,7 +23,7 @@ DEFAULT_STYLE_PROFILE = "Tom generalista, claro e natural em PT-BR, sem giria ga
 SYSTEM_INSTRUCTION_TEMPLATE = (
     "Voce e Byte, chatbot de uma live na Twitch. "
     "Responda de forma objetiva para os assuntos ativos da live, incluindo jogos, filmes, series, videos do YouTube, posts do X e temas gerais. "
-    "Regras: 1) no maximo 8 linhas. 2) frases curtas e informativas. "
+    "Regras: 1) no maximo 4 linhas. 2) cada linha deve trazer informacao nova, concreta e relevante. "
     "3) sem markdown. 4) nao use linguagem ofensiva nem invente fatos sem sinalizar incerteza. "
     "5) se faltar contexto essencial, faca uma pergunta curta. "
     "6) para assunto atual, priorize informacao recente e verificavel. "
@@ -32,7 +32,10 @@ SYSTEM_INSTRUCTION_TEMPLATE = (
 MODEL_NAME = "gemini-3-flash-preview"
 MODEL_MAX_OUTPUT_TOKENS = 320
 MODEL_TEMPERATURE = 0.15
+MODEL_INPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_INPUT_COST_PER_1M_USD", "0.10")))
+MODEL_OUTPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_OUTPUT_COST_PER_1M_USD", "0.40")))
 MODEL_RATE_LIMIT_MAX_RETRIES = max(0, int(os.environ.get("MODEL_RATE_LIMIT_MAX_RETRIES", "1")))
 MODEL_RATE_LIMIT_BACKOFF_SECONDS = max(0.0, float(os.environ.get("MODEL_RATE_LIMIT_BACKOFF_SECONDS", "0.8")))
+MODEL_INFERENCE_TIMEOUT_SECONDS = max(2.0, float(os.environ.get("MODEL_INFERENCE_TIMEOUT_SECONDS", "12.0")))
 EMPTY_RESPONSE_FALLBACK = "Nao consegui consolidar a resposta agora. Tente reformular em uma frase."
 UNSTABLE_CONNECTION_FALLBACK = "Conexao com o modelo instavel. Tente novamente em instantes."

@@ -1,5 +1,12 @@
 # Byte Documentation (Complete Guide)
 
+Related docs:
+
+- [Documentation index](INDEX.md)
+- [Project README](../README.md)
+- [Executable implementation plan](IMPLEMENTATION_PLAN_EXECUTAVEL_PARIDADE_AGENT_DASHBOARD.md)
+- [GitHub visual assets guide](GITHUB_VISUAL_ASSETS_2026.md)
+
 ## 1. Product Summary
 
 Byte is a Twitch AI chat agent that runs on Gemini 3 Flash (Vertex AI) and is deployable on Cloud Run.
@@ -17,10 +24,10 @@ Main goals:
 - Built-in short help/status flows.
 - Movie fact-sheet handling with context carryover.
 - Current-events prompt enrichment with verification instructions.
-- Serious/technical mode that can split into up to 2 chat messages.
+- Serious/technical mode with strict 1-message contract (max 4 lines).
 - Automatic live context updates from trusted YouTube/X links.
 - Token refresh flow for IRC mode when refresh credentials are configured.
-- Real-time observability dashboard and JSON telemetry endpoint.
+- Real-time observability dashboard, control plane, autonomy controls, and risk queue.
 
 ## 3. Architecture
 
@@ -28,9 +35,12 @@ Main goals:
 
 - `bot/main.py`: Twitch integration, mode routing, health endpoint, token handling.
 - `bot/logic.py`: LLM orchestration, prompt construction, response limits, live context memory.
-- `bot/byte_semantics.py`: trigger parsing, prompt enrichment rules, reply splitting heuristics.
-- `bot/observability.py`: in-memory telemetry state, timeline, counters, and snapshot generation.
-- `dashboard/`: lightweight static UI for real-time monitoring (`index.html`, `styles.css`, `app.js`).
+- `bot/prompt_flow.py` + `bot/prompt_runtime.py`: runtime prompt pipeline and quality gates.
+- `bot/control_plane.py`: runtime config, goal scheduler state, budget windows, risk queue.
+- `bot/autonomy_runtime.py`: heartbeat loop, autonomous goal execution, anti-spam budget enforcement.
+- `bot/dashboard_server.py`: dashboard assets + admin APIs (`observability`, `channel-control`, `control-plane`, `action-queue`, `autonomy/tick`).
+- `bot/observability_state.py` + `bot/observability_snapshot.py`: telemetry aggregation and metrics snapshot.
+- `dashboard/`: modular static UI (`index.html`, `main.js`, `features/*`, `styles/*`).
 
 ### Infrastructure Components
 
@@ -139,8 +149,13 @@ Expected behavior:
 
 ### 7.1 Runtime HTTP Endpoints
 
-- `GET /` and `GET /healthz`: returns `AGENT_ONLINE`.
+- `GET /`, `GET /health`, `GET /healthz` (and trailing slash variants): returns `AGENT_ONLINE`.
 - `GET /api/observability`: returns a live JSON snapshot for metrics and context.
+- `POST /api/channel-control`: `list|join|part` in IRC, mode-aware guard in EventSub.
+- `GET|PUT /api/control-plane`: runtime autonomy/scheduler/budget configuration.
+- `GET /api/action-queue`: pending/approved/rejected/ignored risk actions.
+- `POST /api/action-queue/<action_id>/decision`: approve/reject with audit note.
+- `POST /api/autonomy/tick`: manual autonomy cycle for ops/debug.
 - `GET /dashboard`: serves the real-time web dashboard.
 
 ## 8. Cloud Run Deployment
@@ -174,9 +189,9 @@ Deployment defaults in `deploy.sh`:
 
 ### 9.1 Reply Length
 
-- Default max lines: `8`.
+- Default max lines: `4`.
 - Default max length: bounded to fit chat safely.
-- Serious technical prompts can split into up to 2 messages.
+- Serious technical prompts are forced to exactly one message (no split marker).
 
 ### 9.2 Built-in Trigger Intents
 

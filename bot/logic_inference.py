@@ -2,14 +2,17 @@ import asyncio
 import logging
 from typing import Any, Literal, overload
 
-from google.genai import types
+from google.genai import types  # pyright: ignore[reportMissingImports]
 
 from bot.logic_constants import (
     EMPTY_RESPONSE_FALLBACK,
     MAX_REPLY_LENGTH,
     MAX_REPLY_LINES,
+    MODEL_INPUT_COST_PER_1M_USD,
+    MODEL_INFERENCE_TIMEOUT_SECONDS,
     MODEL_MAX_OUTPUT_TOKENS,
     MODEL_NAME,
+    MODEL_OUTPUT_COST_PER_1M_USD,
     MODEL_RATE_LIMIT_BACKOFF_SECONDS,
     MODEL_RATE_LIMIT_MAX_RETRIES,
     MODEL_TEMPERATURE,
@@ -22,6 +25,7 @@ from bot.logic_grounding import (
     extract_grounding_metadata,
     extract_response_text,
 )
+from bot.observability import observability
 
 logger = logging.getLogger("ByteBot")
 
@@ -29,6 +33,77 @@ logger = logging.getLogger("ByteBot")
 def is_rate_limited_inference_error(error: Exception) -> bool:
     message = str(error).lower()
     return "429" in message or "resource_exhausted" in message or "resource exhausted" in message
+
+
+def is_timeout_inference_error(error: Exception) -> bool:
+    if isinstance(error, TimeoutError):
+        return True
+    message = str(error).lower()
+    return "timed out" in message or "timeout" in message
+
+
+def _read_field(source: Any, key: str, default: Any = None) -> Any:
+    if isinstance(source, dict):
+        return source.get(key, default)
+    return getattr(source, key, default)
+
+
+def _first_int(source: Any, keys: tuple[str, ...]) -> int:
+    for key in keys:
+        raw_value = _read_field(source, key)
+        if raw_value is None:
+            continue
+        try:
+            parsed = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if parsed >= 0:
+            return parsed
+    return 0
+
+
+def _extract_usage(response: Any) -> tuple[int, int]:
+    usage = _read_field(response, "usage_metadata")
+    if usage is None:
+        usage = _read_field(response, "usageMetadata")
+    if usage is None:
+        return 0, 0
+
+    input_tokens = _first_int(
+        usage,
+        (
+            "prompt_token_count",
+            "input_token_count",
+            "promptTokenCount",
+            "inputTokenCount",
+        ),
+    )
+    output_tokens = _first_int(
+        usage,
+        (
+            "candidates_token_count",
+            "output_token_count",
+            "candidatesTokenCount",
+            "outputTokenCount",
+        ),
+    )
+    total_tokens = _first_int(
+        usage,
+        (
+            "total_token_count",
+            "totalTokenCount",
+        ),
+    )
+    if output_tokens == 0 and total_tokens > input_tokens:
+        output_tokens = max(0, total_tokens - input_tokens)
+    return input_tokens, output_tokens
+
+
+def _estimate_cost_usd(input_tokens: int, output_tokens: int) -> float:
+    return (
+        (max(0, input_tokens) / 1_000_000.0) * MODEL_INPUT_COST_PER_1M_USD
+        + (max(0, output_tokens) / 1_000_000.0) * MODEL_OUTPUT_COST_PER_1M_USD
+    )
 
 
 @overload
@@ -100,12 +175,22 @@ async def agent_inference(
 
         for attempt in range(MODEL_RATE_LIMIT_MAX_RETRIES + 1):
             try:
-                response = await asyncio.to_thread(
-                    client.models.generate_content,
-                    model=MODEL_NAME,
-                    contents=dynamic_prompt,
-                    config=config,
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.models.generate_content,
+                        model=MODEL_NAME,
+                        contents=dynamic_prompt,
+                        config=config,
+                    ),
+                    timeout=MODEL_INFERENCE_TIMEOUT_SECONDS,
                 )
+                input_tokens, output_tokens = _extract_usage(response)
+                if input_tokens > 0 or output_tokens > 0:
+                    observability.record_token_usage(
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        estimated_cost_usd=_estimate_cost_usd(input_tokens, output_tokens),
+                    )
                 grounding_metadata = extract_grounding_metadata(response, use_grounding=use_grounding)
                 reply_text = extract_response_text(response)
                 if reply_text:
@@ -123,6 +208,18 @@ async def agent_inference(
                 )
                 break
             except Exception as error:
+                if is_timeout_inference_error(error):
+                    logger.warning(
+                        "Inference timeout (grounding=%s, timeout=%.1fs).",
+                        use_grounding,
+                        MODEL_INFERENCE_TIMEOUT_SECONDS,
+                    )
+                    if not use_grounding:
+                        if return_metadata:
+                            return UNSTABLE_CONNECTION_FALLBACK, empty_grounding_metadata(enabled=False)
+                        return UNSTABLE_CONNECTION_FALLBACK
+                    break
+
                 if is_rate_limited_inference_error(error) and attempt < MODEL_RATE_LIMIT_MAX_RETRIES:
                     backoff_seconds = MODEL_RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
                     logger.warning(

@@ -1,11 +1,13 @@
 import os
+import asyncio
 from typing import Any, cast
 
-import twitchio
-from twitchio import eventsub
-from twitchio.ext import commands
+import twitchio  # pyright: ignore[reportMissingImports]
+from twitchio import eventsub  # pyright: ignore[reportMissingImports]
+from twitchio.ext import commands  # pyright: ignore[reportMissingImports]
 
 from bot.access_control import is_owner
+from bot.autonomy_runtime import autonomy_runtime
 from bot.logic import BOT_BRAND, OBSERVABILITY_TYPES, agent_inference, context
 from bot.observability import observability
 from bot.prompt_runtime import format_chat_reply, handle_byte_prompt_text
@@ -157,6 +159,11 @@ class ByteBot(commands.Bot):
         )
 
     async def setup_hook(self) -> None:
+        autonomy_runtime.bind(
+            loop=asyncio.get_running_loop(),
+            mode="eventsub",
+            auto_chat_dispatcher=None,
+        )
         await self.add_component(AgentComponent(self))
         if not CHANNEL_ID:
             raise RuntimeError("TWITCH_CHANNEL_ID e obrigatorio no modo eventsub.")
@@ -165,6 +172,10 @@ class ByteBot(commands.Bot):
             user_id=str(self.bot_id),
         )
         await self.subscribe_websocket(payload=payload, as_bot=True)
+
+    async def close(self) -> None:
+        autonomy_runtime.unbind()
+        await super().close()
 
     async def event_ready(self) -> None:
         logger.info("%s pronto no chat. Bot ID: %s", BOT_BRAND, self.bot_id)

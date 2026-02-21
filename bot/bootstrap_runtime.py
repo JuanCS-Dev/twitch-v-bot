@@ -1,7 +1,8 @@
 import asyncio
 
-from google.cloud import secretmanager
+from google.cloud import secretmanager  # pyright: ignore[reportAttributeAccessIssue]
 
+from bot.autonomy_runtime import autonomy_runtime
 from bot.eventsub_runtime import ByteBot
 from bot.irc_runtime import IrcByteBot
 from bot.observability import observability
@@ -126,10 +127,21 @@ def run_irc_mode() -> None:
     )
 
     async def run_with_channel_control() -> None:
-        irc_channel_control.bind(loop=asyncio.get_running_loop(), bot=bot)
+        running_loop = asyncio.get_running_loop()
+        irc_channel_control.bind(loop=running_loop, bot=bot)
+
+        async def send_autonomy_chat(text: str) -> None:
+            await bot.send_reply(text)
+
+        autonomy_runtime.bind(
+            loop=running_loop,
+            mode="irc",
+            auto_chat_dispatcher=send_autonomy_chat,
+        )
         try:
             await bot.run_forever()
         finally:
+            autonomy_runtime.unbind()
             irc_channel_control.unbind()
 
     asyncio.run(run_with_channel_control())
@@ -140,4 +152,7 @@ def run_eventsub_mode() -> None:
     require_env("TWITCH_BOT_ID")
     require_env("TWITCH_CHANNEL_ID")
     bot = ByteBot(client_secret=get_secret())
-    bot.run()
+    try:
+        bot.run()
+    finally:
+        autonomy_runtime.unbind()

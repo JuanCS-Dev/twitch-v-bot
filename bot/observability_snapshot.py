@@ -1,7 +1,6 @@
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
-
 from bot.observability_helpers import (
     LEADERBOARD_LIMIT,
     TIMELINE_WINDOW_MINUTES,
@@ -10,8 +9,6 @@ from bot.observability_helpers import (
     percentage,
     utc_iso,
 )
-
-
 def build_observability_snapshot(
     *,
     now: float,
@@ -24,11 +21,16 @@ def build_observability_snapshot(
     chatter_last_seen: dict[str, float],
     chat_events: list[dict[str, Any]],
     byte_trigger_events: list[dict[str, Any]],
+    interaction_events: list[dict[str, Any]],
+    quality_events: list[dict[str, Any]],
+    token_usage_events: list[dict[str, Any]],
+    autonomy_goal_events: list[dict[str, Any]],
     chatter_message_totals: dict[str, int],
     trigger_user_totals: dict[str, int],
     unique_chatters_total: int,
     last_prompt: str,
     last_reply: str,
+    estimated_cost_usd_total: float,
     bot_brand: str,
     bot_version: str,
     bot_mode: str,
@@ -38,7 +40,6 @@ def build_observability_snapshot(
     active_chatters_60m = sum(1 for value in chatter_last_seen.values() if now - value <= 3600)
     avg_latency_ms = round(sum(latencies_ms) / len(latencies_ms), 1) if latencies_ms else 0.0
     p95_latency_ms = compute_p95(latencies_ms)
-
     chat_10m_cutoff = now - 600
     chat_60m_cutoff = now - 3600
     chat_events_10m = [event for event in chat_events if float(event.get("ts", 0.0)) >= chat_10m_cutoff]
@@ -55,7 +56,6 @@ def build_observability_snapshot(
         sum(int(event.get("length", 0)) for event in chat_events_60m) / chat_count_60m,
         1,
     ) if chat_count_60m else 0.0
-
     source_counts_60m: Counter[str] = Counter()
     chatter_counts_60m: Counter[str] = Counter()
     for event in chat_events_60m:
@@ -64,7 +64,6 @@ def build_observability_snapshot(
         author_name = str(event.get("author", "") or "").strip().lower()
         if author_name:
             chatter_counts_60m[author_name] += 1
-
     trigger_events_10m = [event for event in byte_trigger_events if float(event.get("ts", 0.0)) >= chat_10m_cutoff]
     trigger_events_60m = [event for event in byte_trigger_events if float(event.get("ts", 0.0)) >= chat_60m_cutoff]
     trigger_users_60m: Counter[str] = Counter()
@@ -72,6 +71,81 @@ def build_observability_snapshot(
         author_name = str(event.get("author", "") or "").strip().lower()
         if author_name:
             trigger_users_60m[author_name] += 1
+    interaction_events_60m = [
+        event
+        for event in interaction_events
+        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
+    ]
+    llm_interactions_60m = sum(
+        1 for event in interaction_events_60m if bool(event.get("is_llm", False))
+    )
+    useful_llm_interactions_60m = sum(
+        1 for event in interaction_events_60m if bool(event.get("is_useful_llm", False))
+    )
+    useful_engagement_rate_60m = percentage(
+        useful_llm_interactions_60m,
+        llm_interactions_60m,
+    )
+
+    quality_events_60m = [
+        event
+        for event in quality_events
+        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
+    ]
+    quality_retry_60m = sum(
+        1
+        for event in quality_events_60m
+        if str(event.get("outcome", "") or "").strip().lower() == "retry"
+    )
+    quality_retry_success_60m = sum(
+        1
+        for event in quality_events_60m
+        if str(event.get("outcome", "") or "").strip().lower() == "retry_success"
+    )
+    quality_fallback_60m = sum(
+        1
+        for event in quality_events_60m
+        if str(event.get("outcome", "") or "").strip().lower() == "fallback"
+    )
+    correction_rate_60m = percentage(
+        quality_retry_success_60m,
+        quality_retry_60m,
+    )
+    correction_trigger_rate_60m = percentage(
+        quality_retry_60m,
+        llm_interactions_60m,
+    )
+
+    token_usage_events_60m = [
+        event
+        for event in token_usage_events
+        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
+    ]
+    token_input_60m = sum(
+        max(0, int(event.get("input_tokens", 0) or 0))
+        for event in token_usage_events_60m
+    )
+    token_output_60m = sum(
+        max(0, int(event.get("output_tokens", 0) or 0))
+        for event in token_usage_events_60m
+    )
+    estimated_cost_usd_60m = sum(
+        max(0.0, float(event.get("estimated_cost_usd", 0.0) or 0.0))
+        for event in token_usage_events_60m
+    )
+
+    autonomy_goal_events_60m = [
+        event
+        for event in autonomy_goal_events
+        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
+    ]
+    autonomy_goals_60m = len(autonomy_goal_events_60m)
+    autonomy_ignored_60m = sum(
+        1
+        for event in autonomy_goal_events_60m
+        if str(event.get("outcome", "") or "").strip().lower() == "ignored"
+    )
+    autonomy_ignored_rate_60m = percentage(autonomy_ignored_60m, autonomy_goals_60m)
 
     top_chatters_60m_rows = [
         {"author": author, "messages": count}
@@ -153,6 +227,9 @@ def build_observability_snapshot(
             "quality_retry_success_total": int(counters.get("quality_retry_success_total", 0)),
             "quality_fallback_total": int(counters.get("quality_fallback_total", 0)),
             "auto_scene_updates_total": int(counters.get("auto_scene_updates_total", 0)),
+            "token_input_total": int(counters.get("token_input_total", 0)),
+            "token_output_total": int(counters.get("token_output_total", 0)),
+            "estimated_cost_usd_total": round(max(0.0, float(estimated_cost_usd_total or 0.0)), 6),
             "token_refreshes_total": int(counters.get("token_refreshes_total", 0)),
             "auth_failures_total": int(counters.get("auth_failures_total", 0)),
             "errors_total": int(counters.get("errors_total", 0)),
@@ -189,6 +266,25 @@ def build_observability_snapshot(
             "top_trigger_users_60m": top_trigger_users_60m_rows,
             "top_trigger_users_total": top_trigger_users_total_rows,
         },
+        "agent_outcomes": {
+            "llm_interactions_60m": int(llm_interactions_60m),
+            "useful_llm_interactions_60m": int(useful_llm_interactions_60m),
+            "useful_engagement_rate_60m": useful_engagement_rate_60m,
+            "quality_retry_60m": int(quality_retry_60m),
+            "quality_retry_success_60m": int(quality_retry_success_60m),
+            "quality_fallback_60m": int(quality_fallback_60m),
+            "correction_rate_60m": correction_rate_60m,
+            "correction_trigger_rate_60m": correction_trigger_rate_60m,
+            "autonomy_goals_60m": int(autonomy_goals_60m),
+            "ignored_total_60m": int(autonomy_ignored_60m),
+            "ignored_rate_60m": autonomy_ignored_rate_60m,
+            "token_input_total": int(counters.get("token_input_total", 0)),
+            "token_output_total": int(counters.get("token_output_total", 0)),
+            "token_input_60m": int(token_input_60m),
+            "token_output_60m": int(token_output_60m),
+            "estimated_cost_usd_total": round(max(0.0, float(estimated_cost_usd_total or 0.0)), 6),
+            "estimated_cost_usd_60m": round(max(0.0, float(estimated_cost_usd_60m)), 6),
+        },
         "context": {
             "stream_vibe": context_vibe,
             "last_event": context_last_event,
@@ -197,6 +293,7 @@ def build_observability_snapshot(
             "last_prompt": clip_preview(last_prompt, max_chars=120),
             "last_reply": clip_preview(last_reply, max_chars=140),
         },
+        "counters": {key: int(value) for key, value in counters.items()},
         "routes": route_rows,
         "timeline": timeline,
         "recent_events": events_desc,

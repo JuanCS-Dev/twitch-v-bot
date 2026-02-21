@@ -2,7 +2,7 @@ import logging
 import os
 from pathlib import Path
 
-from google import genai
+from google import genai  # pyright: ignore[reportAttributeAccessIssue]
 
 from bot import byte_semantics
 from bot.channel_control import IrcChannelControlBridge

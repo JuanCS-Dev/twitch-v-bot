@@ -48,7 +48,7 @@ def build_verifiable_prompt(prompt: str, concise_mode: bool = True, server_time_
         return clean_prompt
     return (
         f"{clean_prompt}\n"
-        f"{active_server_time_instruction} Instrucoes obrigatorias de confiabilidade: responda em ate 6 linhas curtas e sem enrolacao. "
+        f"{active_server_time_instruction} Instrucoes obrigatorias de confiabilidade: responda em ate 4 linhas curtas, densas e sem enrolacao. "
         "Use apenas fatos com confirmacao recente em fontes confiaveis. "
         "Inclua ancora temporal explicita (ex.: hoje, nesta semana, mes/ano) quando falar de status atual. "
         "Para noticia/anuncio atual, inclua no final: 'Confianca: alta|media|baixa' e 'Fonte: <origem confiavel>'. "

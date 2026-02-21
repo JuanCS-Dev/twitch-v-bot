@@ -4,201 +4,325 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Byte Live Observability</title>
-    <link rel="stylesheet" href="/dashboard/styles.css" />
+    <!-- Novas Importacoes Modulares de CSS -->
+    <link rel="stylesheet" href="/dashboard/styles/tokens.css" />
+    <link rel="stylesheet" href="/dashboard/styles/base.css" />
+    <link rel="stylesheet" href="/dashboard/styles/layout.css" />
+    <link rel="stylesheet" href="/dashboard/styles/components.css" />
   </head>
-  <body>
+  <body class="theme-dark">
     <header class="topbar">
       <div class="brand-head">
         <p class="brand-kicker">BYTE // TWITCH OPERATIONS</p>
         <h1>Byte Live Observability</h1>
-        <p>Neon telemetry for stream operations, response quality, and channel control.</p>
+        <p>Telemetry para runtime de operações, saúde da IA e controle transacional de canais de streaming.</p>
       </div>
       <div class="topbar-right">
-        <button id="refreshButton" class="refresh-button" type="button">Refresh</button>
         <span id="botIdentity" class="chip">Byte</span>
-        <span id="connectionState" class="chip chip-warn">Connecting</span>
+        <span id="connectionState" class="chip warn">Poller Booting...</span>
       </div>
     </header>
 
     <main class="layout">
-      <section class="cards" id="metricCards">
-        <article class="card tone-cyan">
-          <h2>Chat Messages</h2>
+      <!-- HERO V2: Manager Visual Guiado -->
+      <section class="grid-hero" id="channelControlPanel">
+        <article class="panel">
+          <h2>Channel Manager</h2>
+          <p class="panel-hint">Canais monitorados simultaneamente. Sem terminal hostil.</p>
+          <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+            <span id="channelControlModeChip" class="chip pending">Mode: loading</span>
+            <span class="chip">Contract: 1 msg / 4 linhas</span>
+          </div>
+          <p id="channelControlModeReason" class="panel-hint">Carregando capacidades do runtime...</p>
+          
+          <div class="form-row">
+            <div class="form-group" style="flex:1;">
+              <label for="channelLoginInput">Twitch Channel (login sem arroba)</label>
+              <input id="channelLoginInput" class="form-control" type="text" autocomplete="off" placeholder="ex: gaules, oisakura" />
+            </div>
+            <div class="form-group">
+              <button id="btnJoinChannel" class="btn btn-primary" type="button">Conectar</button>
+            </div>
+            <div class="form-group">
+              <button id="btnSyncChannels" class="btn btn-secondary" type="button" title="Sincronizar a força">Re-Sync</button>
+            </div>
+          </div>
+          
+          <div class="form-group" style="opacity: 0.6; align-items:flex-end;">
+            <label for="adminTokenInput" style="font-weight: normal; font-size: 0.7rem;">Admin Override Token</label>
+            <input id="adminTokenInput" class="form-control" type="password" style="font-size: 0.75rem; padding: 0.3rem 0.5rem; max-width: 250px;" autocomplete="off" placeholder="Optional Auth" />
+          </div>
+
+          <p id="channelFeedbackMsg" class="panel-hint event-level-info" style="margin-top:var(--spacing-3); font-style: italic;">Aguardando ação...</p>
+        </article>
+
+        <article class="card tone-purple">
+          <h2>Conexões Ativas</h2>
+          <ul id="connectedChannelsList" class="events-list" style="margin-top:var(--spacing-3); display:flex; flex-wrap:wrap; flex-direction:row; border:0; background:transparent;">
+            <!-- Render dinâmico de chipes e botoes drop -->
+          </ul>
+        </article>
+
+      </section>
+
+      <!-- KPI METRICS (SEM MOCKS LIXO) -->
+      <section class="grid-cards" id="metricCards">
+        <article class="card status-info">
+          <h2>Messages (Bot Seen)</h2>
           <p id="mChatMessages" class="metric">0</p>
         </article>
-        <article class="card tone-cyan">
+        <article class="card status-info">
           <h2>Byte Triggers</h2>
           <p id="mByteTriggers" class="metric">0</p>
         </article>
-        <article class="card tone-cyan">
-          <h2>Interactions</h2>
-          <p id="mInteractions" class="metric">0</p>
-        </article>
-        <article class="card tone-cyan">
-          <h2>Replies Sent</h2>
+        <article class="card status-ok">
+          <h2>LLM Replies</h2>
           <p id="mReplies" class="metric">0</p>
         </article>
-        <article class="card tone-purple">
-          <h2>Active Chatters (10m)</h2>
+        <article class="card status-info">
+          <h2>Active Users (10m)</h2>
           <p id="mActiveChatters" class="metric">0</p>
         </article>
-        <article class="card tone-purple">
-          <h2>Active Chatters (60m)</h2>
+        <article class="card status-info">
+          <h2>Active Users (60m)</h2>
           <p id="mActiveChatters60m" class="metric">0</p>
         </article>
-        <article class="card tone-purple">
-          <h2>Unique Chatters</h2>
-          <p id="mUniqueChatters" class="metric">0</p>
-        </article>
-        <article class="card tone-danger">
-          <h2>Errors</h2>
-          <p id="mErrors" class="metric">0</p>
-        </article>
-        <article class="card tone-cyan">
-          <h2>Avg Latency</h2>
-          <p id="mAvgLatency" class="metric">0 ms</p>
-        </article>
-        <article class="card tone-cyan">
+        <article class="card status-warn">
           <h2>P95 Latency</h2>
           <p id="mP95Latency" class="metric">0 ms</p>
         </article>
       </section>
 
-      <section class="grid-two">
-        <article class="panel">
-          <h2>Route Stats</h2>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Route</th>
-                  <th>Count</th>
-                </tr>
-              </thead>
-              <tbody id="routesBody"></tbody>
-            </table>
-          </div>
+      <!-- NOVA SESSÃO DE SAÚDE AGENT -->
+      <section class="grid-cards" id="agentHealthCards">
+        <article class="card status-error">
+          <h2>Agent Errors</h2>
+          <p id="mErrors" class="metric">0</p>
         </article>
-
-        <article class="panel">
-          <h2>Live Context</h2>
-          <dl class="kv">
-            <div><dt>Mode</dt><dd id="ctxMode">-</dd></div>
-            <div><dt>Uptime</dt><dd id="ctxUptime">-</dd></div>
-            <div><dt>Vibe</dt><dd id="ctxVibe">-</dd></div>
-            <div><dt>Last Event</dt><dd id="ctxLastEvent">-</dd></div>
-            <div><dt>Active Contexts</dt><dd id="ctxActiveContexts">0</dd></div>
-            <div><dt>Unique Chatters</dt><dd id="ctxUniqueChatters">0</dd></div>
-            <div><dt>Last Prompt</dt><dd id="ctxLastPrompt">-</dd></div>
-            <div><dt>Last Reply</dt><dd id="ctxLastReply">-</dd></div>
-          </dl>
-          <h3>Context Items</h3>
-          <ul id="contextItems" class="context-list"></ul>
+        <article class="card status-error">
+          <h2>API Auth Failures</h2>
+          <p id="healthAuthFailures" class="metric">0</p>
+        </article>
+        <article class="card status-warn">
+          <h2>LLM Fallbacks (Retry)</h2>
+          <p id="healthFallbackOrRetry" class="metric">0</p>
+        </article>
+        <article class="card status-info">
+          <h2>Token Refreshes</h2>
+          <p id="healthTokenRefreshes" class="metric">0</p>
+        </article>
+        <article class="card status-ok">
+          <h2>Total Quality Gates</h2>
+          <p id="healthTotalChecks" class="metric">0</p>
+        </article>
+        <article class="card status-ok">
+          <h2>Total Interactions</h2>
+          <p id="mInteractions" class="metric">0</p>
         </article>
       </section>
 
-      <section class="grid-two">
-        <article class="panel terminal-panel">
-          <h2>Channel Terminal</h2>
-          <p class="panel-hint">
-            Commands: <code>list</code>, <code>join &lt;channel_login&gt;</code>, <code>part &lt;channel_login&gt;</code>
-          </p>
-          <div class="terminal-controls">
-            <label for="terminalAdminToken">Admin Token</label>
-            <input
-              id="terminalAdminToken"
-              type="password"
-              autocomplete="off"
-              placeholder="Optional if browser-authenticated"
-            />
+      <section class="grid-cards" id="agentOutcomeCards">
+        <article class="card status-ok">
+          <h2>Useful Engagement (60m)</h2>
+          <p id="oUsefulEngagementRate" class="metric">0%</p>
+        </article>
+        <article class="card status-warn">
+          <h2>Ignored Rate (60m)</h2>
+          <p id="oIgnoredRate" class="metric">0%</p>
+        </article>
+        <article class="card status-info">
+          <h2>Correction Rate (60m)</h2>
+          <p id="oCorrectionRate" class="metric">0%</p>
+        </article>
+        <article class="card status-info">
+          <h2>Correction Trigger (60m)</h2>
+          <p id="oCorrectionTriggerRate" class="metric">0%</p>
+        </article>
+        <article class="card status-info">
+          <h2>Token In / Out (60m)</h2>
+          <p class="metric"><span id="oTokenInput60m">0</span> / <span id="oTokenOutput60m">0</span></p>
+        </article>
+        <article class="card status-warn">
+          <h2>Cost 60m / Total</h2>
+          <p class="metric"><span id="oEstimatedCost60m">$0.0000</span> / <span id="oEstimatedCostTotal">$0.0000</span></p>
+        </article>
+      </section>
+
+      <section class="grid-two" id="controlPlaneSection">
+        <article class="panel">
+          <h2>Control Plane</h2>
+          <p class="panel-hint">Paridade total de configuracao do agente. Ajustes aplicam em runtime sem redeploy.</p>
+
+          <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+            <span id="cpModeChip" class="chip pending">MODE</span>
+            <span id="cpResponseContract" class="chip">Contrato ativo: 1 mensagem / 4 linhas.</span>
           </div>
-          <div class="terminal-controls">
-            <label for="terminalCommandInput">Command</label>
-            <div class="terminal-command-row">
-              <input id="terminalCommandInput" type="text" autocomplete="off" placeholder="list" />
-              <button id="terminalRunButton" class="refresh-button" type="button">Run</button>
-              <button id="terminalListButton" class="refresh-button" type="button">List</button>
+          <p id="cpCapabilitiesLine" class="panel-hint">Carregando capacidades...</p>
+
+          <div class="form-row" style="flex-wrap:wrap;">
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpAutonomyEnabled">Autonomia global</label>
+              <input id="cpAutonomyEnabled" type="checkbox" />
+            </div>
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpHeartbeatInterval">Heartbeat (s)</label>
+              <input id="cpHeartbeatInterval" class="form-control" type="number" min="15" max="3600" step="1" />
+            </div>
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpMinCooldown">Cooldown minimo (s)</label>
+              <input id="cpMinCooldown" class="form-control" type="number" min="15" max="3600" step="1" />
+            </div>
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpActionIgnoreAfter">Auto-ignore (s)</label>
+              <input id="cpActionIgnoreAfter" class="form-control" type="number" min="60" max="86400" step="1" />
             </div>
           </div>
-          <pre id="terminalOutput" class="terminal-output">Ready.</pre>
+
+          <div class="form-row" style="flex-wrap:wrap;">
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpBudget10m">Budget 10m</label>
+              <input id="cpBudget10m" class="form-control" type="number" min="0" max="100" step="1" />
+            </div>
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpBudget60m">Budget 60m</label>
+              <input id="cpBudget60m" class="form-control" type="number" min="0" max="600" step="1" />
+            </div>
+            <div class="form-group" style="min-width:170px;">
+              <label for="cpBudgetDaily">Budget Diario</label>
+              <input id="cpBudgetDaily" class="form-control" type="number" min="0" max="5000" step="1" />
+            </div>
+          </div>
+
+          <div class="form-row" style="justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">Goals Scheduler</h3>
+            <button id="cpAddGoalBtn" class="btn btn-secondary" type="button">Add Goal</button>
+          </div>
+          <ul id="cpGoalsList" class="events-list" style="margin-top:var(--spacing-3);"></ul>
+
+          <div class="form-row" style="margin-top:var(--spacing-3);">
+            <button id="cpSaveBtn" class="btn btn-primary" type="button">Salvar Config</button>
+            <button id="cpReloadBtn" class="btn btn-secondary" type="button">Recarregar</button>
+          </div>
+          <p id="cpFeedbackMsg" class="panel-hint event-level-info">Aguardando configuracao...</p>
+        </article>
+
+        <article class="panel">
+          <h2>Autonomy Runtime</h2>
+          <p class="panel-hint">Heartbeat + agenda + budget anti-spam com visao operacional em tempo real.</p>
+
+          <dl class="kv">
+            <div><dt>Autonomia</dt><dd id="autEnabledState">-</dd></div>
+            <div><dt>Loop</dt><dd id="autLoopState">-</dd></div>
+            <div><dt>Last Heartbeat</dt><dd id="autLastHeartbeat">-</dd></div>
+            <div><dt>Last Tick</dt><dd id="autLastTick">-</dd></div>
+            <div><dt>Last Goal</dt><dd id="autLastGoal">-</dd></div>
+            <div><dt>Last Risk</dt><dd id="autLastRisk">-</dd></div>
+            <div><dt>Last Block Reason</dt><dd id="autLastBlockReason">-</dd></div>
+            <div><dt>Ticks Total</dt><dd id="autTicksTotal">0</dd></div>
+            <div><dt>Goal Runs Total</dt><dd id="autGoalRunsTotal">0</dd></div>
+            <div><dt>Budget Blocked Total</dt><dd id="autBudgetBlockedTotal">0</dd></div>
+            <div><dt>Dispatch Failures</dt><dd id="autDispatchFailuresTotal">0</dd></div>
+            <div><dt>Auto Chat Sent Total</dt><dd id="autAutoChatSentTotal">0</dd></div>
+            <div><dt>Budget Usage 10m</dt><dd id="autBudgetUsage10m">0 / 0</dd></div>
+            <div><dt>Budget Usage 60m</dt><dd id="autBudgetUsage60m">0 / 0</dd></div>
+            <div><dt>Budget Usage Daily</dt><dd id="autBudgetUsageDaily">0 / 0</dd></div>
+            <div><dt>Queue Pending</dt><dd id="autQueuePending">0</dd></div>
+            <div><dt>Queue Approved</dt><dd id="autQueueApproved">0</dd></div>
+            <div><dt>Queue Rejected</dt><dd id="autQueueRejected">0</dd></div>
+            <div><dt>Queue Ignored</dt><dd id="autQueueIgnored">0</dd></div>
+          </dl>
+
+          <div class="form-row" style="margin-top:var(--spacing-3);">
+            <div class="form-group" style="flex:1;">
+              <label for="autTickReasonInput">Manual Tick Reason</label>
+              <input id="autTickReasonInput" class="form-control" type="text" value="manual_dashboard" />
+            </div>
+            <div class="form-group">
+              <button id="autRunTickBtn" class="btn btn-primary" type="button">Run 1 Tick</button>
+            </div>
+          </div>
+          <p id="autTickFeedbackMsg" class="panel-hint event-level-info">Aguardando acao manual...</p>
         </article>
       </section>
 
-      <section class="grid-two">
+      <section class="grid-two" id="actionQueueSection">
         <article class="panel">
-          <h2>Chat Analytics (10m / 60m)</h2>
+          <h2>Risk Queue (Approve / Reject)</h2>
+          <p class="panel-hint">Acoes moderativas e sugestoes exigem decisao explicita para manter seguranca operacional.</p>
+
+          <div class="form-row" style="flex-wrap:wrap;">
+            <div class="form-group" style="min-width:170px;">
+              <label for="aqStatusFilter">Filtro status</label>
+              <select id="aqStatusFilter" class="form-control">
+                <option value="">all</option>
+                <option value="pending">pending</option>
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+                <option value="ignored">ignored</option>
+              </select>
+            </div>
+            <div class="form-group" style="min-width:150px;">
+              <label for="aqLimitInput">Limite</label>
+              <input id="aqLimitInput" class="form-control" type="number" min="1" max="300" step="1" value="80" />
+            </div>
+            <div class="form-group">
+              <button id="aqRefreshBtn" class="btn btn-secondary" type="button">Refresh Queue</button>
+            </div>
+          </div>
+
           <dl class="kv">
-            <div><dt>Messages (10m)</dt><dd id="aMessages10m">0</dd></div>
-            <div><dt>Messages (60m)</dt><dd id="aMessages60m">0</dd></div>
-            <div><dt>Msgs per Min (10m)</dt><dd id="aMpm10m">0</dd></div>
-            <div><dt>Msgs per Min (60m)</dt><dd id="aMpm60m">0</dd></div>
-            <div><dt>Avg Msg Len (10m)</dt><dd id="aAvgLen10m">0</dd></div>
-            <div><dt>Avg Msg Len (60m)</dt><dd id="aAvgLen60m">0</dd></div>
-            <div><dt>Prefixed Commands (60m)</dt><dd id="aCommands60m">0</dd></div>
-            <div><dt>Command Ratio (60m)</dt><dd id="aCommandRatio60m">0%</dd></div>
-            <div><dt>URL Messages (60m)</dt><dd id="aUrls60m">0</dd></div>
-            <div><dt>URL Ratio (60m)</dt><dd id="aUrlRatio60m">0%</dd></div>
-            <div><dt>Source IRC (60m)</dt><dd id="aSourceIrc60m">0</dd></div>
-            <div><dt>Source EventSub (60m)</dt><dd id="aSourceEventsub60m">0</dd></div>
-            <div><dt>Source Unknown (60m)</dt><dd id="aSourceUnknown60m">0</dd></div>
-            <div><dt>Byte Triggers (10m)</dt><dd id="aByteTriggers10m">0</dd></div>
-            <div><dt>Byte Triggers (60m)</dt><dd id="aByteTriggers60m">0</dd></div>
+            <div><dt>Pending</dt><dd id="aqPendingCount">0</dd></div>
+            <div><dt>Approved</dt><dd id="aqApprovedCount">0</dd></div>
+            <div><dt>Rejected</dt><dd id="aqRejectedCount">0</dd></div>
+            <div><dt>Ignored</dt><dd id="aqIgnoredCount">0</dd></div>
+            <div><dt>Total</dt><dd id="aqTotalCount">0</dd></div>
+          </dl>
+
+          <p id="aqFeedbackMsg" class="panel-hint event-level-info">Aguardando fila...</p>
+          <ul id="aqList" class="events-list" style="max-height: 560px; overflow-y: auto;"></ul>
+        </article>
+
+        <article class="panel">
+          <h2>Paridade Operacional</h2>
+          <p class="panel-hint">Esta dashboard cobre controle de canais, contrato de resposta 1x4, autonomia, fila de risco e outcomes/custo.</p>
+          <dl class="kv">
+            <div><dt>Channel Control</dt><dd>mode-aware com guard frontend + backend</dd></div>
+            <div><dt>Contrato de resposta</dt><dd>1 mensagem, ate 4 linhas</dd></div>
+            <div><dt>Autonomia</dt><dd>agenda + heartbeat + budget anti-spam</dd></div>
+            <div><dt>Risco</dt><dd>auto chat, sugestao, moderacao confirmada</dd></div>
+            <div><dt>Metrica de valor</dt><dd>engajamento util + correcoes + ignorados + custo/token</dd></div>
           </dl>
         </article>
-
-        <article class="panel">
-          <h2>Leaderboards</h2>
-          <h3>Top Chatters (60m)</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Chatter</th>
-                  <th>Messages</th>
-                </tr>
-              </thead>
-              <tbody id="topChatters60mBody"></tbody>
-            </table>
-          </div>
-          <h3>Top Trigger Users (60m)</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Triggers</th>
-                </tr>
-              </thead>
-              <tbody id="topTriggers60mBody"></tbody>
-            </table>
-          </div>
-          <h3>Top Chatters (Total)</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Chatter</th>
-                  <th>Messages</th>
-                </tr>
-              </thead>
-              <tbody id="topChattersTotalBody"></tbody>
-            </table>
-          </div>
-        </article>
       </section>
 
       <section class="grid-two">
         <article class="panel">
-          <h2>Timeline (Last 30 min)</h2>
+          <h2>Agent Context & Internals</h2>
+          <dl class="kv">
+            <div><dt>Core Mode</dt><dd id="ctxMode">-</dd></div>
+            <div><dt>Bot Uptime</dt><dd id="ctxUptime">-</dd></div>
+            <div><dt>Stream Vibe Meta</dt><dd id="ctxVibe">-</dd></div>
+            <div><dt>Last Event</dt><dd id="ctxLastEvent">-</dd></div>
+            <div><dt>Active Thread Contexts</dt><dd id="ctxActiveContexts">0</dd></div>
+            <div><dt>Unique Chatters Observed</dt><dd id="ctxUniqueChatters">0</dd></div>
+            <div><dt>Last AI Prompt</dt><dd id="ctxLastPrompt">-</dd></div>
+            <div><dt>Last AI Reply</dt><dd id="ctxLastReply">-</dd></div>
+          </dl>
+          <h3>Memória Curta/Temporária</h3>
+          <ul id="contextItems" class="context-list"></ul>
+        </article>
+        
+        <article class="panel">
+          <h2>Timeline Logs Realtime (Last 30 min)</h2>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>UTC</th>
-                  <th>Chat</th>
-                  <th>Triggers</th>
-                  <th>Replies</th>
-                  <th>LLM</th>
+                  <th>Time UTC</th>
+                  <th>IRC Chat</th>
+                  <th>Ai Trigg</th>
+                  <th>Ai Rply</th>
+                  <th>LLM Req</th>
                   <th>Errors</th>
                 </tr>
               </thead>
@@ -206,20 +330,81 @@
             </table>
           </div>
         </article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <h2>Operational Events</h2>
+          <ul id="eventsList" class="events-list" style="max-height: 480px; overflow-y: auto;"></ul>
+        </article>
 
         <article class="panel">
-          <h2>Recent Events</h2>
-          <ul id="eventsList" class="events-list"></ul>
+          <h2>Deep Analytics (60m)</h2>
+          <dl class="kv">
+            <div><dt>Traffic Velocity (10/60m)</dt><dd><span id="aMpm10m">0</span> / <span id="aMpm60m">0</span> mpm</dd></div>
+            <div><dt>Total Churn (10/60m)</dt><dd><span id="aMessages10m">0</span> / <span id="aMessages60m">0</span> msgs</dd></div>
+            <div><dt>Payload Avg Len (10/60m)</dt><dd><span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char</dd></div>
+            <div><dt>Commands Triggered</dt><dd><span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span>)</dd></div>
+            <div><dt>Network Links Detected</dt><dd><span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)</dd></div>
+            <div><dt>Route IRC</dt><dd id="aSourceIrc60m">0</dd></div>
+            <div><dt>Route EventSub</dt><dd id="aSourceEventsub60m">0</dd></div>
+            <div><dt>Route Anomalous</dt><dd id="aSourceUnknown60m">0</dd></div>
+            <div><dt>Byte Invokations (10/60m)</dt><dd><span id="aByteTriggers10m">0</span> / <span id="aByteTriggers60m">0</span> </dd></div>
+          </dl>
+          
+          <h3 style="margin-top:1.5rem;">API Rotas Truncadas</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Internal Route Name</th>
+                  <th>Hits</th>
+                </tr>
+              </thead>
+              <tbody id="routesBody"></tbody>
+            </table>
+          </div>
         </article>
       </section>
+
+      <section class="grid-cards">
+        <article class="panel">
+          <h3>Top Chatters (60m)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>UID</th><th>Count</th></tr></thead>
+              <tbody id="topChatters60mBody"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h3>Top Triggers (60m)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Actor</th><th>Procs</th></tr></thead>
+              <tbody id="topTriggers60mBody"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h3>Lifetime Chatters</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>UID</th><th>Count</th></tr></thead>
+              <tbody id="topChattersTotalBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+      
     </main>
 
     <footer class="footer">
-      <span id="lastUpdate">Last update: -</span>
-      <span>Manual refresh mode</span>
+      <span id="lastUpdate">Starting Application...</span>
+      <span>VÉRTICE Core Analytics x BYTE AI</span>
     </footer>
 
-    <script src="/dashboard/app.js" defer></script>
-    <script src="/dashboard/channel-terminal.js" defer></script>
+    <!-- Carrega Orchestracao principal como Modulo -->
+    <script type="module" src="/dashboard/main.js"></script>
   </body>
 </html>

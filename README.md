@@ -1,5 +1,12 @@
 # Byte - Twitch AI Chat Agent
 
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](bot/requirements.txt)
+[![Cloud Run](https://img.shields.io/badge/Deploy-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](deploy.sh)
+[![Twitch Modes](https://img.shields.io/badge/Twitch-IRC%20%7C%20EventSub-9146FF?logo=twitch&logoColor=white)](docs/DOCUMENTATION.md#4-operating-modes)
+[![Reply Contract](https://img.shields.io/badge/Reply-1%20message%20%7C%204%20lines-0A7B83)](docs/DOCUMENTATION.md#91-reply-length)
+[![Docs](https://img.shields.io/badge/Docs-INDEX-0A66C2?logo=readthedocs&logoColor=white)](docs/INDEX.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 ![Byte Banner](assets/hero-banner-byte.png)
 
 `Byte` is a Twitch chat agent powered by Gemini 3 Flash (Vertex AI) and deployed on Cloud Run.
@@ -12,9 +19,9 @@
 
 - Joins Twitch chat as a viewer (`irc`) or official cloud chatbot (`eventsub`).
 - Responds to natural trigger messages like `byte ...`, `@byte ...`, or `!byte ...`.
-- Keeps answers concise for live chat (hard limit: 8 lines per message).
+- Keeps answers concise for live chat (hard limit: 4 lines per message).
 - Handles direct questions, movie fact-sheet prompts, and current-events prompts.
-- Supports serious/technical prompts with up to 2 chat messages when needed.
+- Enforces one-message contract for serious/technical prompts (max 4 lines, high density).
 
 ## Chat Commands and Trigger Patterns
 
@@ -34,7 +41,7 @@ IRC owner-only channel management:
 - `byte canais` / `byte channels`
 - `byte join <channel_login>`
 - `byte part <channel_login>`
-- Dashboard terminal commands: `list`, `join <channel_login>`, `part <channel_login>`
+- Dashboard channel control: `list`, `join <channel_login>`, `part <channel_login>` (IRC only)
 
 ## Operating Modes
 
@@ -62,7 +69,7 @@ IRC owner-only channel management:
 3. Run locally: `python bot/main.py`.
 4. Deploy on Cloud Run: `./deploy.sh`.
 
-For dashboard channel terminal in Cloud Run, set:
+For dashboard admin controls in Cloud Run, set:
 
 - `BYTE_DASHBOARD_ADMIN_TOKEN_SECRET_NAME=byte-dashboard-admin-token`
 
@@ -76,7 +83,10 @@ For dashboard channel terminal in Cloud Run, set:
 
 - Dashboard UI: `GET /dashboard`
 - JSON snapshot API: `GET /api/observability`
-- Channel terminal API: `POST /api/channel-control` (requires `X-Byte-Admin-Token`)
+- Channel control API: `POST /api/channel-control` (requires `X-Byte-Admin-Token`)
+- Control plane API: `GET|PUT /api/control-plane` (requires `X-Byte-Admin-Token`)
+- Action queue API: `GET /api/action-queue` and `POST /api/action-queue/<id>/decision` (requires `X-Byte-Admin-Token`)
+- Manual autonomy tick: `POST /api/autonomy/tick` (requires `X-Byte-Admin-Token`)
 - Health probe: `GET /` or `GET /healthz`
 
 The dashboard is intentionally lightweight (vanilla HTML/CSS/JS) and shows:
@@ -84,7 +94,7 @@ The dashboard is intentionally lightweight (vanilla HTML/CSS/JS) and shows:
 - Live counters (messages, triggers, interactions, replies, errors).
 - Active chatters and latency (`avg` / `p95`).
 - Route distribution, context state, timeline (30 min), and recent events.
-- Admin terminal to switch joined channels without using Twitch chat.
+- Channel control mode-aware (IRC vs EventSub), autonomy runtime, risk queue, and outcome/cost KPIs.
 
 ## Cost Snapshot and Monthly Estimate
 
@@ -110,20 +120,10 @@ GEMINI_MODEL_FILTER=gemini-3-flash-preview \
 
 ## Documentation
 
-- Full documentation hub: `docs/INDEX.md`
-- Complete product + ops guide: `docs/DOCUMENTATION.md`
-- Visual asset direction for GitHub: `docs/GITHUB_VISUAL_ASSETS_2026.md`
-
-## Visual Assets Structure
-
-```text
-assets/
-  hero-banner-byte.png
-  demo-chat-loop.gif
-  architecture-byte-flow.png
-  command-cards.png
-  cloudrun-proof.png
-```
+- [Documentation hub](docs/INDEX.md)
+- [Complete product + ops guide](docs/DOCUMENTATION.md)
+- [Executable implementation plan (agent + dashboard parity)](docs/IMPLEMENTATION_PLAN_EXECUTAVEL_PARIDADE_AGENT_DASHBOARD.md)
+- [Visual asset direction for GitHub](docs/GITHUB_VISUAL_ASSETS_2026.md)
 
 ## Security
 

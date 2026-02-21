@@ -188,6 +188,31 @@ class TestBotLogic(unittest.TestCase):
         self.assertEqual(mock_thread.call_count, 2)
         mock_sleep.assert_called_once()
 
+    @patch("asyncio.to_thread")
+    def test_agent_inference_timeout_with_grounding_falls_back_to_non_grounding(self, mock_thread):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+
+        nongrounded_text = SimpleNamespace(text="Resposta apos timeout no grounding", candidates=[])
+        mock_thread.side_effect = [TimeoutError("timed out"), nongrounded_text]
+
+        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        self.assertEqual(res, "Resposta apos timeout no grounding")
+        self.assertEqual(mock_thread.call_count, 2)
+
+    @patch("asyncio.to_thread")
+    def test_agent_inference_timeout_without_grounding_returns_unstable_fallback(self, mock_thread):
+        loop = asyncio.get_event_loop()
+        client = MagicMock()
+        context = StreamContext()
+
+        mock_thread.side_effect = TimeoutError("timed out")
+
+        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context, enable_grounding=False))
+        self.assertIn("Conexao com o modelo instavel", res)
+        self.assertEqual(mock_thread.call_count, 1)
+
     def test_enforce_reply_limits(self):
         raw = "\n".join(f"Linha {n}" for n in range(1, 15))
         limited = enforce_reply_limits(raw)
@@ -195,7 +220,7 @@ class TestBotLogic(unittest.TestCase):
 
     def test_enforce_reply_limits_preserves_word_boundary(self):
         raw = " ".join(["palavra"] * 200)
-        limited = enforce_reply_limits(raw, max_lines=8, max_length=80)
+        limited = enforce_reply_limits(raw, max_lines=MAX_REPLY_LINES, max_length=80)
         self.assertLessEqual(len(limited), 80)
         self.assertIn(limited[-1], ".!?")
         self.assertFalse(limited.endswith("..."))
@@ -212,12 +237,12 @@ class TestBotLogic(unittest.TestCase):
                 "Sua estrutura molecular e alvo de estudo em biologia celular.",
                 "Tem relevancia em pesquisa de doencas neuromusculares.",
                 "Pode ser citada como ponte entre celulas e matriz extracelular.",
-                "Esta nona linha precisa ser cortada pelo limite de 8 linhas.",
+                "Esta nona linha precisa ser cortada pelo limite de 4 linhas.",
             ]
         )
         limited = enforce_reply_limits(raw)
         self.assertLessEqual(len(limited), 460)
-        self.assertLessEqual(len(limited.splitlines()), 8)
+        self.assertLessEqual(len(limited.splitlines()), MAX_REPLY_LINES)
 
     def test_agent_inference_empty(self):
         loop = asyncio.get_event_loop()

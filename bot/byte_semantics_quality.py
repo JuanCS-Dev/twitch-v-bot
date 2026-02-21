@@ -74,7 +74,7 @@ def build_adaptive_ai_instruction(prompt: str) -> str:
     if any(term in lowered for term in BRIEF_STYLE_TERMS):
         return "Estilo de resposta: ultra objetivo, no maximo 3 linhas."
     if any(term in lowered for term in ANALYTICAL_STYLE_TERMS):
-        return "Estilo de resposta: analise pratica em ate 6 linhas, com 2 ou 3 pontos claros."
+        return "Estilo de resposta: analise pratica em ate 4 linhas, com 2 ou 3 pontos claros."
     if any(term in lowered for term in PLAYFUL_STYLE_TERMS):
         return "Estilo de resposta: humor leve e inteligente, sem perder precisao factual."
     return ""
@@ -130,21 +130,22 @@ def build_quality_prompt_script(prompt: str, server_time_instruction: str | None
         "Script de qualidade obrigatorio:\n"
         "1) Responda a pergunta principal na primeira linha, sem introducao.\n"
         "2) Inclua 1 ou 2 detalhes concretos ligados ao pedido (nome, data, local, obra ou numero).\n"
-        "3) Corte frases vagas/repetitivas que nao agregam informacao.\n"
-        "4) Se houver baixa confianca, admita incerteza de forma explicita e peca 1 fonte."
+        "3) Maximize densidade informacional: cada linha precisa trazer dado novo.\n"
+        "4) Corte frases vagas/repetitivas que nao agregam informacao.\n"
+        "5) Se houver baixa confianca, admita incerteza de forma explicita e peca 1 fonte."
     ]
     if is_current:
-        lines.append(f"5) {active_server_time_instruction}")
-        lines.append("6) Para tema atual, separe explicitamente o que esta confirmado agora e o que ainda e rumor.")
+        lines.append(f"6) {active_server_time_instruction}")
+        lines.append("7) Para tema atual, separe explicitamente o que esta confirmado agora e o que ainda e rumor.")
         if is_high_risk_current:
-            lines.append("7) Para noticia/anuncio atual, inclua as linhas finais: 'Confianca: alta|media|baixa' e 'Fonte: ...'.")
-            lines.append(f"8) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
+            lines.append("8) Para noticia/anuncio atual, inclua as linhas finais: 'Confianca: alta|media|baixa' e 'Fonte: ...'.")
+            lines.append(f"9) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
         else:
-            lines.append(f"7) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
+            lines.append(f"8) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
     else:
-        lines.append("5) Mantenha foco total no objeto perguntado.")
-        lines.append("6) Evite qualquer afirmacao absoluta sem base verificavel.")
-    lines.append("9) Nao termine com pergunta aberta, exceto se faltar dado essencial para responder.")
+        lines.append("6) Mantenha foco total no objeto perguntado.")
+        lines.append("7) Evite qualquer afirmacao absoluta sem base verificavel.")
+    lines.append("10) Nao termine com pergunta aberta, exceto se faltar dado essencial para responder.")
     return "\n".join(lines)
 
 
@@ -223,7 +224,8 @@ def build_quality_rewrite_prompt(prompt: str, draft_answer: str, reason: str, se
         f"- {active_server_time_instruction}\n"
         f"- Correcao alvo: {reason_fix}\n"
         "- Primeira linha responde direto.\n"
-        "- No maximo 8 linhas.\n"
+        "- No maximo 4 linhas.\n"
+        "- Alta densidade: cada linha deve adicionar informacao nova.\n"
         "- Inclua 1 ou 2 fatos concretos e relevantes.\n"
         "- Para tema atual, diferencie confirmado agora vs rumor.\n"
         "- Nao termine com pergunta aberta.\n"
@@ -264,9 +266,8 @@ def build_llm_enhanced_prompt(prompt: str, server_time_instruction: str | None =
 
     if serious_mode:
         extra_instructions.append(
-            "Para tema tecnico serio e relevante, voce pode responder em 2 blocos no maximo. "
-            "Se usar 2 blocos, separe exatamente com a linha: [BYTE_SPLIT]. "
-            "Cada bloco deve caber em um comentario de chat."
+            "Para tema tecnico serio e relevante, responda em uma unica mensagem. "
+            "Contrato obrigatorio: no maximo 4 linhas, alta densidade, sem separador de multiparte."
         )
 
     if not is_current_events_prompt(clean_prompt):

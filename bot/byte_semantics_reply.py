@@ -94,8 +94,12 @@ def extract_movie_title(prompt: str) -> str:
 
 def build_movie_fact_sheet_query(movie_title: str) -> str:
     return (
-        f"Monte uma ficha tecnica objetiva do filme '{movie_title}'. "
-        "Responda em no maximo 8 linhas, sem markdown, com uma linha por campo no formato Campo: valor. "
-        "Use nesta ordem: Titulo, Ano, Direcao, Elenco principal, Genero, Duracao, Pais, Nota media. "
+        f"Monte uma ficha tecnica objetiva do filme '{movie_title}' para chat Twitch. "
+        "Responda em no maximo 4 linhas, sem markdown, com alta densidade e sem enrolacao. "
+        "Formato obrigatorio: "
+        "1) Titulo | Ano | Pais. "
+        "2) Direcao | Genero | Duracao. "
+        "3) Elenco principal (ate 3 nomes). "
+        "4) Nota media | Premios-chave (ou N/D). "
         "Se nao houver confianca em algum dado, escreva N/D."
     )

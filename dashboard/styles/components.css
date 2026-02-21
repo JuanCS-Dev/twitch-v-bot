@@ -1,0 +1,323 @@
+/* components.css */
+
+/* Cards e Painéis */
+.card,
+.panel {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-4);
+    position: relative;
+    overflow: hidden;
+}
+
+.panel h2,
+.panel h3 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: var(--spacing-3);
+}
+
+.panel h2 {
+    font-size: 1.1rem;
+}
+
+.panel h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-top: var(--spacing-4);
+}
+
+.panel-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: var(--spacing-3);
+}
+
+.panel-hint code {
+    background-color: var(--bg-elevated);
+    padding: 0.1rem 0.3rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family-mono);
+}
+
+/* Card Específicos para KPI (com barra sutil na base via border) */
+.card h2 {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--spacing-1);
+}
+
+.metric {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.card.status-ok {
+    border-bottom: 3px solid var(--status-ok);
+}
+
+.card.status-warn {
+    border-bottom: 3px solid var(--status-warn);
+}
+
+.card.status-error {
+    border-bottom: 3px solid var(--status-error);
+}
+
+.card.status-info {
+    border-bottom: 3px solid var(--status-pending);
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: 0.5rem 1rem;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-med);
+    border: 1px solid transparent;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-primary {
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--color-accent-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-accent);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-elevated);
+    border-color: var(--text-muted);
+}
+
+.btn-danger {
+    background-color: rgba(255, 111, 143, 0.15);
+    color: var(--status-error);
+    border-color: rgba(255, 111, 143, 0.3);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: rgba(255, 111, 143, 0.25);
+    border-color: var(--status-error);
+}
+
+/* Chips / Badges */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+}
+
+.chip.ok {
+    color: var(--status-ok);
+    border-color: var(--status-ok);
+}
+
+.chip.warn {
+    color: var(--status-warn);
+    border-color: var(--status-warn);
+}
+
+.chip.error {
+    color: var(--status-error);
+    border-color: var(--status-error);
+}
+
+.chip.pending {
+    color: var(--status-pending);
+    border-color: var(--status-pending);
+}
+
+/* Inputs e Forms */
+.form-group {
+    margin-bottom: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--transition-fast);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+.form-row {
+    display: flex;
+    gap: var(--spacing-2);
+    align-items: flex-end;
+}
+
+/* Tabelas (para dados densos) */
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 400px;
+    font-size: 0.85rem;
+}
+
+th,
+td {
+    padding: var(--spacing-2) var(--spacing-3);
+    text-align: left;
+    border-bottom: 1px solid var(--border-default);
+}
+
+th {
+    background-color: var(--bg-elevated);
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background-color: var(--bg-elevated);
+}
+
+/* Listas Chave-Valor (KV) */
+.kv {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    margin: 0;
+}
+
+.kv div {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed var(--border-default);
+    padding-bottom: var(--spacing-1);
+}
+
+.kv dt {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.kv dd {
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin: 0;
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-all;
+    max-width: 60%;
+}
+
+/* Event List (Log Visual) */
+.events-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.events-list li {
+    padding: var(--spacing-3);
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.event-meta {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-1);
+    font-family: var(--font-family-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.event-level-info {
+    color: var(--status-ok);
+    font-weight: 600;
+}
+
+.event-level-warn {
+    color: var(--status-warn);
+    font-weight: 600;
+}
+
+.event-level-error {
+    color: var(--status-error);
+    font-weight: 600;
+}
+
+/* Bloco Temporário / Spinner */
+.loading-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-5);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-style: italic;
+    min-height: 100px;
+}

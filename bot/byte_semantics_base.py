@@ -9,6 +9,7 @@ from bot.byte_semantics_constants import (
     FOLLOW_UP_HINT_TERMS,
     HIGH_RISK_CURRENT_EVENTS_TERMS,
     MAX_CHAT_MESSAGE_LENGTH,
+    MULTIPART_SEPARATOR,
     MOVIE_FACT_SHEET_PATTERN,
     RELEVANCE_HINT_TERMS,
     SERIOUS_TECH_TERMS,
@@ -40,7 +41,11 @@ def normalize_text_for_scene(text: str, max_len: int = 120) -> str:
 
 
 def format_chat_reply(text: str) -> str:
-    return compact_message(enforce_reply_limits(text), max_len=MAX_CHAT_MESSAGE_LENGTH)
+    normalized = str(text or "").replace(MULTIPART_SEPARATOR, "\n")
+    return compact_message(
+        enforce_reply_limits(normalized),
+        max_len=MAX_CHAT_MESSAGE_LENGTH,
+    )
 
 
 def parse_byte_prompt(message_text: str) -> str | None:
