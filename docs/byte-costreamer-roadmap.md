@@ -570,3 +570,17 @@ Objetivo: Ler o "clima" do chat em tempo real para ajustar a vibe e disparar int
 **Gatilhos de Autonomia**:
 - **Anti-Tedio**: Se hype < 20% por 5min -> Byte puxa assunto.
 - **Anti-Confusao**: Se confusao > 70% -> Byte explica ou sugere ao streamer explicar.
+
+### Fase 9 - Live Recap Engine (Onboarding Automatico)
+
+Objetivo: Reter viewers novos explicando o contexto atual on-demand.
+
+**Trigger**:
+- **Explicito**: "O que ta rolando?", "Cheguei agora".
+- **Semantico**: Deteccao de intencao `request_context`.
+
+**Mecanismo**:
+- Consome `observability.recent_events` + `scene_context`.
+- LLM sintetiza narrativa dos ultimos 15min ("Estamos na try 5 do boss, chat ta rindo da build").
+
+**Valor**: Aumenta retencao e engajamento de novos viewers.
