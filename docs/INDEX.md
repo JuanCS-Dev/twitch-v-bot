@@ -6,7 +6,9 @@ This is the central entry point for Byte documentation.
 
 - Project entry point: [README](../README.md)
 - Product + architecture + operations: [DOCUMENTATION.md](DOCUMENTATION.md)
+- Co-streamer roadmap adaptado para arquitetura atual: [byte-costreamer-roadmap.md](byte-costreamer-roadmap.md)
 - Executable implementation plan (agent + dashboard parity): [IMPLEMENTATION_PLAN_EXECUTAVEL_PARIDADE_AGENT_DASHBOARD.md](IMPLEMENTATION_PLAN_EXECUTAVEL_PARIDADE_AGENT_DASHBOARD.md)
+- Executable implementation plan (dashboard cache + shortcuts + compact mode): [IMPLEMENTATION_PLAN_DASHBOARD_OPERACIONAL_CACHE_SHORTCUTS_COMPACT.md](IMPLEMENTATION_PLAN_DASHBOARD_OPERACIONAL_CACHE_SHORTCUTS_COMPACT.md)
 - Runtime dashboard and telemetry endpoints: [section 7.1](DOCUMENTATION.md#71-runtime-http-endpoints)
 
 ## Branding and Launch Assets
