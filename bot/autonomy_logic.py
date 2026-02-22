@@ -10,6 +10,7 @@ from bot.control_plane import (
     control_plane,
 )
 from bot.control_plane_constants import utc_iso
+from bot.hud_runtime import hud_runtime
 from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context
 from bot.observability import observability
 from bot.runtime_config import CHANNEL_ID, ENABLE_LIVE_CONTEXT_LEARNING, client
@@ -258,6 +259,8 @@ def _handle_generic_suggestion(
         outcome="queued",
         details=queued_item.get("id", ""),
     )
+    if risk == RISK_SUGGEST_STREAMER:
+        hud_runtime.push_message(text, source="autonomy")
     return {
         "goal_id": goal_id,
         "risk": risk,

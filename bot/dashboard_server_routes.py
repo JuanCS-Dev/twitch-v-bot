@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 from bot.clip_jobs_runtime import clip_jobs
 from bot.control_plane import control_plane
+from bot.hud_runtime import hud_runtime
 from bot.logic import BOT_BRAND, context
 from bot.observability import observability
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
@@ -125,6 +126,16 @@ def handle_get(handler: Any) -> None:
             },
             status_code=200,
         )
+        return
+
+    if route == "/api/hud/messages":
+        since_raw = str((query.get("since") or ["0"])[0] or "0")
+        try:
+            since = float(since_raw)
+        except ValueError:
+            since = 0.0
+        messages = hud_runtime.get_messages(since=since)
+        handler._send_json({"ok": True, "messages": messages}, status_code=200)
         return
 
     if _dashboard_asset_route(handler, route):
