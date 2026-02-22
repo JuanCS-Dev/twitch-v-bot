@@ -1,0 +1,96 @@
+<section class="grid-two" id="controlPlaneSection">
+  <article class="panel">
+    <h2>Control Plane</h2>
+    <p class="panel-hint">Paridade total de configuracao do agente. Ajustes aplicam em runtime sem redeploy.</p>
+
+    <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+      <span id="cpModeChip" class="chip pending">MODE</span>
+      <span id="cpResponseContract" class="chip">Contrato ativo: 1 mensagem / 4 linhas.</span>
+    </div>
+    <p id="cpCapabilitiesLine" class="panel-hint">Carregando capacidades...</p>
+
+    <div class="form-row" style="flex-wrap:wrap;">
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpAutonomyEnabled">Autonomia global</label>
+        <input id="cpAutonomyEnabled" type="checkbox" />
+      </div>
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpHeartbeatInterval">Heartbeat (s)</label>
+        <input id="cpHeartbeatInterval" class="form-control" type="number" min="15" max="3600" step="1" />
+      </div>
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpMinCooldown">Cooldown minimo (s)</label>
+        <input id="cpMinCooldown" class="form-control" type="number" min="15" max="3600" step="1" />
+      </div>
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpActionIgnoreAfter">Auto-ignore (s)</label>
+        <input id="cpActionIgnoreAfter" class="form-control" type="number" min="60" max="86400" step="1" />
+      </div>
+    </div>
+
+    <div class="form-row" style="flex-wrap:wrap;">
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpBudget10m">Budget 10m</label>
+        <input id="cpBudget10m" class="form-control" type="number" min="0" max="100" step="1" />
+      </div>
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpBudget60m">Budget 60m</label>
+        <input id="cpBudget60m" class="form-control" type="number" min="0" max="600" step="1" />
+      </div>
+      <div class="form-group" style="min-width:170px;">
+        <label for="cpBudgetDaily">Budget Diario</label>
+        <input id="cpBudgetDaily" class="form-control" type="number" min="0" max="5000" step="1" />
+      </div>
+    </div>
+
+    <div class="form-row" style="justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">Goals Scheduler</h3>
+      <button id="cpAddGoalBtn" class="btn btn-secondary" type="button">Add Goal</button>
+    </div>
+    <ul id="cpGoalsList" class="events-list" style="margin-top:var(--spacing-3);"></ul>
+
+    <div class="form-row" style="margin-top:var(--spacing-3);">
+      <button id="cpSaveBtn" class="btn btn-primary" type="button">Salvar Config</button>
+      <button id="cpReloadBtn" class="btn btn-secondary" type="button">Recarregar</button>
+    </div>
+    <p id="cpFeedbackMsg" class="panel-hint event-level-info">Aguardando configuracao...</p>
+  </article>
+
+  <article class="panel">
+    <h2>Autonomy Runtime</h2>
+    <p class="panel-hint">Heartbeat + agenda + budget anti-spam com visao operacional em tempo real.</p>
+
+    <dl class="kv">
+      <div><dt>Autonomia</dt><dd id="autEnabledState">-</dd></div>
+      <div><dt>Loop</dt><dd id="autLoopState">-</dd></div>
+      <div><dt>Last Heartbeat</dt><dd id="autLastHeartbeat">-</dd></div>
+      <div><dt>Last Tick</dt><dd id="autLastTick">-</dd></div>
+      <div><dt>Last Goal</dt><dd id="autLastGoal">-</dd></div>
+      <div><dt>Last Risk</dt><dd id="autLastRisk">-</dd></div>
+      <div><dt>Last Block Reason</dt><dd id="autLastBlockReason">-</dd></div>
+      <div><dt>Ticks Total</dt><dd id="autTicksTotal">0</dd></div>
+      <div><dt>Goal Runs Total</dt><dd id="autGoalRunsTotal">0</dd></div>
+      <div><dt>Budget Blocked Total</dt><dd id="autBudgetBlockedTotal">0</dd></div>
+      <div><dt>Dispatch Failures</dt><dd id="autDispatchFailuresTotal">0</dd></div>
+      <div><dt>Auto Chat Sent Total</dt><dd id="autAutoChatSentTotal">0</dd></div>
+      <div><dt>Budget Usage 10m</dt><dd id="autBudgetUsage10m">0 / 0</dd></div>
+      <div><dt>Budget Usage 60m</dt><dd id="autBudgetUsage60m">0 / 0</dd></div>
+      <div><dt>Budget Usage Daily</dt><dd id="autBudgetUsageDaily">0 / 0</dd></div>
+      <div><dt>Queue Pending</dt><dd id="autQueuePending">0</dd></div>
+      <div><dt>Queue Approved</dt><dd id="autQueueApproved">0</dd></div>
+      <div><dt>Queue Rejected</dt><dd id="autQueueRejected">0</dd></div>
+      <div><dt>Queue Ignored</dt><dd id="autQueueIgnored">0</dd></div>
+    </dl>
+
+    <div class="form-row" style="margin-top:var(--spacing-3);">
+      <div class="form-group" style="flex:1;">
+        <label for="autTickReasonInput">Manual Tick Reason</label>
+        <input id="autTickReasonInput" class="form-control" type="text" value="manual_dashboard" />
+      </div>
+      <div class="form-group">
+        <button id="autRunTickBtn" class="btn btn-primary" type="button">Run 1 Tick</button>
+      </div>
+    </div>
+    <p id="autTickFeedbackMsg" class="panel-hint event-level-info">Aguardando acao manual...</p>
+  </article>
+</section>

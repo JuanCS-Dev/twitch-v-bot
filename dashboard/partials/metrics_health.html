@@ -1,0 +1,82 @@
+<!-- KPI METRICS (SEM MOCKS LIXO) -->
+<section class="grid-cards" id="metricCards">
+  <article class="card status-info">
+    <h2>Messages (Bot Seen)</h2>
+    <p id="mChatMessages" class="metric">0</p>
+  </article>
+  <article class="card status-info">
+    <h2>Byte Triggers</h2>
+    <p id="mByteTriggers" class="metric">0</p>
+  </article>
+  <article class="card status-ok">
+    <h2>LLM Replies</h2>
+    <p id="mReplies" class="metric">0</p>
+  </article>
+  <article class="card status-info">
+    <h2>Active Users (10m)</h2>
+    <p id="mActiveChatters" class="metric">0</p>
+  </article>
+  <article class="card status-info">
+    <h2>Active Users (60m)</h2>
+    <p id="mActiveChatters60m" class="metric">0</p>
+  </article>
+  <article class="card status-warn">
+    <h2>P95 Latency</h2>
+    <p id="mP95Latency" class="metric">0 ms</p>
+  </article>
+</section>
+
+<!-- NOVA SESSÃO DE SAÚDE AGENT -->
+<section class="grid-cards" id="agentHealthCards">
+  <article class="card status-error">
+    <h2>Agent Errors</h2>
+    <p id="mErrors" class="metric">0</p>
+  </article>
+  <article class="card status-error">
+    <h2>API Auth Failures</h2>
+    <p id="healthAuthFailures" class="metric">0</p>
+  </article>
+  <article class="card status-warn">
+    <h2>LLM Fallbacks (Retry)</h2>
+    <p id="healthFallbackOrRetry" class="metric">0</p>
+  </article>
+  <article class="card status-info">
+    <h2>Token Refreshes</h2>
+    <p id="healthTokenRefreshes" class="metric">0</p>
+  </article>
+  <article class="card status-ok">
+    <h2>Total Quality Gates</h2>
+    <p id="healthTotalChecks" class="metric">0</p>
+  </article>
+  <article class="card status-ok">
+    <h2>Total Interactions</h2>
+    <p id="mInteractions" class="metric">0</p>
+  </article>
+</section>
+
+<section class="grid-cards" id="agentOutcomeCards">
+  <article class="card status-ok">
+    <h2>Useful Engagement (60m)</h2>
+    <p id="oUsefulEngagementRate" class="metric">0%</p>
+  </article>
+  <article class="card status-warn">
+    <h2>Ignored Rate (60m)</h2>
+    <p id="oIgnoredRate" class="metric">0%</p>
+  </article>
+  <article class="card status-info">
+    <h2>Correction Rate (60m)</h2>
+    <p id="oCorrectionRate" class="metric">0%</p>
+  </article>
+  <article class="card status-info">
+    <h2>Correction Trigger (60m)</h2>
+    <p id="oCorrectionTriggerRate" class="metric">0%</p>
+  </article>
+  <article class="card status-info">
+    <h2>Token In / Out (60m)</h2>
+    <p class="metric"><span id="oTokenInput60m">0</span> / <span id="oTokenOutput60m">0</span></p>
+  </article>
+  <article class="card status-warn">
+    <h2>Cost 60m / Total</h2>
+    <p class="metric"><span id="oEstimatedCost60m">$0.0000</span> / <span id="oEstimatedCostTotal">$0.0000</span></p>
+  </article>
+</section>
