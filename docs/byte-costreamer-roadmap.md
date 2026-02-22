@@ -546,3 +546,27 @@ Objetivo: Criar um canal privado de feedback tatico para o streamer, separado do
 - **Logica de Roteamento**: `RISK_SUGGEST_STREAMER` prioriza o HUD.
 
 **Valor**: Transforma o Byte de "chatbot" para "co-piloto ativo".
+
+### Fase 8 - Chat Sentiment Engine (Termometro da Sala)
+
+Objetivo: Ler o "clima" do chat em tempo real para ajustar a vibe e disparar intervencoes.
+
+**Arquitetura**:
+- **NLP Leve**: Analise local (sem LLM caro) de emotes e keywords (ex: `LUL`=funny, `F`=sad, `???`=confused).
+- **Rolling Window**: Score acumulado dos ultimos 60s.
+- **Dynamic Vibe**: `context.stream_vibe` atualizado automaticamente (ex: "Intenso", "Chill").
+
+**Gatilhos de Autonomia**:
+- **Anti-Tedio**: Se hype < 20
+### Fase 8 - Chat Sentiment Engine (Termometro da Sala)
+
+Objetivo: Ler o "clima" do chat em tempo real para ajustar a vibe e disparar intervencoes.
+
+**Arquitetura**:
+- **NLP Leve**: Analise local (sem LLM caro) de emotes e keywords (ex: LUL=funny, F=sad, ???=confused).
+- **Rolling Window**: Score acumulado dos ultimos 60s.
+- **Dynamic Vibe**: `context.stream_vibe` atualizado automaticamente (ex: "Intenso", "Chill").
+
+**Gatilhos de Autonomia**:
+- **Anti-Tedio**: Se hype < 20% por 5min -> Byte puxa assunto.
+- **Anti-Confusao**: Se confusao > 70% -> Byte explica ou sugere ao streamer explicar.
