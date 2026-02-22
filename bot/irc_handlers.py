@@ -17,6 +17,7 @@ from bot.observability import observability
 from bot.prompt_runtime import handle_byte_prompt_text
 from bot.runtime_config import ENABLE_LIVE_CONTEXT_LEARNING, logger
 from bot.scene_runtime import auto_update_scene_from_message
+from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import normalize_channel_login
 from bot.twitch_tokens import TwitchAuthError
 
@@ -127,10 +128,12 @@ class IrcLineHandlersMixin:
             observability.record_chat_message(
                 author_name=author.name, source="irc", text=text
             )
+            sentiment_engine.ingest_message(text)
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
             updates = await auto_update_scene_from_message(message)
+            context.stream_vibe = sentiment_engine.get_vibe()
         if updates:
             labels = ", ".join(
                 OBSERVABILITY_TYPES.get(content_type, content_type)
