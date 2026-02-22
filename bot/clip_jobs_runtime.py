@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, Optional
 from bot.control_plane import control_plane
 from bot.control_plane_constants import utc_iso
 from bot.runtime_config import CLIENT_ID
+from bot.clip_jobs_store import job_store
 from bot.twitch_clips_api import (
     TwitchClipAuthError,
     TwitchClipError,
@@ -30,6 +31,19 @@ class ClipJobsRuntime:
         self._token_provider: Optional[TokenProvider] = None
         self._loop_task: Optional[asyncio.Task[Any]] = None
         self._running = False
+        
+        # Hydrate from store
+        self._load_from_store()
+
+    def _load_from_store(self) -> None:
+        try:
+            active_jobs = job_store.load_active_jobs()
+            for job in active_jobs:
+                action_id = str(job.get("action_id"))
+                if action_id:
+                    self._jobs[action_id] = job
+        except Exception as e:
+            logger.error("Erro ao hidratar jobs do store: %s", e)
 
     def bind_token_provider(self, provider: TokenProvider) -> None:
         with self._lock:
@@ -106,6 +120,7 @@ class ClipJobsRuntime:
                     "poll_until": 0.0,
                 }
                 self._jobs[action_id] = job
+                job_store.save_job(job)
                 logger.info("Novo job de clip criado: %s", job["job_id"])
 
     async def _advance_jobs(self) -> None:
@@ -278,6 +293,9 @@ class ClipJobsRuntime:
             job = self._jobs[action_id]
             job.update(kwargs)
             job["updated_at"] = utc_iso(time.time())
+            
+            # Persist async-ish (fire and forget for now, store handles errors)
+            job_store.save_job(job)
 
 
 clip_jobs = ClipJobsRuntime()

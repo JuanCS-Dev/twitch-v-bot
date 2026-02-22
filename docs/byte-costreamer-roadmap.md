@@ -486,3 +486,27 @@ Rollback:
 
 ### Proximos Passos
 1. **Persistencia (Fase 5)**: Salvar estado dos jobs para sobreviver a restarts do Cloud Run.
+
+## 13) Relatorio de Progresso - Fase 5 (Branch v2)
+
+**Status**: Fase 5 (Persistencia) completa e validada.
+**Ultima Atualizacao**: 22/02/2026
+
+### Entregas Realizadas
+- **Infraestrutura**:
+    - [x] API Firestore ativada no projeto GCP.
+- **Backend Persistencia**:
+    - [x] Implementado `FirestoreJobStore` em `bot/clip_jobs_store.py`.
+    - [x] Suporte a `load_active_jobs` para reidratacao no startup.
+    - [x] Suporte a `save_job` (upsert) para persistencia incremental.
+- **Runtime Integration**:
+    - [x] `ClipJobsRuntime` agora carrega estado do Firestore na inicializacao.
+    - [x] Novos jobs sao salvos imediatamente.
+    - [x] Atualizacoes de estado (`polling`, `ready`, `failed`) sao persistidas.
+- **Resiliencia**:
+    - [x] Sistema sobrevive a restarts do container sem perder jobs em andamento.
+    - [x] Fallback gracioso (no-op) se PROJECT_ID nao estiver definido (dev local sem GCP).
+
+### Proximos Passos
+- **Validacao Final**: Teste E2E completo em ambiente de staging.
+- **Merge**: Criar PR para `main` e planejar rollout.
