@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Any, Awaitable, Callable, Optional
 
-from bot.control_plane import RISK_CLIP_CANDIDATE, control_plane
+from bot.control_plane import control_plane
 from bot.control_plane_constants import utc_iso
 from bot.runtime_config import CLIENT_ID
 from bot.twitch_clips_api import (

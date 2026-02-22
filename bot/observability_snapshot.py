@@ -1,14 +1,20 @@
-from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 from bot.observability_helpers import (
-    LEADERBOARD_LIMIT,
     TIMELINE_WINDOW_MINUTES,
     clip_preview,
     compute_p95,
-    percentage,
     utc_iso,
 )
+from bot.observability_analytics import (
+    compute_chat_metrics,
+    compute_interaction_metrics,
+    compute_quality_metrics,
+    compute_token_metrics,
+    compute_autonomy_metrics,
+    compute_leaderboards,
+)
+
 def build_observability_snapshot(
     *,
     now: float,
@@ -37,134 +43,47 @@ def build_observability_snapshot(
     bot_mode: str,
     stream_context: Any,
 ) -> dict[str, Any]:
+    # Active users
     active_chatters_10m = sum(1 for value in chatter_last_seen.values() if now - value <= 600)
     active_chatters_60m = sum(1 for value in chatter_last_seen.values() if now - value <= 3600)
+    
+    # Latency
     avg_latency_ms = round(sum(latencies_ms) / len(latencies_ms), 1) if latencies_ms else 0.0
     p95_latency_ms = compute_p95(latencies_ms)
-    chat_10m_cutoff = now - 600
-    chat_60m_cutoff = now - 3600
-    chat_events_10m = [event for event in chat_events if float(event.get("ts", 0.0)) >= chat_10m_cutoff]
-    chat_events_60m = [event for event in chat_events if float(event.get("ts", 0.0)) >= chat_60m_cutoff]
-    chat_count_10m = len(chat_events_10m)
-    chat_count_60m = len(chat_events_60m)
-    command_count_60m = sum(1 for event in chat_events_60m if bool(event.get("is_command", False)))
-    url_count_60m = sum(1 for event in chat_events_60m if bool(event.get("has_url", False)))
-    average_length_10m = round(
-        sum(int(event.get("length", 0)) for event in chat_events_10m) / chat_count_10m,
-        1,
-    ) if chat_count_10m else 0.0
-    average_length_60m = round(
-        sum(int(event.get("length", 0)) for event in chat_events_60m) / chat_count_60m,
-        1,
-    ) if chat_count_60m else 0.0
-    source_counts_60m: Counter[str] = Counter()
-    chatter_counts_60m: Counter[str] = Counter()
-    for event in chat_events_60m:
-        source_name = str(event.get("source", "unknown") or "unknown")
-        source_counts_60m[source_name] += 1
-        author_name = str(event.get("author", "") or "").strip().lower()
-        if author_name:
-            chatter_counts_60m[author_name] += 1
-    trigger_events_10m = [event for event in byte_trigger_events if float(event.get("ts", 0.0)) >= chat_10m_cutoff]
-    trigger_events_60m = [event for event in byte_trigger_events if float(event.get("ts", 0.0)) >= chat_60m_cutoff]
-    trigger_users_60m: Counter[str] = Counter()
-    for event in trigger_events_60m:
-        author_name = str(event.get("author", "") or "").strip().lower()
-        if author_name:
-            trigger_users_60m[author_name] += 1
-    interaction_events_60m = [
-        event
-        for event in interaction_events
-        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
-    ]
-    llm_interactions_60m = sum(
-        1 for event in interaction_events_60m if bool(event.get("is_llm", False))
+    
+    # Analytics
+    chat_metrics = compute_chat_metrics(chat_events, now)
+    interaction_metrics = compute_interaction_metrics(interaction_events, now)
+    quality_metrics = compute_quality_metrics(
+        quality_events, 
+        interaction_metrics["llm_interactions_60m"], 
+        now
     )
-    useful_llm_interactions_60m = sum(
-        1 for event in interaction_events_60m if bool(event.get("is_useful_llm", False))
+    token_metrics = compute_token_metrics(token_usage_events, now)
+    autonomy_metrics = compute_autonomy_metrics(autonomy_goal_events, now)
+    
+    # Leaderboards
+    # Need byte_trigger_events filtered for 60m first
+    cutoff_60m = now - 3600
+    trigger_events_60m = [e for e in byte_trigger_events if float(e.get("ts", 0.0)) >= cutoff_60m]
+    
+    leaderboards = compute_leaderboards(
+        chat_metrics.pop("events_60m"), # Pop to remove from result dict
+        trigger_events_60m,
+        chatter_message_totals,
+        trigger_user_totals,
     )
-    useful_engagement_rate_60m = percentage(
-        useful_llm_interactions_60m,
-        llm_interactions_60m,
-    )
+    
+    source_counts = leaderboards.pop("source_counts_60m")
+    chat_metrics["source_counts_60m"] = {
+        "irc": int(source_counts.get("irc", 0)),
+        "eventsub": int(source_counts.get("eventsub", 0)),
+        "unknown": int(source_counts.get("unknown", 0)),
+    }
+    chat_metrics["byte_triggers_10m"] = len([e for e in byte_trigger_events if float(e.get("ts", 0.0)) >= now - 600])
+    chat_metrics["byte_triggers_60m"] = len(trigger_events_60m)
 
-    quality_events_60m = [
-        event
-        for event in quality_events
-        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
-    ]
-    quality_retry_60m = sum(
-        1
-        for event in quality_events_60m
-        if str(event.get("outcome", "") or "").strip().lower() == "retry"
-    )
-    quality_retry_success_60m = sum(
-        1
-        for event in quality_events_60m
-        if str(event.get("outcome", "") or "").strip().lower() == "retry_success"
-    )
-    quality_fallback_60m = sum(
-        1
-        for event in quality_events_60m
-        if str(event.get("outcome", "") or "").strip().lower() == "fallback"
-    )
-    correction_rate_60m = percentage(
-        quality_retry_success_60m,
-        quality_retry_60m,
-    )
-    correction_trigger_rate_60m = percentage(
-        quality_retry_60m,
-        llm_interactions_60m,
-    )
-
-    token_usage_events_60m = [
-        event
-        for event in token_usage_events
-        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
-    ]
-    token_input_60m = sum(
-        max(0, int(event.get("input_tokens", 0) or 0))
-        for event in token_usage_events_60m
-    )
-    token_output_60m = sum(
-        max(0, int(event.get("output_tokens", 0) or 0))
-        for event in token_usage_events_60m
-    )
-    estimated_cost_usd_60m = sum(
-        max(0.0, float(event.get("estimated_cost_usd", 0.0) or 0.0))
-        for event in token_usage_events_60m
-    )
-
-    autonomy_goal_events_60m = [
-        event
-        for event in autonomy_goal_events
-        if float(event.get("ts", 0.0)) >= chat_60m_cutoff
-    ]
-    autonomy_goals_60m = len(autonomy_goal_events_60m)
-    autonomy_ignored_60m = sum(
-        1
-        for event in autonomy_goal_events_60m
-        if str(event.get("outcome", "") or "").strip().lower() == "ignored"
-    )
-    autonomy_ignored_rate_60m = percentage(autonomy_ignored_60m, autonomy_goals_60m)
-
-    top_chatters_60m_rows = [
-        {"author": author, "messages": count}
-        for author, count in chatter_counts_60m.most_common(LEADERBOARD_LIMIT)
-    ]
-    top_chatters_total_rows = [
-        {"author": author, "messages": count}
-        for author, count in Counter(chatter_message_totals).most_common(LEADERBOARD_LIMIT)
-    ]
-    top_trigger_users_60m_rows = [
-        {"author": author, "triggers": count}
-        for author, count in trigger_users_60m.most_common(LEADERBOARD_LIMIT)
-    ]
-    top_trigger_users_total_rows = [
-        {"author": author, "triggers": count}
-        for author, count in Counter(trigger_user_totals).most_common(LEADERBOARD_LIMIT)
-    ]
-
+    # Context
     context_vibe = str(getattr(stream_context, "stream_vibe", "Conversa") or "Conversa")
     context_last_event = str(getattr(stream_context, "last_event", "Bot Online") or "Bot Online")
     raw_observability = getattr(stream_context, "live_observability", {}) or {}
@@ -181,6 +100,7 @@ def build_observability_snapshot(
     else:
         uptime_minutes = max(0, int((now - started_at) / 60))
 
+    # Timeline
     now_minute = int(now // 60)
     timeline = []
     for minute_key in range(now_minute - TIMELINE_WINDOW_MINUTES + 1, now_minute + 1):
@@ -242,49 +162,16 @@ def build_observability_snapshot(
             "active_10m": active_chatters_10m,
             "active_60m": active_chatters_60m,
         },
-        "chat_analytics": {
-            "messages_10m": chat_count_10m,
-            "messages_60m": chat_count_60m,
-            "messages_per_minute_10m": round(chat_count_10m / 10, 2),
-            "messages_per_minute_60m": round(chat_count_60m / 60, 2),
-            "avg_message_length_10m": average_length_10m,
-            "avg_message_length_60m": average_length_60m,
-            "prefixed_commands_60m": command_count_60m,
-            "prefixed_command_ratio_60m": percentage(command_count_60m, chat_count_60m),
-            "url_messages_60m": url_count_60m,
-            "url_ratio_60m": percentage(url_count_60m, chat_count_60m),
-            "source_counts_60m": {
-                "irc": int(source_counts_60m.get("irc", 0)),
-                "eventsub": int(source_counts_60m.get("eventsub", 0)),
-                "unknown": int(source_counts_60m.get("unknown", 0)),
-            },
-            "byte_triggers_10m": len(trigger_events_10m),
-            "byte_triggers_60m": len(trigger_events_60m),
-        },
-        "leaderboards": {
-            "top_chatters_60m": top_chatters_60m_rows,
-            "top_chatters_total": top_chatters_total_rows,
-            "top_trigger_users_60m": top_trigger_users_60m_rows,
-            "top_trigger_users_total": top_trigger_users_total_rows,
-        },
+        "chat_analytics": chat_metrics,
+        "leaderboards": leaderboards,
         "agent_outcomes": {
-            "llm_interactions_60m": int(llm_interactions_60m),
-            "useful_llm_interactions_60m": int(useful_llm_interactions_60m),
-            "useful_engagement_rate_60m": useful_engagement_rate_60m,
-            "quality_retry_60m": int(quality_retry_60m),
-            "quality_retry_success_60m": int(quality_retry_success_60m),
-            "quality_fallback_60m": int(quality_fallback_60m),
-            "correction_rate_60m": correction_rate_60m,
-            "correction_trigger_rate_60m": correction_trigger_rate_60m,
-            "autonomy_goals_60m": int(autonomy_goals_60m),
-            "ignored_total_60m": int(autonomy_ignored_60m),
-            "ignored_rate_60m": autonomy_ignored_rate_60m,
+            **interaction_metrics,
+            **quality_metrics,
+            **autonomy_metrics,
             "token_input_total": int(counters.get("token_input_total", 0)),
             "token_output_total": int(counters.get("token_output_total", 0)),
-            "token_input_60m": int(token_input_60m),
-            "token_output_60m": int(token_output_60m),
+            **token_metrics,
             "estimated_cost_usd_total": round(max(0.0, float(estimated_cost_usd_total or 0.0)), 6),
-            "estimated_cost_usd_60m": round(max(0.0, float(estimated_cost_usd_60m)), 6),
         },
         "context": {
             "stream_vibe": context_vibe,

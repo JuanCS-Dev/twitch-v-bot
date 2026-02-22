@@ -54,7 +54,6 @@ class ObservabilityState:
         }
 
     def update_clips_auth_status(self, *, token_valid: bool, scope_ok: bool, timestamp: float | None = None) -> None:
-        now = resolve_now(timestamp)
         with self._lock:
             self._clips_status["token_valid"] = bool(token_valid)
             self._clips_status["scope_ok"] = bool(scope_ok)

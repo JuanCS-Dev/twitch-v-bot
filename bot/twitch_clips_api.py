@@ -6,8 +6,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from bot.control_plane_constants import utc_iso
-
 logger = logging.getLogger("byte.clips.api")
 
 HELIX_BASE = "https://api.twitch.tv/helix"
