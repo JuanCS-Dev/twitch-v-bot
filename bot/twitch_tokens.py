@@ -191,3 +191,26 @@ class TwitchTokenManager:
             self._set_expiration(validation.get("expires_in"))
             self.validated_once = True
         return validation
+
+    async def validate_clips_auth(self) -> tuple[bool, bool]:
+        """
+        Valida token especificamente para clips:edit.
+        Retorna (token_valid, scope_ok).
+        Registra metricas extras na observability se configurado.
+        """
+        validation = await self.validate_now()
+        token_valid = (validation is not None)
+        scope_ok = False
+        if token_valid:
+            scopes = validation.get("scopes", [])
+            if isinstance(scopes, list):
+                scope_ok = "clips:edit" in scopes
+            elif isinstance(scopes, str):
+                scope_ok = "clips:edit" in scopes.split()
+                
+        if self.observability and hasattr(self.observability, "update_clips_auth_status"):
+            self.observability.update_clips_auth_status(
+                token_valid=token_valid,
+                scope_ok=scope_ok
+            )
+        return token_valid, scope_ok

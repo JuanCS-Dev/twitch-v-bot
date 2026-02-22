@@ -58,7 +58,6 @@ class TestBotLogic(unittest.TestCase):
 
     @patch('asyncio.to_thread')
     def test_agent_inference_success(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
         
@@ -66,7 +65,7 @@ class TestBotLogic(unittest.TestCase):
         mock_resp.text = "Olá!"
         mock_thread.return_value = mock_resp
         
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, "Olá!")
 
     def test_extract_response_text_from_parts(self):
@@ -106,7 +105,6 @@ class TestBotLogic(unittest.TestCase):
 
     @patch("asyncio.to_thread")
     def test_agent_inference_with_metadata(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
         mock_resp = SimpleNamespace(
@@ -123,7 +121,7 @@ class TestBotLogic(unittest.TestCase):
         )
         mock_thread.return_value = mock_resp
 
-        answer, metadata = loop.run_until_complete(
+        answer, metadata = asyncio.run(
             agent_inference("Oi", "Juan", client, context, return_metadata=True)
         )
         self.assertEqual(answer, "Resposta com grounding")
@@ -133,18 +131,16 @@ class TestBotLogic(unittest.TestCase):
 
     @patch('asyncio.to_thread')
     def test_agent_inference_failure(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
         
         mock_thread.side_effect = Exception("Error")
         
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertIn("Conexao com o modelo instavel", res)
 
     @patch('asyncio.to_thread')
     def test_agent_inference_retries_without_grounding(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
 
@@ -152,26 +148,24 @@ class TestBotLogic(unittest.TestCase):
         nongrounded_text = SimpleNamespace(text="Resposta sem grounding", candidates=[])
         mock_thread.side_effect = [grounded_empty, nongrounded_text]
 
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, "Resposta sem grounding")
         self.assertEqual(mock_thread.call_count, 2)
 
     @patch('asyncio.to_thread')
     def test_agent_inference_empty_after_retries(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
 
         empty_response = SimpleNamespace(text=None, candidates=[])
         mock_thread.side_effect = [empty_response, empty_response]
 
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, EMPTY_RESPONSE_FALLBACK)
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     @patch("asyncio.to_thread")
     def test_agent_inference_retries_on_429_then_succeeds(self, mock_thread, mock_sleep):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
 
@@ -183,33 +177,31 @@ class TestBotLogic(unittest.TestCase):
 
         mock_sleep.side_effect = fake_sleep
 
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, "Resposta apos retry 429")
         self.assertEqual(mock_thread.call_count, 2)
         mock_sleep.assert_called_once()
 
     @patch("asyncio.to_thread")
     def test_agent_inference_timeout_with_grounding_falls_back_to_non_grounding(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
 
         nongrounded_text = SimpleNamespace(text="Resposta apos timeout no grounding", candidates=[])
         mock_thread.side_effect = [TimeoutError("timed out"), nongrounded_text]
 
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context))
         self.assertEqual(res, "Resposta apos timeout no grounding")
         self.assertEqual(mock_thread.call_count, 2)
 
     @patch("asyncio.to_thread")
     def test_agent_inference_timeout_without_grounding_returns_unstable_fallback(self, mock_thread):
-        loop = asyncio.get_event_loop()
         client = MagicMock()
         context = StreamContext()
 
         mock_thread.side_effect = TimeoutError("timed out")
 
-        res = loop.run_until_complete(agent_inference("Oi", "Juan", client, context, enable_grounding=False))
+        res = asyncio.run(agent_inference("Oi", "Juan", client, context, enable_grounding=False))
         self.assertIn("Conexao com o modelo instavel", res)
         self.assertEqual(mock_thread.call_count, 1)
 
@@ -245,8 +237,7 @@ class TestBotLogic(unittest.TestCase):
         self.assertLessEqual(len(limited.splitlines()), MAX_REPLY_LINES)
 
     def test_agent_inference_empty(self):
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(agent_inference("", "Juan", None, None))
+        res = asyncio.run(agent_inference("", "Juan", None, None))
         self.assertEqual(res, "")
 
     def test_rate_limit_error_detector(self):

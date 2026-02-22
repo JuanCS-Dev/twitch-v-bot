@@ -199,6 +199,7 @@ async def get_clip_download_url(
     token: str,
     client_id: str,
     broadcaster_id: str,
+    editor_id: str,
 ) -> str | None:
     """
     Busca URL de download via GET /helix/clips/downloads.
@@ -212,6 +213,7 @@ async def get_clip_download_url(
         token=token,
         client_id=client_id,
         broadcaster_id=broadcaster_id,
+        editor_id=editor_id,
     )
 
 
@@ -266,13 +268,14 @@ def _get_clip_download_url_sync(
     token: str,
     client_id: str,
     broadcaster_id: str,
+    editor_id: str,
 ) -> str | None:
     """
     GET /helix/clips/downloads — retorna landscape_download_url.
     A API nao tem campo 'download_url' generico; usa landscape_download_url.
     portrait_download_url pode ser None mesmo quando landscape esta disponivel.
     """
-    params = {"id": clip_id, "broadcaster_id": broadcaster_id}
+    params = {"id": clip_id, "broadcaster_id": broadcaster_id, "editor_id": editor_id}
     url = f"{HELIX_BASE}/clips/downloads?{urlencode(params)}"
     request = Request(url, method="GET")
     request.add_header("Authorization", f"Bearer {token}")

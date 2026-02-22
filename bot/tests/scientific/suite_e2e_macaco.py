@@ -391,7 +391,7 @@ class ScientificMacacoModeTestsMixin:
         self: ScientificTestCase, mock_inference: AsyncMock
     ) -> None:
         from bot.recap_engine import generate_recap
-        from bot.sentiment_engine import SentimentEngine, sentiment_engine
+        from bot.sentiment_engine import sentiment_engine
 
         # Ingest some messages to build vibe
         for _ in range(5):

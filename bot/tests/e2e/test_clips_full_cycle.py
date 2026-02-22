@@ -1,13 +1,11 @@
 import asyncio
 import unittest
-import time
 from unittest.mock import MagicMock, patch
 
 from bot.autonomy_logic import process_autonomy_goal
 from bot.clip_jobs_runtime import ClipJobsRuntime
 from bot.clip_jobs_store import FirestoreJobStore
 from bot.control_plane import control_plane, RISK_CLIP_CANDIDATE
-from bot.twitch_clips_api import TwitchClipRateLimitError, TwitchClipAuthError
 
 class TestE2EClipsPipeline(unittest.TestCase):
     """

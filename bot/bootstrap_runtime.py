@@ -136,15 +136,7 @@ def run_irc_mode() -> None:
             from bot.control_plane import control_plane
 
             try:
-                validation = await token_manager.validate_now()
-                if not validation:
-                    observability.update_clips_auth_status(token_valid=False, scope_ok=False)
-                    return
-
-                scopes = set(validation.get("scopes", []))
-                has_clips_edit = "clips:edit" in scopes
-
-                observability.update_clips_auth_status(token_valid=True, scope_ok=has_clips_edit)
+                token_valid, has_clips_edit = await token_manager.validate_clips_auth()
 
                 config = control_plane.get_config()
                 if config.get("clip_pipeline_enabled") and not has_clips_edit:

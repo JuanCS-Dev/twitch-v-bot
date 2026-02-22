@@ -140,7 +140,7 @@ class VisionRuntime:
         control_plane.enqueue_action(
             kind="clip_candidate",
             risk=RISK_CLIP_CANDIDATE,
-            title=f"Visual Clip Trigger",
+            title="Visual Clip Trigger",
             body=analysis,
             payload=candidate_payload,
             created_by="vision",

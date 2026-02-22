@@ -1,10 +1,8 @@
 import logging
 import threading
-import time
 from typing import Any, List, Optional
 
 from google.cloud import firestore
-from bot.control_plane_constants import utc_iso
 from bot.runtime_config import PROJECT_ID
 
 logger = logging.getLogger("byte.clips.store")

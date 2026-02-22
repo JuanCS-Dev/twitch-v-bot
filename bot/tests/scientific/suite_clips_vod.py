@@ -25,6 +25,7 @@ class TestTwitchClipsApiVod(unittest.TestCase):
         with patch("bot.twitch_clips_api.urlopen", return_value=mock_ctx):
             result = asyncio.run(create_clip_from_vod(
                 broadcaster_id="123",
+                editor_id="456",
                 vod_id="999",
                 vod_offset=100,
                 duration=30,
@@ -37,6 +38,7 @@ class TestTwitchClipsApiVod(unittest.TestCase):
         with self.assertRaises(ValueError):
             asyncio.run(create_clip_from_vod(
                 broadcaster_id="123",
+                editor_id="456",
                 vod_id="999",
                 vod_offset=10, # Less than duration
                 duration=30,
@@ -46,13 +48,14 @@ class TestTwitchClipsApiVod(unittest.TestCase):
 
     def test_get_download_url_success(self):
         mock_ctx = self._mock_urlopen(200, {
-            "data": [{"id": "Clip1", "download_url": "http://dl.mp4"}]
+            "data": [{"id": "Clip1", "landscape_download_url": "http://dl.mp4"}]
         })
         
         with patch("bot.twitch_clips_api.urlopen", return_value=mock_ctx):
             url = asyncio.run(get_clip_download_url(
                 clip_id="Clip1",
                 broadcaster_id="123",
+                editor_id="456",
                 token="token",
                 client_id="client",
             ))
@@ -71,6 +74,7 @@ class TestTwitchClipsApiVod(unittest.TestCase):
                 asyncio.run(get_clip_download_url(
                     clip_id="Clip1",
                     broadcaster_id="123",
+                    editor_id="456",
                     token="token",
                     client_id="client",
                 ))

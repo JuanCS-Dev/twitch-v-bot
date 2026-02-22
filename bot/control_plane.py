@@ -147,6 +147,11 @@ class ControlPlaneState:
                 "max_messages": 1,
                 "max_lines": 4,
             },
+            "clip_pipeline": {
+                "enabled": config.get("clip_pipeline_enabled", False),
+                "modes": ["live", "vod"],
+                "default_mode": config.get("clip_mode_default", "live"),
+            },
         }
 
     def runtime_snapshot(self, *, timestamp: float | None = None) -> dict[str, Any]:

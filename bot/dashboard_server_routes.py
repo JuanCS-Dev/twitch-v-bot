@@ -197,7 +197,7 @@ def handle_put(handler: Any) -> None:
     )
 
 
-from bot.dashboard_server_routes_post import handle_post  # noqa: F401
+from bot.dashboard_server_routes_post import handle_post  # noqa: E402, F401
 
 __all__ = [
     "build_observability_payload",
