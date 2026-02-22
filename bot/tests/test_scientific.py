@@ -5,6 +5,7 @@ from bot.tests.scientific.suite_current_events_normalizer import (
 )
 from bot.tests.scientific.suite_http import ScientificHttpTestsMixin
 from bot.tests.scientific.suite_hud import ScientificHudTestsMixin
+from bot.tests.scientific.suite_e2e_macaco import ScientificMacacoModeTestsMixin
 from bot.tests.scientific.suite_irc_control import ScientificIrcControlTestsMixin
 from bot.tests.scientific.suite_prompt_core import ScientificPromptCoreTestsMixin
 from bot.tests.scientific.suite_prompt_runtime_flow import (
@@ -24,6 +25,7 @@ from bot.tests.scientific_shared import ScientificTestCase
 class TestBotProduction90Plus(
     ScientificHttpTestsMixin,
     ScientificHudTestsMixin,
+    ScientificMacacoModeTestsMixin,
     ScientificPromptCoreTestsMixin,
     ScientificQualityDetectionTestsMixin,
     ScientificCurrentEventsNormalizerTestsMixin,

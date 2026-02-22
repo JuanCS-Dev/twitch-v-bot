@@ -96,7 +96,7 @@ class ClipJobsRuntime:
                     continue
                 
                 now = time.time()
-                payload = item.get("payload", {})
+                payload = item.get("payload") or {}
                 job = {
                     "job_id": f"job_{action_id}",
                     "action_id": action_id,
