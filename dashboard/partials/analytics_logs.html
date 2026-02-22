@@ -2,19 +2,59 @@
   <article class="panel">
     <h2>Agent Context & Internals</h2>
     <dl class="kv">
-      <div><dt>Core Mode</dt><dd id="ctxMode">-</dd></div>
-      <div><dt>Bot Uptime</dt><dd id="ctxUptime">-</dd></div>
-      <div><dt>Stream Vibe Meta</dt><dd id="ctxVibe">-</dd></div>
-      <div><dt>Last Event</dt><dd id="ctxLastEvent">-</dd></div>
-      <div><dt>Active Thread Contexts</dt><dd id="ctxActiveContexts">0</dd></div>
-      <div><dt>Unique Chatters Observed</dt><dd id="ctxUniqueChatters">0</dd></div>
-      <div><dt>Last AI Prompt</dt><dd id="ctxLastPrompt">-</dd></div>
-      <div><dt>Last AI Reply</dt><dd id="ctxLastReply">-</dd></div>
+      <div>
+        <dt>Core Mode</dt>
+        <dd id="ctxMode">-</dd>
+      </div>
+      <div>
+        <dt>Bot Uptime</dt>
+        <dd id="ctxUptime">-</dd>
+      </div>
+      <div>
+        <dt>Stream Vibe Meta</dt>
+        <dd id="ctxVibe">-</dd>
+      </div>
+      <div>
+        <dt>Last Event</dt>
+        <dd id="ctxLastEvent">-</dd>
+      </div>
+      <div>
+        <dt>Active Thread Contexts</dt>
+        <dd id="ctxActiveContexts">0</dd>
+      </div>
+      <div>
+        <dt>Unique Chatters Observed</dt>
+        <dd id="ctxUniqueChatters">0</dd>
+      </div>
+      <div>
+        <dt>Last AI Prompt</dt>
+        <dd id="ctxLastPrompt">-</dd>
+      </div>
+      <div>
+        <dt>Last AI Reply</dt>
+        <dd id="ctxLastReply">-</dd>
+      </div>
+      <div>
+        <dt>Sentiment Vibe</dt>
+        <dd id="ctxSentimentVibe">-</dd>
+      </div>
+      <div>
+        <dt>Sentiment Score</dt>
+        <dd id="ctxSentimentAvg">0.00</dd>
+      </div>
+      <div>
+        <dt>Vision Frames</dt>
+        <dd id="ctxVisionFrames">0</dd>
+      </div>
+      <div>
+        <dt>Vision Last</dt>
+        <dd id="ctxVisionLast">-</dd>
+      </div>
     </dl>
     <h3>Memória Curta/Temporária</h3>
     <ul id="contextItems" class="context-list"></ul>
   </article>
-  
+
   <article class="panel">
     <h2>Timeline Logs Realtime (Last 30 min)</h2>
     <div class="table-wrap">
@@ -44,17 +84,44 @@
   <article class="panel">
     <h2>Deep Analytics (60m)</h2>
     <dl class="kv">
-      <div><dt>Traffic Velocity (10/60m)</dt><dd><span id="aMpm10m">0</span> / <span id="aMpm60m">0</span> mpm</dd></div>
-      <div><dt>Total Churn (10/60m)</dt><dd><span id="aMessages10m">0</span> / <span id="aMessages60m">0</span> msgs</dd></div>
-      <div><dt>Payload Avg Len (10/60m)</dt><dd><span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char</dd></div>
-      <div><dt>Commands Triggered</dt><dd><span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span>)</dd></div>
-      <div><dt>Network Links Detected</dt><dd><span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)</dd></div>
-      <div><dt>Route IRC</dt><dd id="aSourceIrc60m">0</dd></div>
-      <div><dt>Route EventSub</dt><dd id="aSourceEventsub60m">0</dd></div>
-      <div><dt>Route Anomalous</dt><dd id="aSourceUnknown60m">0</dd></div>
-      <div><dt>Byte Invokations (10/60m)</dt><dd><span id="aByteTriggers10m">0</span> / <span id="aByteTriggers60m">0</span> </dd></div>
+      <div>
+        <dt>Traffic Velocity (10/60m)</dt>
+        <dd><span id="aMpm10m">0</span> / <span id="aMpm60m">0</span> mpm</dd>
+      </div>
+      <div>
+        <dt>Total Churn (10/60m)</dt>
+        <dd><span id="aMessages10m">0</span> / <span id="aMessages60m">0</span> msgs</dd>
+      </div>
+      <div>
+        <dt>Payload Avg Len (10/60m)</dt>
+        <dd><span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char</dd>
+      </div>
+      <div>
+        <dt>Commands Triggered</dt>
+        <dd><span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span>)</dd>
+      </div>
+      <div>
+        <dt>Network Links Detected</dt>
+        <dd><span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)</dd>
+      </div>
+      <div>
+        <dt>Route IRC</dt>
+        <dd id="aSourceIrc60m">0</dd>
+      </div>
+      <div>
+        <dt>Route EventSub</dt>
+        <dd id="aSourceEventsub60m">0</dd>
+      </div>
+      <div>
+        <dt>Route Anomalous</dt>
+        <dd id="aSourceUnknown60m">0</dd>
+      </div>
+      <div>
+        <dt>Byte Invokations (10/60m)</dt>
+        <dd><span id="aByteTriggers10m">0</span> / <span id="aByteTriggers60m">0</span> </dd>
+      </div>
     </dl>
-    
+
     <h3 style="margin-top:1.5rem;">API Rotas Truncadas</h3>
     <div class="table-wrap">
       <table>
@@ -75,7 +142,12 @@
     <h3>Top Chatters (60m)</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>UID</th><th>Count</th></tr></thead>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Count</th>
+          </tr>
+        </thead>
         <tbody id="topChatters60mBody"></tbody>
       </table>
     </div>
@@ -84,7 +156,12 @@
     <h3>Top Triggers (60m)</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Actor</th><th>Procs</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Actor</th>
+            <th>Procs</th>
+          </tr>
+        </thead>
         <tbody id="topTriggers60mBody"></tbody>
       </table>
     </div>
@@ -93,7 +170,12 @@
     <h3>Lifetime Chatters</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>UID</th><th>Count</th></tr></thead>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Count</th>
+          </tr>
+        </thead>
         <tbody id="topChattersTotalBody"></tbody>
       </table>
     </div>

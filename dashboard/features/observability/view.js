@@ -66,7 +66,26 @@ export function getObservabilityElements() {
         oTokenInput60m: document.getElementById("oTokenInput60m"),
         oTokenOutput60m: document.getElementById("oTokenOutput60m"),
         oEstimatedCost60m: document.getElementById("oEstimatedCost60m"),
-        oEstimatedCostTotal: document.getElementById("oEstimatedCostTotal")
+        oEstimatedCostTotal: document.getElementById("oEstimatedCostTotal"),
+
+        // Sentiment & Vision (Fases 6-8)
+        mVisionFrames: document.getElementById("mVisionFrames"),
+        mSentimentVibe: document.getElementById("mSentimentVibe"),
+        mSentimentAvg: document.getElementById("mSentimentAvg"),
+        ctxSentimentVibe: document.getElementById("ctxSentimentVibe"),
+        ctxSentimentAvg: document.getElementById("ctxSentimentAvg"),
+        ctxVisionFrames: document.getElementById("ctxVisionFrames"),
+        ctxVisionLast: document.getElementById("ctxVisionLast"),
+
+        // Intelligence Overview Panel
+        intVisionStatus: document.getElementById("intVisionStatus"),
+        intVisionFramesTotal: document.getElementById("intVisionFramesTotal"),
+        intVisionLastAnalysis: document.getElementById("intVisionLastAnalysis"),
+        intSentimentVibe: document.getElementById("intSentimentVibe"),
+        intSentimentAvg: document.getElementById("intSentimentAvg"),
+        intSentimentCount: document.getElementById("intSentimentCount"),
+        intSentimentPositive: document.getElementById("intSentimentPositive"),
+        intSentimentNegative: document.getElementById("intSentimentNegative"),
     };
 }
 
@@ -262,6 +281,27 @@ export function renderObservabilitySnapshot(data, els) {
     renderLeaderboard(els.topChattersTotalBody, leaderboards.top_chatters_total, "messages");
     renderContextItems(context.items || {}, els.contextItems);
     renderEvents(safeData.recent_events || [], els.eventsList);
+
+    // Sentiment & Vision (Fases 6-8)
+    const sentiment = safeData.sentiment || {};
+    const vision = safeData.vision || {};
+    setText(els.mVisionFrames, formatNumber(vision.frame_count));
+    setText(els.mSentimentVibe, sentiment.vibe || "Chill");
+    setText(els.mSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
+    setText(els.ctxSentimentVibe, sentiment.vibe || "-");
+    setText(els.ctxSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
+    setText(els.ctxVisionFrames, formatNumber(vision.frame_count));
+    setText(els.ctxVisionLast, vision.last_analysis || "-");
+
+    // Intelligence Overview Panel
+    setText(els.intVisionStatus, vision.frame_count > 0 ? "Active" : "Idle");
+    setText(els.intVisionFramesTotal, formatNumber(vision.frame_count));
+    setText(els.intVisionLastAnalysis, vision.last_analysis || "-");
+    setText(els.intSentimentVibe, sentiment.vibe || "Chill");
+    setText(els.intSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
+    setText(els.intSentimentCount, formatNumber(sentiment.count));
+    setText(els.intSentimentPositive, formatNumber(sentiment.positive));
+    setText(els.intSentimentNegative, formatNumber(sentiment.negative));
 
     const snapshotTime = typeof safeData.timestamp === "string" ? new Date(safeData.timestamp) : null;
     if (snapshotTime && !Number.isNaN(snapshotTime.getTime())) {

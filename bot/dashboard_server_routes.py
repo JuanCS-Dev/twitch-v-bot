@@ -8,6 +8,8 @@ from bot.hud_runtime import hud_runtime
 from bot.logic import BOT_BRAND, context
 from bot.observability import observability
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
+from bot.sentiment_engine import sentiment_engine
+from bot.vision_runtime import vision_runtime
 
 CHANNEL_CONTROL_IRC_ONLY_ACTIONS = {"join", "part"}
 HEALTH_ROUTES = {"/", "/health", "/health/", "/healthz", "/healthz/"}
@@ -136,6 +138,16 @@ def handle_get(handler: Any) -> None:
             since = 0.0
         messages = hud_runtime.get_messages(since=since)
         handler._send_json({"ok": True, "messages": messages}, status_code=200)
+        return
+
+    if route == "/api/sentiment/scores":
+        scores = sentiment_engine.get_scores()
+        scores["vibe"] = sentiment_engine.get_vibe()
+        handler._send_json({"ok": True, **scores}, status_code=200)
+        return
+
+    if route == "/api/vision/status":
+        handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
         return
 
     if _dashboard_asset_route(handler, route):

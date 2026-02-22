@@ -154,6 +154,7 @@ def build_observability_snapshot(
             "token_refreshes_total": int(counters.get("token_refreshes_total", 0)),
             "auth_failures_total": int(counters.get("auth_failures_total", 0)),
             "errors_total": int(counters.get("errors_total", 0)),
+            "vision_frames_total": int(counters.get("vision_frames_total", 0)),
             "avg_latency_ms": avg_latency_ms,
             "p95_latency_ms": p95_latency_ms,
         },
@@ -186,4 +187,25 @@ def build_observability_snapshot(
         "routes": route_rows,
         "timeline": timeline,
         "recent_events": events_desc,
+        "sentiment": _build_sentiment_block(),
+        "vision": _build_vision_block(),
     }
+
+
+def _build_sentiment_block() -> dict[str, Any]:
+    from bot.sentiment_engine import sentiment_engine  # lazy: avoid circular
+
+    scores = sentiment_engine.get_scores()
+    return {
+        "vibe": sentiment_engine.get_vibe(),
+        "avg": scores["avg"],
+        "count": scores["count"],
+        "positive": scores["positive"],
+        "negative": scores["negative"],
+    }
+
+
+def _build_vision_block() -> dict[str, Any]:
+    from bot.vision_runtime import vision_runtime  # lazy: avoid circular
+
+    return vision_runtime.get_status()

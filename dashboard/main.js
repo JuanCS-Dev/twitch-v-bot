@@ -4,6 +4,7 @@ import { getControlPlaneElements } from "./features/control-plane/view.js";
 import { getAutonomyElements } from "./features/autonomy/view.js";
 import { getActionQueueElements } from "./features/action-queue/view.js";
 import { getClipsElements } from "./features/clips/view.js";
+import { getHudElements } from "./features/hud/view.js";
 import { getErrorMessage } from "./features/shared/errors.js";
 import { createObservabilityController } from "./features/observability/controller.js";
 import { createChannelControlController } from "./features/channel-control/controller.js";
@@ -11,6 +12,7 @@ import { createControlPlaneController } from "./features/control-plane/controlle
 import { createAutonomyController } from "./features/autonomy/controller.js";
 import { createActionQueueController } from "./features/action-queue/controller.js";
 import { createClipsController } from "./features/clips/controller.js";
+import { createHudController } from "./features/hud/controller.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const obsEls = getObservabilityElements();
@@ -19,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const autEls = getAutonomyElements();
     const aqEls = getActionQueueElements();
     const clipsEls = getClipsElements();
+    const hudEls = getHudElements();
 
     const observabilityController = createObservabilityController({
         obsEls,
@@ -50,11 +53,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const clipsController = createClipsController({
         els: clipsEls
     });
+    const hudController = createHudController({
+        hudEls,
+    });
 
     channelControlController.bindChannelControlEvents();
     controlPlaneController.bindControlPlaneEvents();
     autonomyController.bindAutonomyEvents();
     actionQueueController.bindActionQueueEvents();
+    hudController.bindEvents();
 
     await controlPlaneController.loadControlPlaneState(false);
     await channelControlController.handleChannelAction("list");
@@ -66,5 +73,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     observabilityController.scheduleObservabilityPolling();
     actionQueueController.scheduleActionQueuePolling();
     clipsController.startPolling();
+    hudController.startPolling();
 });
 
