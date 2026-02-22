@@ -116,6 +116,27 @@ async def handle_byte_prompt_text(
     reply_fn,
     status_line_factory=None,
 ) -> None:
+    # Recap detection — short-circuit to recap engine
+    from bot.recap_engine import is_recap_prompt, generate_recap
+
+    if is_recap_prompt(prompt):
+        recap_text = await generate_recap()
+        formatted = format_chat_reply(recap_text)
+        if formatted:
+            await reply_fn(formatted)
+            observability.record_byte_interaction(
+                route="recap",
+                author_name=author_name,
+                prompt_chars=len(prompt),
+                reply_parts=1,
+                reply_chars=len(formatted),
+                serious=False,
+                follow_up=False,
+                current_events=False,
+                latency_ms=0.0,
+            )
+        return
+
     if callable(status_line_factory):
 
         def effective_status_factory() -> str:

@@ -13,6 +13,7 @@ from bot.tests.scientific.suite_prompt_runtime_flow import (
 from bot.tests.scientific.suite_quality_detection import (
     ScientificQualityDetectionTestsMixin,
 )
+from bot.tests.scientific.suite_recap import ScientificRecapTestsMixin
 from bot.tests.scientific.suite_scene_irc import ScientificSceneAndIrcTestsMixin
 from bot.tests.scientific.suite_sentiment import ScientificSentimentTestsMixin
 from bot.tests.scientific.suite_tokens import ScientificTokenAndBootstrapTestsMixin
@@ -27,6 +28,7 @@ class TestBotProduction90Plus(
     ScientificQualityDetectionTestsMixin,
     ScientificCurrentEventsNormalizerTestsMixin,
     ScientificPromptRuntimeFlowTestsMixin,
+    ScientificRecapTestsMixin,
     ScientificSceneAndIrcTestsMixin,
     ScientificSentimentTestsMixin,
     ScientificIrcControlTestsMixin,
