@@ -531,3 +531,18 @@ Input (Frame) -> Vision Runtime -> Gemini 1.5 Flash -> Context Update -> Autonom
 **Riscos**:
 - Custo de inferencia de imagem (controlar sampling rate).
 - Latencia do modo Viewer (reagir ao passado).
+
+### Fase 7 - Parallel Response Tracks (Diretor de TV)
+
+Objetivo: Criar um canal privado de feedback tatico para o streamer, separado do chat publico.
+
+**Conceito**:
+- **Publico**: Chat Twitch (Entretenimento).
+- **Privado**: Dashboard Overlay / TTS (Direcao/Insights).
+
+**Entregas**:
+- **Streamer HUD**: Nova rota no dashboard `/dashboard/hud` (minimalista, alto contraste) para overlay OBS ou segunda tela.
+- **Audio Cue**: Opcao de TTS local no HUD para "sussurrar" sugestoes.
+- **Logica de Roteamento**: `RISK_SUGGEST_STREAMER` prioriza o HUD.
+
+**Valor**: Transforma o Byte de "chatbot" para "co-piloto ativo".
