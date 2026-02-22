@@ -23,6 +23,13 @@
 - Handles direct questions, movie fact-sheet prompts, and current-events prompts.
 - Enforces one-message contract for serious/technical prompts (max 4 lines, high density).
 
+### 🚀 New in V2:
+- **Clip Pipeline Integration**: Fully supports both Live and VOD Official Twitch Clip creation via Helix API, directly managed through an approval queue.
+- **Macaco Mode (Adversarial Testing)**: Built-in 100% resilient testing suite handling exotic inputs, XSS attempts, null bytes, and malicious flood attacks seamlessly.
+- **Strict Type Checking**: Entire codebase is rigorously type-hinted with Mypy strict mode enforcement for zero-runtime surprises.
+- **Robust Authentication**: Implements hourly dynamic validation of specific token scopes (`clips:edit`) before allowing authorized operations.
+- **Cloud Run Native Persistence**: Clip jobs are gracefully resumed through external database states like Firestore.
+
 ## Chat Commands and Trigger Patterns
 
 - `byte help`
