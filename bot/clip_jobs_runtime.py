@@ -118,6 +118,7 @@ class ClipJobsRuntime:
                     "attempts": 0,
                     "next_poll_at": 0.0,
                     "poll_until": 0.0,
+                    "next_download_poll_at": 0.0,
                 }
                 self._jobs[action_id] = job
                 job_store.save_job(job)
@@ -263,6 +264,10 @@ class ClipJobsRuntime:
         clip_id = job["twitch_clip_id"]
         broadcaster_id = job["broadcaster_id"]
         
+        now = time.time()
+        if now < job.get("next_download_poll_at", 0):
+            return
+
         try:
             token = await self._get_token()
             client_id = CLIENT_ID or ""
@@ -277,14 +282,19 @@ class ClipJobsRuntime:
             if url:
                 self._update_job(action_id, download_url=url)
                 logger.info("Download URL obtida para clip %s", clip_id)
+            else:
+                # Nao disponivel ainda, tenta novamente em 60s
+                self._update_job(action_id, next_download_poll_at=now + 60.0)
             
-        except TwitchClipRateLimitError:
-            # Silenciosamente ignora e tenta no proximo ciclo
-            pass
+        except TwitchClipRateLimitError as e:
+            # Respeita o reset do rate limit se fornecido, senao espera 60s
+            wait_until = getattr(e, "reset_at", now + 60.0)
+            self._update_job(action_id, next_download_poll_at=wait_until)
+            logger.warning("Rate limit atingido para download do clip %s. Retentando em %ds", clip_id, int(wait_until - now))
         except Exception as e:
             logger.warning("Falha ao buscar download URL para %s: %s", clip_id, e)
-            # Marca como indisponivel para nao tentar para sempre?
-            # Por enquanto, deixa tentar novamente.
+            # Espera um pouco antes de tentar novamente em caso de erro generico
+            self._update_job(action_id, next_download_poll_at=now + 120.0)
 
     def _update_job(self, action_id: str, **kwargs: Any) -> None:
         with self._lock:

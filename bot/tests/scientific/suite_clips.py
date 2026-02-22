@@ -1,13 +1,12 @@
 import asyncio
 import json
 import unittest
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 from bot.autonomy_logic import process_autonomy_goal
 from bot.clip_jobs_runtime import ClipJobsRuntime
-from bot.control_plane import RISK_CLIP_CANDIDATE, control_plane
-from bot.twitch_clips_api import create_clip_live, get_clip, TwitchClipError
+from bot.control_plane import RISK_CLIP_CANDIDATE
+from bot.twitch_clips_api import create_clip_live, get_clip
 
 
 class TestTwitchClipsAPI(unittest.TestCase):

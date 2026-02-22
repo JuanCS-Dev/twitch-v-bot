@@ -58,7 +58,7 @@ class FirestoreJobStore:
     def load_active_jobs(self) -> List[dict[str, Any]]:
         """
         Carrega jobs que ainda nao estao finalizados (ready/failed) ou que sao recentes.
-        Para simplificar, carrega todos com status != ready e != failed.
+        Inclui jobs 'ready' que ainda nao possuem download_url para retry.
         """
         db = self._get_db()
         if not db:
@@ -66,22 +66,31 @@ class FirestoreJobStore:
 
         try:
             jobs_ref = db.collection(COLLECTION_NAME)
-            # Query: status not in ['ready', 'failed'] is not directly supported by Firestore
-            # We can use multiple queries or just fetch active ones by status
-            
-            # Simple approach: Fetch queued, creating, polling
-            active_statuses = ["queued", "creating", "polling"]
-            # Note: Firestore 'in' query supports up to 10 values
-            query = jobs_ref.where(filter=firestore.FieldFilter("status", "in", active_statuses))
-            
-            docs = query.stream()
             jobs = []
-            for doc in docs:
+            
+            # 1. Fetch queued, creating, polling
+            active_statuses = ["queued", "creating", "polling"]
+            query_active = jobs_ref.where(filter=firestore.FieldFilter("status", "in", active_statuses))
+            
+            for doc in query_active.stream():
                 job_data = doc.to_dict()
                 if job_data:
                     jobs.append(job_data)
+
+            # 2. Fetch ready but missing download_url
+            # Firestore trata None como null.
+            query_incomplete = jobs_ref.where(filter=firestore.FieldFilter("status", "==", "ready"))\
+                                       .where(filter=firestore.FieldFilter("download_url", "==", None))
             
-            logger.info("Carregados %d jobs ativos do Firestore.", len(jobs))
+            # Evitar duplicatas se algo estranho acontecer (embora status sejam exclusivos)
+            existing_ids = {j.get("job_id") for j in jobs}
+            
+            for doc in query_incomplete.stream():
+                job_data = doc.to_dict()
+                if job_data and job_data.get("job_id") not in existing_ids:
+                    jobs.append(job_data)
+            
+            logger.info("Carregados %d jobs (ativos + incompletos) do Firestore.", len(jobs))
             return jobs
         except Exception as e:
             logger.error("Erro ao carregar jobs do Firestore: %s", e)
