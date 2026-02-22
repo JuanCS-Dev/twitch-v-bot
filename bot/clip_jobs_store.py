@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Any, List, Optional
 
-from google.cloud import firestore
+from google.cloud import firestore  # type: ignore[attr-defined,import-untyped]
 from bot.runtime_config import PROJECT_ID
 
 logger = logging.getLogger("byte.clips.store")

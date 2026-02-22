@@ -130,7 +130,8 @@ async def agent_inference(
     enable_live_context: bool = True,
     max_lines: int = MAX_REPLY_LINES,
     max_length: int = MAX_REPLY_LENGTH,
-    return_metadata: Literal[True] = True,
+    *,
+    return_metadata: Literal[True],
 ) -> tuple[str, GroundingMetadata]: ...
 
 

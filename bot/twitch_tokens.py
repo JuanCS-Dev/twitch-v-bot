@@ -199,9 +199,9 @@ class TwitchTokenManager:
         Registra metricas extras na observability se configurado.
         """
         validation = await self.validate_now()
-        token_valid = (validation is not None)
+        token_valid = validation is not None
         scope_ok = False
-        if token_valid:
+        if validation is not None:
             scopes = validation.get("scopes", [])
             if isinstance(scopes, list):
                 scope_ok = "clips:edit" in scopes

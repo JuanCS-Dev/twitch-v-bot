@@ -173,9 +173,9 @@ class ByteBot(commands.Bot):
         )
         await self.subscribe_websocket(payload=payload, as_bot=True)
 
-    async def close(self) -> None:
+    async def close(self, **options: Any) -> None:
         autonomy_runtime.unbind()
-        await super().close()
+        await super().close(**options)
 
     async def event_ready(self) -> None:
         logger.info("%s pronto no chat. Bot ID: %s", BOT_BRAND, self.bot_id)

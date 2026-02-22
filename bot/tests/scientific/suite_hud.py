@@ -1,13 +1,13 @@
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from bot.tests.scientific_shared import ScientificTestCase
 
 
-class ScientificHudTestsMixin:
+class ScientificHudTestsMixin(ScientificTestCase):
     """Testes cientificos para HudRuntime (Fase 7)."""
 
-    def test_hud_push_empty_message(self: ScientificTestCase) -> None:
+    def test_hud_push_empty_message(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -15,14 +15,14 @@ class ScientificHudTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "empty_message")
 
-    def test_hud_push_whitespace_only(self: ScientificTestCase) -> None:
+    def test_hud_push_whitespace_only(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
         result = rt.push_message("   \n  ")
         self.assertFalse(result["ok"])
 
-    def test_hud_push_valid_message(self: ScientificTestCase) -> None:
+    def test_hud_push_valid_message(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -33,7 +33,7 @@ class ScientificHudTestsMixin:
         self.assertEqual(entry["source"], "autonomy")
         self.assertIn("Sugestao", entry["text"])
 
-    def test_hud_push_truncates_long_message(self: ScientificTestCase) -> None:
+    def test_hud_push_truncates_long_message(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -42,14 +42,14 @@ class ScientificHudTestsMixin:
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["entry"]["text"]), 300)
 
-    def test_hud_get_messages_empty(self: ScientificTestCase) -> None:
+    def test_hud_get_messages_empty(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
         messages = rt.get_messages()
         self.assertEqual(messages, [])
 
-    def test_hud_get_messages_since_filter(self: ScientificTestCase) -> None:
+    def test_hud_get_messages_since_filter(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -65,7 +65,7 @@ class ScientificHudTestsMixin:
         recent = rt.get_messages(since=now - 0.001)
         self.assertGreaterEqual(len(recent), 1)
 
-    def test_hud_max_buffer(self: ScientificTestCase) -> None:
+    def test_hud_max_buffer(self) -> None:
         from bot.hud_runtime import HudRuntime, MAX_HUD_MESSAGES
 
         rt = HudRuntime()
@@ -77,7 +77,7 @@ class ScientificHudTestsMixin:
         # Oldest messages should have been evicted
         self.assertIn("Message", all_msgs[-1]["text"])
 
-    def test_hud_clear(self: ScientificTestCase) -> None:
+    def test_hud_clear(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -86,7 +86,7 @@ class ScientificHudTestsMixin:
         rt.clear()
         self.assertEqual(len(rt.get_messages(since=0.0)), 0)
 
-    def test_hud_get_status(self: ScientificTestCase) -> None:
+    def test_hud_get_status(self) -> None:
         from bot.hud_runtime import HudRuntime, MAX_HUD_MESSAGES
 
         rt = HudRuntime()
@@ -101,7 +101,7 @@ class ScientificHudTestsMixin:
 
     @patch("bot.autonomy_logic.hud_runtime")
     def test_hud_integration_suggest_streamer_pushes(
-        self: ScientificTestCase, mock_hud: object
+        self, mock_hud: MagicMock
     ) -> None:
         from bot.autonomy_logic import _handle_generic_suggestion
         from bot.control_plane_constants import RISK_SUGGEST_STREAMER
@@ -122,7 +122,7 @@ class ScientificHudTestsMixin:
 
     @patch("bot.autonomy_logic.hud_runtime")
     def test_hud_integration_moderation_does_not_push(
-        self: ScientificTestCase, mock_hud: object
+        self, mock_hud: MagicMock
     ) -> None:
         from bot.autonomy_logic import _handle_generic_suggestion
         from bot.control_plane_constants import RISK_MODERATION_ACTION

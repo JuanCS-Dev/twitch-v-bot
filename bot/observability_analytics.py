@@ -114,8 +114,8 @@ def compute_leaderboards(
     chatter_totals: dict[str, int],
     trigger_totals: dict[str, int],
 ) -> dict[str, Any]:
-    chatters_60m = Counter()
-    source_counts_60m = Counter()
+    chatters_60m: Counter[str] = Counter()
+    source_counts_60m: Counter[str] = Counter()
     
     for e in chat_events_60m:
         author = str(e.get("author", "") or "").strip().lower()
@@ -124,7 +124,7 @@ def compute_leaderboards(
             chatters_60m[author] += 1
         source_counts_60m[source] += 1
             
-    triggers_60m = Counter()
+    triggers_60m: Counter[str] = Counter()
     for e in trigger_events_60m:
         author = str(e.get("author", "") or "").strip().lower()
         if author:

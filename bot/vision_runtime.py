@@ -107,7 +107,7 @@ class VisionRuntime:
                     data=frame_bytes,
                 )),
                 VISION_SCENE_PROMPT,
-            ],
+            ],  # type: ignore[arg-type]
             config=config,
         )
         text = ""

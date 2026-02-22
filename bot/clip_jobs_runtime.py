@@ -279,6 +279,7 @@ class ClipJobsRuntime:
                 token=token,
                 client_id=client_id,
                 broadcaster_id=broadcaster_id,
+                editor_id=EDITOR_ID or "",
             )
             
             if url:

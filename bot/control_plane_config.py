@@ -20,7 +20,7 @@ from bot.control_plane_constants import (
 class ControlPlaneConfigRuntime:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._config = {
+        self._config: dict[str, Any] = {
             "version": 1,
             "autonomy_enabled": False,
             "clip_pipeline_enabled": False,
@@ -35,7 +35,7 @@ class ControlPlaneConfigRuntime:
             "goals": default_goals_copy(),
             "updated_at": utc_iso(time.time()),
         }
-        self._runtime = {
+        self._runtime: dict[str, Any] = {
             "loop_running": False,
             "last_heartbeat_at": 0.0,
             "last_tick_at": 0.0,

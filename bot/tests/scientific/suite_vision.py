@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 from bot.tests.scientific_shared import ScientificTestCase
 
 
-class ScientificVisionTestsMixin:
+class ScientificVisionTestsMixin(ScientificTestCase):
     """Testes cientificos para VisionRuntime (Fase 6)."""
 
-    def test_vision_ingest_empty_frame(self: ScientificTestCase) -> None:
+    def test_vision_ingest_empty_frame(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -15,7 +15,7 @@ class ScientificVisionTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "empty_frame")
 
-    def test_vision_ingest_oversized_frame(self: ScientificTestCase) -> None:
+    def test_vision_ingest_oversized_frame(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -24,7 +24,7 @@ class ScientificVisionTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "frame_too_large")
 
-    def test_vision_ingest_unsupported_mime(self: ScientificTestCase) -> None:
+    def test_vision_ingest_unsupported_mime(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -32,7 +32,7 @@ class ScientificVisionTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "unsupported_mime_type")
 
-    def test_vision_rate_limit(self: ScientificTestCase) -> None:
+    def test_vision_rate_limit(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -43,7 +43,7 @@ class ScientificVisionTestsMixin:
         self.assertEqual(result["reason"], "rate_limited")
         self.assertIn("retry_after_seconds", result)
 
-    def test_vision_clip_detection_keywords(self: ScientificTestCase) -> None:
+    def test_vision_clip_detection_keywords(self) -> None:
         from bot.vision_runtime import _detect_clip_trigger
 
         self.assertTrue(_detect_clip_trigger("O jogador fez um pentakill incrivel!"))
@@ -52,7 +52,7 @@ class ScientificVisionTestsMixin:
         self.assertFalse(_detect_clip_trigger("CENA_NORMAL"))
         self.assertFalse(_detect_clip_trigger("Tela de loading do jogo"))
 
-    def test_vision_clip_detection_case_insensitive(self: ScientificTestCase) -> None:
+    def test_vision_clip_detection_case_insensitive(self) -> None:
         from bot.vision_runtime import _detect_clip_trigger
 
         self.assertTrue(_detect_clip_trigger("PENTAKILL no meio do teamfight"))
@@ -61,7 +61,7 @@ class ScientificVisionTestsMixin:
     @patch("bot.vision_runtime.client")
     @patch("bot.vision_runtime.observability")
     def test_vision_ingest_success_normal_scene(
-        self: ScientificTestCase, mock_obs: MagicMock, mock_client: MagicMock
+        self, mock_obs: MagicMock, mock_client: MagicMock
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
@@ -79,7 +79,7 @@ class ScientificVisionTestsMixin:
     @patch("bot.vision_runtime.client")
     @patch("bot.vision_runtime.observability")
     def test_vision_ingest_clip_trigger(
-        self: ScientificTestCase,
+        self,
         mock_obs: MagicMock,
         mock_client: MagicMock,
         mock_cp: MagicMock,
@@ -106,7 +106,7 @@ class ScientificVisionTestsMixin:
     @patch("bot.vision_runtime.client")
     @patch("bot.vision_runtime.observability")
     def test_vision_clip_not_enqueued_when_pipeline_disabled(
-        self: ScientificTestCase,
+        self,
         mock_obs: MagicMock,
         mock_client: MagicMock,
         mock_cp: MagicMock,
@@ -126,7 +126,7 @@ class ScientificVisionTestsMixin:
     @patch("bot.vision_runtime.client")
     @patch("bot.vision_runtime.observability")
     def test_vision_inference_error_handled(
-        self: ScientificTestCase, mock_obs: MagicMock, mock_client: MagicMock
+        self, mock_obs: MagicMock, mock_client: MagicMock
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
@@ -138,7 +138,7 @@ class ScientificVisionTestsMixin:
         self.assertEqual(result["reason"], "inference_error")
         mock_obs.record_error.assert_called_once()
 
-    def test_vision_get_status_initial(self: ScientificTestCase) -> None:
+    def test_vision_get_status_initial(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()

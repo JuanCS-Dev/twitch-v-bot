@@ -15,21 +15,21 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from bot.tests.scientific_shared import ScientificTestCase
 
 
-class ScientificMacacoModeTestsMixin:
+class ScientificMacacoModeTestsMixin(ScientificTestCase):
     """Testes adversariais anti-macaco para todo o sistema."""
 
     # ---------------------------------------------------------------
     # SENTIMENT ENGINE — Macaco inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_sentiment_null_bytes(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_null_bytes(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
         score = engine.ingest_message("PogChamp\x00\x00\x00 haha")
         self.assertIsInstance(score, float)
 
-    def test_macaco_sentiment_unicode_bomb(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_unicode_bomb(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -37,7 +37,7 @@ class ScientificMacacoModeTestsMixin:
         score = engine.ingest_message(bomb)
         self.assertIsInstance(score, float)
 
-    def test_macaco_sentiment_xss_attempt(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_xss_attempt(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -46,7 +46,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertIsInstance(score, float)
         # XSS strings are not emotes, should not crash
 
-    def test_macaco_sentiment_sql_injection(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_sql_injection(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -54,7 +54,7 @@ class ScientificMacacoModeTestsMixin:
         score = engine.ingest_message(sqli)
         self.assertIsInstance(score, float)
 
-    def test_macaco_sentiment_enormous_message(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_enormous_message(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -62,14 +62,14 @@ class ScientificMacacoModeTestsMixin:
         score = engine.ingest_message(huge)
         self.assertEqual(score, 0.0)  # No emotes/keywords in gibberish
 
-    def test_macaco_sentiment_only_whitespace(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_only_whitespace(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
         score = engine.ingest_message("   \t\n\r\n   ")
         self.assertEqual(score, 0.0)
 
-    def test_macaco_sentiment_rtl_and_mixed_bidi(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_rtl_and_mixed_bidi(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -77,7 +77,7 @@ class ScientificMacacoModeTestsMixin:
         score = engine.ingest_message(bidi)
         self.assertIsInstance(score, float)
 
-    def test_macaco_sentiment_concurrent_flood(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_concurrent_flood(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -104,7 +104,7 @@ class ScientificMacacoModeTestsMixin:
     # HUD RUNTIME — Macaco inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_hud_push_null_bytes(self: ScientificTestCase) -> None:
+    def test_macaco_hud_push_null_bytes(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -112,7 +112,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertTrue(result["ok"])
         self.assertIn("\x00", result["entry"]["text"])  # Should not crash
 
-    def test_macaco_hud_push_xss(self: ScientificTestCase) -> None:
+    def test_macaco_hud_push_xss(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -120,7 +120,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertTrue(result["ok"])
         # Text is stored raw — XSS escaping is frontend responsibility
 
-    def test_macaco_hud_push_enormous_text(self: ScientificTestCase) -> None:
+    def test_macaco_hud_push_enormous_text(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -129,7 +129,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["entry"]["text"]), 300)  # Truncated
 
-    def test_macaco_hud_source_injection(self: ScientificTestCase) -> None:
+    def test_macaco_hud_source_injection(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -137,7 +137,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertTrue(result["ok"])
         self.assertEqual(result["entry"]["source"], '"; drop table hud; --')
 
-    def test_macaco_hud_get_messages_negative_since(self: ScientificTestCase) -> None:
+    def test_macaco_hud_get_messages_negative_since(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -145,7 +145,7 @@ class ScientificMacacoModeTestsMixin:
         messages = rt.get_messages(since=-999999.0)
         self.assertEqual(len(messages), 1)  # Should not crash
 
-    def test_macaco_hud_get_messages_future_since(self: ScientificTestCase) -> None:
+    def test_macaco_hud_get_messages_future_since(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -154,7 +154,7 @@ class ScientificMacacoModeTestsMixin:
         messages = rt.get_messages(since=future)
         self.assertEqual(len(messages), 0)
 
-    def test_macaco_hud_concurrent_push_get(self: ScientificTestCase) -> None:
+    def test_macaco_hud_concurrent_push_get(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -190,7 +190,7 @@ class ScientificMacacoModeTestsMixin:
     # VISION RUNTIME — Macaco inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_vision_random_bytes(self: ScientificTestCase) -> None:
+    def test_macaco_vision_random_bytes(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -199,7 +199,7 @@ class ScientificMacacoModeTestsMixin:
         # Should either succeed (LLM handles it) or fail gracefully
         self.assertIn("ok", result)
 
-    def test_macaco_vision_zero_byte_after_rate_limit(self: ScientificTestCase) -> None:
+    def test_macaco_vision_zero_byte_after_rate_limit(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -207,7 +207,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "empty_frame")
 
-    def test_macaco_vision_wrong_mime_type(self: ScientificTestCase) -> None:
+    def test_macaco_vision_wrong_mime_type(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -215,7 +215,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "unsupported_mime_type")
 
-    def test_macaco_vision_mime_type_xss(self: ScientificTestCase) -> None:
+    def test_macaco_vision_mime_type_xss(self) -> None:
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
@@ -223,7 +223,7 @@ class ScientificMacacoModeTestsMixin:
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "unsupported_mime_type")
 
-    def test_macaco_vision_exactly_max_size(self: ScientificTestCase) -> None:
+    def test_macaco_vision_exactly_max_size(self) -> None:
         from bot.vision_constants import VISION_MAX_FRAME_BYTES
         from bot.vision_runtime import VisionRuntime
 
@@ -235,7 +235,7 @@ class ScientificMacacoModeTestsMixin:
         # Should not be "frame_too_large"
         self.assertNotEqual(result.get("reason"), "frame_too_large")
 
-    def test_macaco_vision_one_over_max_size(self: ScientificTestCase) -> None:
+    def test_macaco_vision_one_over_max_size(self) -> None:
         from bot.vision_constants import VISION_MAX_FRAME_BYTES
         from bot.vision_runtime import VisionRuntime
 
@@ -249,7 +249,7 @@ class ScientificMacacoModeTestsMixin:
     # RECAP ENGINE — Macaco inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_recap_pattern_xss(self: ScientificTestCase) -> None:
+    def test_macaco_recap_pattern_xss(self) -> None:
         from bot.recap_engine import is_recap_prompt
 
         # "resumo" is inside the XSS string — pattern correctly detects keyword
@@ -258,25 +258,25 @@ class ScientificMacacoModeTestsMixin:
         # But pure tags without keyword should NOT match
         self.assertFalse(is_recap_prompt('<script>alert(1)</script>'))
 
-    def test_macaco_recap_pattern_empty(self: ScientificTestCase) -> None:
+    def test_macaco_recap_pattern_empty(self) -> None:
         from bot.recap_engine import is_recap_prompt
 
         self.assertFalse(is_recap_prompt(""))
         self.assertFalse(is_recap_prompt("   "))
 
-    def test_macaco_recap_pattern_unicode_lookalike(self: ScientificTestCase) -> None:
+    def test_macaco_recap_pattern_unicode_lookalike(self) -> None:
         from bot.recap_engine import is_recap_prompt
 
         # Cyrillic "а" looks like Latin "a" — should NOT match
         self.assertFalse(is_recap_prompt("rеsumo"))  # Cyrillic "е"
 
-    def test_macaco_recap_pattern_repeated(self: ScientificTestCase) -> None:
+    def test_macaco_recap_pattern_repeated(self) -> None:
         from bot.recap_engine import is_recap_prompt
 
         # Repeated valid trigger — still valid
         self.assertTrue(is_recap_prompt("resumo resumo resumo"))
 
-    def test_macaco_recap_pattern_enormous(self: ScientificTestCase) -> None:
+    def test_macaco_recap_pattern_enormous(self) -> None:
         from bot.recap_engine import is_recap_prompt
 
         huge = "x" * 50_000 + " resumo " + "y" * 50_000
@@ -288,7 +288,7 @@ class ScientificMacacoModeTestsMixin:
     # CLIP JOBS RUNTIME — Macaco inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_clips_sync_empty_queue(self: ScientificTestCase) -> None:
+    def test_macaco_clips_sync_empty_queue(self) -> None:
         from bot.clip_jobs_runtime import ClipJobsRuntime
 
         rt = ClipJobsRuntime()
@@ -296,7 +296,7 @@ class ScientificMacacoModeTestsMixin:
             self.loop.run_until_complete(rt._sync_from_queue())
         self.assertEqual(rt.get_jobs(), [])
 
-    def test_macaco_clips_sync_malformed_payload(self: ScientificTestCase) -> None:
+    def test_macaco_clips_sync_malformed_payload(self) -> None:
         from bot.clip_jobs_runtime import ClipJobsRuntime
 
         rt = ClipJobsRuntime()
@@ -310,7 +310,7 @@ class ScientificMacacoModeTestsMixin:
             # Should not crash
             self.loop.run_until_complete(rt._sync_from_queue())
 
-    def test_macaco_clips_duplicate_action_id(self: ScientificTestCase) -> None:
+    def test_macaco_clips_duplicate_action_id(self) -> None:
         from bot.clip_jobs_runtime import ClipJobsRuntime
 
         rt = ClipJobsRuntime()
@@ -330,7 +330,7 @@ class ScientificMacacoModeTestsMixin:
     # DASHBOARD ROUTES — Macaco HTTP inputs
     # ---------------------------------------------------------------
 
-    def test_macaco_hud_api_invalid_since(self: ScientificTestCase) -> None:
+    def test_macaco_hud_api_invalid_since(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -342,7 +342,7 @@ class ScientificMacacoModeTestsMixin:
         messages = rt.get_messages(since=since)
         self.assertIsInstance(messages, list)
 
-    def test_macaco_hud_api_infinity_since(self: ScientificTestCase) -> None:
+    def test_macaco_hud_api_infinity_since(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -350,7 +350,7 @@ class ScientificMacacoModeTestsMixin:
         messages = rt.get_messages(since=float("inf"))
         self.assertEqual(len(messages), 0)
 
-    def test_macaco_hud_api_nan_since(self: ScientificTestCase) -> None:
+    def test_macaco_hud_api_nan_since(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
@@ -364,7 +364,7 @@ class ScientificMacacoModeTestsMixin:
     # SENTIMENT — Overflow / boundary
     # ---------------------------------------------------------------
 
-    def test_macaco_sentiment_max_events_overflow(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_max_events_overflow(self) -> None:
         from bot.sentiment_constants import SENTIMENT_MAX_EVENTS
         from bot.sentiment_engine import SentimentEngine
 
@@ -374,7 +374,7 @@ class ScientificMacacoModeTestsMixin:
         # deque with maxlen should auto-evict
         self.assertLessEqual(len(engine._events), SENTIMENT_MAX_EVENTS)
 
-    def test_macaco_sentiment_vibe_with_only_neutrals(self: ScientificTestCase) -> None:
+    def test_macaco_sentiment_vibe_with_only_neutrals(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
@@ -388,7 +388,7 @@ class ScientificMacacoModeTestsMixin:
 
     @patch("bot.recap_engine.agent_inference")
     def test_e2e_recap_with_sentiment_context(
-        self: ScientificTestCase, mock_inference: AsyncMock
+        self, mock_inference: AsyncMock
     ) -> None:
         from bot.recap_engine import generate_recap
         from bot.sentiment_engine import sentiment_engine
@@ -404,7 +404,7 @@ class ScientificMacacoModeTestsMixin:
     @patch("bot.vision_runtime.client")
     @patch("bot.vision_runtime.observability")
     def test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline(
-        self: ScientificTestCase,
+        self,
         mock_obs: MagicMock,
         mock_client: MagicMock,
     ) -> None:
@@ -426,7 +426,7 @@ class ScientificMacacoModeTestsMixin:
     @patch("bot.autonomy_logic.control_plane")
     @patch("bot.autonomy_logic.observability")
     def test_e2e_suggest_streamer_pushes_to_hud_and_queue(
-        self: ScientificTestCase,
+        self,
         mock_obs: MagicMock,
         mock_cp: MagicMock,
         mock_hud: MagicMock,
@@ -448,14 +448,14 @@ class ScientificMacacoModeTestsMixin:
             "Sugestão de teste E2E", source="autonomy"
         )
 
-    def test_e2e_sentiment_score_emote_keyword_combined(self: ScientificTestCase) -> None:
+    def test_e2e_sentiment_score_emote_keyword_combined(self) -> None:
         from bot.sentiment_engine import _score_message
 
         # PogChamp (+2.0) + "incrivel" (+1.0) + "gg" (+1.0) = +4.0
         score = _score_message("PogChamp gg incrivel demais")
         self.assertAlmostEqual(score, 4.0, places=0)
 
-    def test_e2e_hud_integration_full_cycle(self: ScientificTestCase) -> None:
+    def test_e2e_hud_integration_full_cycle(self) -> None:
         from bot.hud_runtime import HudRuntime
 
         rt = HudRuntime()
