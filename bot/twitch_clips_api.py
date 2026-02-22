@@ -68,9 +68,20 @@ def _create_clip_sync(
     broadcaster_id: str,
     token: str,
     client_id: str,
-    has_delay: bool,
+    title: str = "",
+    duration: float = 30.0,
 ) -> dict[str, Any]:
-    params = {"broadcaster_id": broadcaster_id, "has_delay": str(has_delay).lower()}
+    """
+    POST /helix/clips — `has_delay` foi removido da API Twitch em Dez/2025.
+    Parametros opcionais suportados: title, duration (5.0–60.0s).
+    """
+    params: dict[str, str] = {"broadcaster_id": broadcaster_id}
+    if title:
+        params["title"] = title
+    # Clamp e envia duration se diferente do default
+    clamped = max(5.0, min(60.0, float(duration)))
+    if clamped != 30.0:
+        params["duration"] = f"{clamped:.1f}"
     url = f"{HELIX_BASE}/clips?{urlencode(params)}"
     request = Request(url, method="POST")
     request.add_header("Authorization", f"Bearer {token}")
@@ -87,7 +98,7 @@ def _create_clip_sync(
             return data[0]
     except HTTPError as error:
         _handle_http_error(error)
-        raise # Should be unreachable
+        raise  # Should be unreachable
     except URLError as error:
         raise TwitchClipError(f"Erro de rede ao criar clip: {error}") from error
 
@@ -120,24 +131,28 @@ async def create_clip_live(
     broadcaster_id: str,
     token: str,
     client_id: str,
-    has_delay: bool = False,
+    title: str = "",
+    duration: float = 30.0,
 ) -> dict[str, Any]:
     """
     Cria um clip live via POST /helix/clips.
     Retorna dict com 'id' e 'edit_url'.
+    has_delay foi removido da API Twitch em Dez/2025.
     """
     return await asyncio.to_thread(
         _create_clip_sync,
         broadcaster_id,
         token,
         client_id,
-        has_delay,
+        title,
+        duration,
     )
 
 
 async def create_clip_from_vod(
     *,
     broadcaster_id: str,
+    editor_id: str,
     vod_id: str,
     vod_offset: int,
     duration: int,
@@ -148,10 +163,12 @@ async def create_clip_from_vod(
     """
     Cria um clip a partir de um VOD via POST /helix/videos/clips.
     Token deve ter scope 'editor:manage:clips' ou 'channel:manage:clips'.
+    editor_id e obrigatorio pela API oficial.
     """
     return await asyncio.to_thread(
         _create_clip_from_vod_sync,
         broadcaster_id=broadcaster_id,
+        editor_id=editor_id,
         vod_id=vod_id,
         vod_offset=vod_offset,
         duration=duration,
@@ -200,6 +217,7 @@ async def get_clip_download_url(
 
 def _create_clip_from_vod_sync(
     broadcaster_id: str,
+    editor_id: str,
     vod_id: str,
     vod_offset: int,
     duration: int,
@@ -209,9 +227,12 @@ def _create_clip_from_vod_sync(
 ) -> dict[str, Any]:
     if vod_offset < duration:
         raise ValueError("vod_offset deve ser maior ou igual a duration.")
-    
+    if not editor_id:
+        raise ValueError("editor_id e obrigatorio para create_clip_from_vod.")
+
     params = {
         "broadcaster_id": broadcaster_id,
+        "editor_id": editor_id,
         "video_id": vod_id,
         "vod_offset": str(vod_offset),
         "duration": str(duration),
@@ -246,6 +267,11 @@ def _get_clip_download_url_sync(
     client_id: str,
     broadcaster_id: str,
 ) -> str | None:
+    """
+    GET /helix/clips/downloads — retorna landscape_download_url.
+    A API nao tem campo 'download_url' generico; usa landscape_download_url.
+    portrait_download_url pode ser None mesmo quando landscape esta disponivel.
+    """
     params = {"id": clip_id, "broadcaster_id": broadcaster_id}
     url = f"{HELIX_BASE}/clips/downloads?{urlencode(params)}"
     request = Request(url, method="GET")
@@ -258,7 +284,8 @@ def _get_clip_download_url_sync(
             data = payload.get("data", [])
             if not data:
                 return None
-            return data[0].get("download_url")
+            # landscape_download_url e o campo correto (API Twitch Dez/2025)
+            return data[0].get("landscape_download_url")
     except HTTPError as error:
         # 429 especifico para downloads
         if error.code == 429:

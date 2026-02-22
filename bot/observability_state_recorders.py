@@ -250,3 +250,10 @@ def record_error_locked(state: Any, *, now: float, category: str, details: str) 
     append_event_locked(state, now, "ERROR", safe_category, safe_details)
     prune_locked(state, now)
 
+
+def record_vision_frame_locked(state: Any, *, now: float, analysis: str) -> None:
+    safe_analysis = clip_preview(analysis or "", max_chars=120)
+    state._counters["vision_frames_total"] += 1
+    append_event_locked(state, now, "INFO", "vision_frame", safe_analysis or "frame ingested")
+    prune_locked(state, now)
+

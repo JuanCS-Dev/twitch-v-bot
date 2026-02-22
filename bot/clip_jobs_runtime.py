@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from bot.control_plane import control_plane
 from bot.control_plane_constants import utc_iso
-from bot.runtime_config import CLIENT_ID
+from bot.runtime_config import CLIENT_ID, EDITOR_ID
 from bot.clip_jobs_store import job_store
 from bot.twitch_clips_api import (
     TwitchClipAuthError,
@@ -167,7 +167,8 @@ class ClipJobsRuntime:
                     broadcaster_id=broadcaster_id,
                     token=token,
                     client_id=client_id,
-                    has_delay=False,
+                    title=job.get("title", ""),
+                    duration=float(job.get("duration") or 30.0),
                 )
             elif mode == "vod":
                 vod_id = job.get("vod_id")
@@ -180,6 +181,7 @@ class ClipJobsRuntime:
 
                 resp = await create_clip_from_vod(
                     broadcaster_id=broadcaster_id,
+                    editor_id=EDITOR_ID or "",
                     vod_id=vod_id,
                     vod_offset=int(vod_offset),
                     duration=int(duration),

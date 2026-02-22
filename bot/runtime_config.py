@@ -23,6 +23,9 @@ logger = logging.getLogger("ByteBot")
 PROJECT_ID = env_text("GOOGLE_CLOUD_PROJECT")
 CLIENT_ID = env_text("TWITCH_CLIENT_ID")
 BOT_ID = env_text("TWITCH_BOT_ID")
+# editor_id para POST /helix/videos/clips — normalmente e o BOT_ID (usuario autenticado).
+# Pode ser sobrescrito via TWITCH_EDITOR_ID se o token pertencer a outro usuario.
+EDITOR_ID = env_text("TWITCH_EDITOR_ID") or env_text("TWITCH_BOT_ID")
 OWNER_ID = env_text("TWITCH_OWNER_ID")
 CHANNEL_ID = env_text("TWITCH_CHANNEL_ID")
 TWITCH_CHAT_MODE = env_text("TWITCH_CHAT_MODE", "eventsub").lower() or "eventsub"

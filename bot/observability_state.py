@@ -23,6 +23,7 @@ from bot.observability_state_recorders import (
     record_reply_locked,
     record_token_refresh_locked,
     record_token_usage_locked,
+    record_vision_frame_locked,
 )
 
 
@@ -176,6 +177,11 @@ class ObservabilityState:
         now = resolve_now(timestamp)
         with self._lock:
             record_error_locked(self, now=now, category=category, details=details)
+
+    def record_vision_frame(self, *, analysis: str, timestamp: float | None = None) -> None:
+        now = resolve_now(timestamp)
+        with self._lock:
+            record_vision_frame_locked(self, now=now, analysis=analysis)
 
     def snapshot(
         self,

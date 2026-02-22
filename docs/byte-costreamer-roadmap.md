@@ -520,7 +520,7 @@ Objetivo: Dar "olhos" ao agente para reagir ao jogo e detectar clips visualmente
 2. **Viewer Source (Cloud)**: Worker captura frames do stream Twitch publico (com delay natural).
 
 **Fluxo de Dados**:
-Input (Frame) -> Vision Runtime -> Gemini 1.5 Flash -> Context Update -> Autonomy Trigger.
+Input (Frame) -> Vision Runtime -> gemini-3-flash-preview (Vertex AI, inline_data) -> Context Update -> Autonomy Trigger.
 
 **Entregas**:
 - Rota `POST /api/vision/ingest` para receber frames.
