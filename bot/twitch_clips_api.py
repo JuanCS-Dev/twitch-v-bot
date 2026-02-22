@@ -135,6 +135,32 @@ async def create_clip_live(
     )
 
 
+async def create_clip_from_vod(
+    *,
+    broadcaster_id: str,
+    vod_id: str,
+    vod_offset: int,
+    duration: int,
+    token: str,
+    client_id: str,
+    title: str = "",
+) -> dict[str, Any]:
+    """
+    Cria um clip a partir de um VOD via POST /helix/videos/clips.
+    Token deve ter scope 'editor:manage:clips' ou 'channel:manage:clips'.
+    """
+    return await asyncio.to_thread(
+        _create_clip_from_vod_sync,
+        broadcaster_id=broadcaster_id,
+        vod_id=vod_id,
+        vod_offset=vod_offset,
+        duration=duration,
+        token=token,
+        client_id=client_id,
+        title=title,
+    )
+
+
 async def get_clip(
     *,
     clip_id: str,
@@ -148,3 +174,104 @@ async def get_clip(
     Para polling de criacao, tratar None como 'ainda nao pronto' (dentro da janela de 15s).
     """
     return await asyncio.to_thread(_get_clip_sync, clip_id, token, client_id)
+
+
+async def get_clip_download_url(
+    *,
+    clip_id: str,
+    token: str,
+    client_id: str,
+    broadcaster_id: str,
+) -> str | None:
+    """
+    Busca URL de download via GET /helix/clips/downloads.
+    Token deve ter scope 'editor:manage:clips' ou 'channel:manage:clips'.
+    Rate limit especifico: 100 req/min.
+    Retorna a URL ou None se nao disponivel.
+    """
+    return await asyncio.to_thread(
+        _get_clip_download_url_sync,
+        clip_id=clip_id,
+        token=token,
+        client_id=client_id,
+        broadcaster_id=broadcaster_id,
+    )
+
+
+def _create_clip_from_vod_sync(
+    broadcaster_id: str,
+    vod_id: str,
+    vod_offset: int,
+    duration: int,
+    token: str,
+    client_id: str,
+    title: str,
+) -> dict[str, Any]:
+    if vod_offset < duration:
+        raise ValueError("vod_offset deve ser maior ou igual a duration.")
+    
+    params = {
+        "broadcaster_id": broadcaster_id,
+        "video_id": vod_id,
+        "vod_offset": str(vod_offset),
+        "duration": str(duration),
+    }
+    if title:
+        params["title"] = title
+
+    url = f"{HELIX_BASE}/videos/clips?{urlencode(params)}"
+    request = Request(url, method="POST")
+    request.add_header("Authorization", f"Bearer {token}")
+    request.add_header("Client-Id", client_id)
+
+    try:
+        with urlopen(request, timeout=10.0) as response:
+            if response.status != 202:
+                raise TwitchClipError(f"Status inesperado no create_clip_from_vod: {response.status}")
+            payload = _parse_response(response)
+            data = payload.get("data", [])
+            if not data:
+                raise TwitchClipError("Resposta de create_clip_from_vod sem dados.")
+            return data[0]
+    except HTTPError as error:
+        _handle_http_error(error)
+        raise
+    except URLError as error:
+        raise TwitchClipError(f"Erro de rede ao criar clip VOD: {error}") from error
+
+
+def _get_clip_download_url_sync(
+    clip_id: str,
+    token: str,
+    client_id: str,
+    broadcaster_id: str,
+) -> str | None:
+    params = {"id": clip_id, "broadcaster_id": broadcaster_id}
+    url = f"{HELIX_BASE}/clips/downloads?{urlencode(params)}"
+    request = Request(url, method="GET")
+    request.add_header("Authorization", f"Bearer {token}")
+    request.add_header("Client-Id", client_id)
+
+    try:
+        with urlopen(request, timeout=10.0) as response:
+            payload = _parse_response(response)
+            data = payload.get("data", [])
+            if not data:
+                return None
+            return data[0].get("download_url")
+    except HTTPError as error:
+        # 429 especifico para downloads
+        if error.code == 429:
+             reset_val = error.headers.get("Ratelimit-Reset", "")
+             try:
+                 reset_at = float(reset_val)
+             except ValueError:
+                 import time
+                 reset_at = time.time() + 60.0
+             raise TwitchClipRateLimitError("Rate limit de download excedido (100/min).", reset_at)
+        if error.code == 404:
+            return None
+        _handle_http_error(error)
+        raise
+    except URLError as error:
+        raise TwitchClipError(f"Erro de rede ao buscar download URL: {error}") from error

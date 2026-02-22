@@ -13,7 +13,9 @@ from bot.twitch_clips_api import (
     TwitchClipNotFoundError,
     TwitchClipRateLimitError,
     create_clip_live,
+    create_clip_from_vod,
     get_clip,
+    get_clip_download_url,
 )
 
 logger = logging.getLogger("byte.clips.runtime")
@@ -47,7 +49,6 @@ class ClipJobsRuntime:
 
     def get_jobs(self) -> list[dict[str, Any]]:
         with self._lock:
-            # Sort by created_at desc
             return sorted(
                 self._jobs.values(),
                 key=lambda x: str(x.get("created_at", "")),
@@ -68,8 +69,6 @@ class ClipJobsRuntime:
             await asyncio.sleep(2.0)
 
     async def _sync_from_queue(self) -> None:
-        # Get approved clip candidates
-        # Note: 'control_plane.list_actions' returns a snapshot.
         actions_payload = control_plane.list_actions(status="approved", limit=20)
         items = actions_payload.get("items", [])
         
@@ -82,7 +81,6 @@ class ClipJobsRuntime:
                 if action_id in self._jobs:
                     continue
                 
-                # New job
                 now = time.time()
                 payload = item.get("payload", {})
                 job = {
@@ -92,11 +90,16 @@ class ClipJobsRuntime:
                     "mode": str(payload.get("mode", "live")),
                     "status": "queued",
                     "title": str(payload.get("suggested_title", "")),
+                    # Persist VOD params if present
+                    "vod_id": payload.get("vod_id"),
+                    "vod_offset": payload.get("vod_offset"),
+                    "duration": payload.get("suggested_duration"),
                     "created_at": utc_iso(now),
                     "updated_at": utc_iso(now),
                     "twitch_clip_id": None,
                     "edit_url": None,
                     "clip_url": None,
+                    "download_url": None,
                     "error": None,
                     "attempts": 0,
                     "next_poll_at": 0.0,
@@ -106,11 +109,11 @@ class ClipJobsRuntime:
                 logger.info("Novo job de clip criado: %s", job["job_id"])
 
     async def _advance_jobs(self) -> None:
-        # Copy to avoid holding lock during async ops
         with self._lock:
             active_jobs = [
                 job for job in self._jobs.values()
-                if job["status"] in {"queued", "creating", "polling"}
+                if job["status"] in {"queued", "creating", "polling", "ready"} 
+                and not (job["status"] == "ready" and job.get("download_url")) # Keep processing ready jobs until download URL fetched
             ]
 
         for job in active_jobs:
@@ -119,9 +122,12 @@ class ClipJobsRuntime:
                     await self._handle_queued(job)
                 elif job["status"] == "polling":
                     await self._handle_polling(job)
+                elif job["status"] == "ready" and not job.get("download_url"):
+                    await self._handle_download_fetch(job)
             except Exception as error:
                 logger.error("Erro ao processar job %s: %s", job["job_id"], error)
-                self._update_job(job["action_id"], status="failed", error=str(error))
+                if job["status"] != "ready": # Don't fail a ready job just because download fetch failed
+                    self._update_job(job["action_id"], status="failed", error=str(error))
 
     async def _get_token(self) -> str:
         if not self._token_provider:
@@ -131,25 +137,43 @@ class ClipJobsRuntime:
     async def _handle_queued(self, job: dict[str, Any]) -> None:
         action_id = job["action_id"]
         broadcaster_id = job["broadcaster_id"]
+        mode = job["mode"]
         
-        # Only live mode supported in Phase 2
-        if job["mode"] != "live":
-             self._update_job(action_id, status="failed", error="mode_not_supported_yet")
-             return
-
         self._update_job(action_id, status="creating")
         
         try:
             token = await self._get_token()
             client_id = CLIENT_ID or ""
             
-            # Call API
-            resp = await create_clip_live(
-                broadcaster_id=broadcaster_id,
-                token=token,
-                client_id=client_id,
-                has_delay=False, # Default for now
-            )
+            resp = {}
+            if mode == "live":
+                resp = await create_clip_live(
+                    broadcaster_id=broadcaster_id,
+                    token=token,
+                    client_id=client_id,
+                    has_delay=False,
+                )
+            elif mode == "vod":
+                vod_id = job.get("vod_id")
+                vod_offset = job.get("vod_offset")
+                duration = job.get("duration", 30)
+                title = job.get("title", "")
+
+                if not vod_id or not vod_offset:
+                     raise ValueError("Dados de VOD ausentes no job.")
+
+                resp = await create_clip_from_vod(
+                    broadcaster_id=broadcaster_id,
+                    vod_id=vod_id,
+                    vod_offset=int(vod_offset),
+                    duration=int(duration),
+                    token=token,
+                    client_id=client_id,
+                    title=title,
+                )
+            else:
+                 self._update_job(action_id, status="failed", error=f"mode_not_supported: {mode}")
+                 return
             
             clip_id = resp.get("id")
             edit_url = resp.get("edit_url")
@@ -163,18 +187,16 @@ class ClipJobsRuntime:
                 status="polling",
                 twitch_clip_id=clip_id,
                 edit_url=edit_url,
-                poll_until=now + 20.0, # 15s official + margin
+                poll_until=now + 20.0,
                 next_poll_at=now + 2.0,
             )
-            logger.info("Clip criado na Twitch: %s. Polling...", clip_id)
+            logger.info("Clip criado na Twitch (%s): %s. Polling...", mode, clip_id)
 
         except TwitchClipAuthError as e:
             self._update_job(action_id, status="failed", error=f"auth_error: {e}")
         except TwitchClipNotFoundError as e:
             self._update_job(action_id, status="failed", error=f"not_found: {e}")
         except TwitchClipRateLimitError as e:
-             # Simple backoff logic could go here, but for Phase 2 fail fast or simple retry?
-             # Roadmap: "retry com backoff". But for create, it's usually one-shot.
              self._update_job(action_id, status="failed", error=f"rate_limit: {e}")
         except Exception as e:
             self._update_job(action_id, status="failed", error=str(e))
@@ -202,7 +224,6 @@ class ClipJobsRuntime:
             )
             
             if clip_data:
-                # Clip ready!
                 clip_url = clip_data.get("url")
                 self._update_job(
                     action_id,
@@ -211,7 +232,6 @@ class ClipJobsRuntime:
                 )
                 logger.info("Clip pronto: %s", clip_url)
             else:
-                # Still processing
                 self._update_job(
                     action_id,
                     next_poll_at=now + 3.0,
@@ -219,7 +239,37 @@ class ClipJobsRuntime:
         
         except Exception as e:
              logger.warning("Erro no polling do clip %s: %s", clip_id, e)
-             self._update_job(action_id, next_poll_at=now + 3.0) # Retry poll
+             self._update_job(action_id, next_poll_at=now + 3.0)
+
+    async def _handle_download_fetch(self, job: dict[str, Any]) -> None:
+        # Tenta buscar a URL de download para jobs 'ready'
+        # Isso é um "best effort" e pode falhar por rate limit
+        action_id = job["action_id"]
+        clip_id = job["twitch_clip_id"]
+        broadcaster_id = job["broadcaster_id"]
+        
+        try:
+            token = await self._get_token()
+            client_id = CLIENT_ID or ""
+            
+            url = await get_clip_download_url(
+                clip_id=clip_id,
+                token=token,
+                client_id=client_id,
+                broadcaster_id=broadcaster_id,
+            )
+            
+            if url:
+                self._update_job(action_id, download_url=url)
+                logger.info("Download URL obtida para clip %s", clip_id)
+            
+        except TwitchClipRateLimitError:
+            # Silenciosamente ignora e tenta no proximo ciclo
+            pass
+        except Exception as e:
+            logger.warning("Falha ao buscar download URL para %s: %s", clip_id, e)
+            # Marca como indisponivel para nao tentar para sempre?
+            # Por enquanto, deixa tentar novamente.
 
     def _update_job(self, action_id: str, **kwargs: Any) -> None:
         with self._lock:

@@ -15,6 +15,9 @@ export function renderClipCard(job) {
     let actionsHtml = '';
     if (status === 'ready' && job.clip_url) {
         actionsHtml += `<a href="${escapeHtml(job.clip_url)}" target="_blank" class="btn btn-primary btn-sm">Abrir Clip</a>`;
+        if (job.download_url) {
+            actionsHtml += `<a href="${escapeHtml(job.download_url)}" target="_blank" class="btn btn-success btn-sm">Download</a>`;
+        }
         actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Editar</a>`;
     } else if (status === 'creating' || status === 'polling') {
         if (job.edit_url) {
