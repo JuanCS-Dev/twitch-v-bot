@@ -510,3 +510,24 @@ Rollback:
 ### Proximos Passos
 - **Validacao Final**: Teste E2E completo em ambiente de staging.
 - **Merge**: Criar PR para `main` e planejar rollout.
+
+### Fase 6 - Byte Vision & Visual Triggering (Bonus)
+
+Objetivo: Dar "olhos" ao agente para reagir ao jogo e detectar clips visualmente, nao so por chat.
+
+**Arquitetura Dual-Source**:
+1. **OBS Source (Alta fidelidade)**: Script local envia screenshots via HTTP.
+2. **Viewer Source (Cloud)**: Worker captura frames do stream Twitch publico (com delay natural).
+
+**Fluxo de Dados**:
+Input (Frame) -> Vision Runtime -> Gemini 1.5 Flash -> Context Update -> Autonomy Trigger.
+
+**Entregas**:
+- Rota `POST /api/vision/ingest` para receber frames.
+- `VisionRuntime` para chamar Gemini Multimodal.
+- Integracao com `SceneContext` (atualizar estado do jogo automaticamente).
+- **Visual Clip Trigger**: Se Gemini detectar "Victory", "Death", "Pentakill" -> Gerar `clip_candidate`.
+
+**Riscos**:
+- Custo de inferencia de imagem (controlar sampling rate).
+- Latencia do modo Viewer (reagir ao passado).
