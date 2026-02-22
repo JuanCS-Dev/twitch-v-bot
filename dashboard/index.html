@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/dashboard/styles/base.css" />
     <link rel="stylesheet" href="/dashboard/styles/layout.css" />
     <link rel="stylesheet" href="/dashboard/styles/components.css" />
+    <link rel="stylesheet" href="/dashboard/styles/clips.css" />
   </head>
   <body class="theme-dark">
     <header class="topbar">
@@ -242,6 +243,35 @@
             </div>
           </div>
           <p id="autTickFeedbackMsg" class="panel-hint event-level-info">Aguardando acao manual...</p>
+        </article>
+      </section>
+
+      <section class="grid-two" id="clipsSection">
+        <article class="panel">
+          <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Clips Pipeline</h2>
+            <span class="chip">Live Mode</span>
+          </div>
+          <p class="panel-hint">Monitoramento em tempo real da criação de clips.</p>
+          
+          <div id="clipsSkeleton" class="clips-skeleton">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+          
+          <div id="clipsList" class="clips-list" style="max-height: 500px; overflow-y: auto;">
+            <!-- Rendered by JS -->
+          </div>
+        </article>
+
+        <article class="panel">
+            <h2>Estatísticas de Clips</h2>
+            <dl class="kv">
+                <div><dt>Jobs Ativos</dt><dd>-</dd></div>
+                <div><dt>Sucesso (24h)</dt><dd>-</dd></div>
+                <div><dt>Falhas (24h)</dt><dd>-</dd></div>
+            </dl>
+            <p class="panel-hint">Métricas detalhadas em breve (Fase 4).</p>
         </article>
       </section>
 

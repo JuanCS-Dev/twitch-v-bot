@@ -3,12 +3,14 @@ import { getChannelControlElements } from "./features/channel-control/view.js";
 import { getControlPlaneElements } from "./features/control-plane/view.js";
 import { getAutonomyElements } from "./features/autonomy/view.js";
 import { getActionQueueElements } from "./features/action-queue/view.js";
+import { getClipsElements } from "./features/clips/view.js";
 import { getErrorMessage } from "./features/shared/errors.js";
 import { createObservabilityController } from "./features/observability/controller.js";
 import { createChannelControlController } from "./features/channel-control/controller.js";
 import { createControlPlaneController } from "./features/control-plane/controller.js";
 import { createAutonomyController } from "./features/autonomy/controller.js";
 import { createActionQueueController } from "./features/action-queue/controller.js";
+import { createClipsController } from "./features/clips/controller.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const obsEls = getObservabilityElements();
@@ -16,6 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const cpEls = getControlPlaneElements();
     const autEls = getAutonomyElements();
     const aqEls = getActionQueueElements();
+    const clipsEls = getClipsElements();
 
     const observabilityController = createObservabilityController({
         obsEls,
@@ -44,6 +47,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         applyRuntimeCapabilities: observabilityController.applyRuntimeCapabilities,
         getErrorMessage,
     });
+    const clipsController = createClipsController({
+        els: clipsEls
+    });
 
     channelControlController.bindChannelControlEvents();
     controlPlaneController.bindControlPlaneEvents();
@@ -59,5 +65,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     observabilityController.scheduleObservabilityPolling();
     actionQueueController.scheduleActionQueuePolling();
+    clipsController.startPolling();
 });
 
