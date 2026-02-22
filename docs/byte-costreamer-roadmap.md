@@ -435,3 +435,32 @@ Rollback:
     - `https://dev.twitch.tv/docs/authentication/validate-tokens/`
 - API rate limits:
     - `https://dev.twitch.tv/docs/api/guide#twitch-rate-limits`
+
+## 11) Relatorio de Progresso (Branch v2)
+
+**Status Geral**: Fases 0, 1 e 2 completas. Fase 3 (Backend) completa.
+**Ultima Atualizacao**: 22/02/2026
+
+### Entregas Realizadas
+- **Infraestrutura (Fase 0)**:
+    - [x] Flags de configuracao implementadas (`clip_pipeline_enabled`).
+    - [x] Validacao de escopo `clips:edit` no startup e loop horario.
+    - [x] Observabilidade de auth status via `/api/observability`.
+- **Logica de Autonomia (Fase 1)**:
+    - [x] Novo risco `RISK_CLIP_CANDIDATE`.
+    - [x] Geracao de candidatos via LLM (`AutonomyLogic`).
+    - [x] Integracao com fila de aprovacao existente.
+- **Execucao Live (Fase 2)**:
+    - [x] Wrapper `TwitchClipsAPI` robusto (com tratamento de 202/429).
+    - [x] `ClipJobsRuntime` implementado (Queued -> Polling -> Ready).
+    - [x] Polling assincrono com timeout.
+- **Backend Dashboard (Fase 3 - Parcial)**:
+    - [x] Rota `GET /api/clip-jobs` exposta.
+- **Qualidade & Refatoracao**:
+    - [x] Separacao de `AutonomyLogic` e `ObservabilityAnalytics` (arquivos < 300 linhas).
+    - [x] Suite de testes cientificos (`bot/tests/scientific/suite_clips.py`) com 100% de aprovacao.
+
+### Proximos Passos Imediatos
+1. **Frontend Dashboard (Fase 3 UI)**: Implementar cards de clips e acoes na interface HTML/JS.
+2. **Modo VOD (Fase 4)**: Implementar logica retroativa.
+3. **Persistencia (Fase 5)**: Salvar estado dos jobs.
