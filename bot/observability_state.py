@@ -48,6 +48,17 @@ class ObservabilityState:
         self._last_prompt = ""
         self._last_reply = ""
         self._estimated_cost_usd_total = 0.0
+        self._clips_status: dict[str, bool] = {
+            "token_valid": False,
+            "scope_ok": False,
+        }
+
+    def update_clips_auth_status(self, *, token_valid: bool, scope_ok: bool, timestamp: float | None = None) -> None:
+        now = resolve_now(timestamp)
+        with self._lock:
+            self._clips_status["token_valid"] = bool(token_valid)
+            self._clips_status["scope_ok"] = bool(scope_ok)
+            # We could record an event here if needed, but the requirement is just status.
 
     def record_chat_message(self, *, author_name: str, source: str, text: str = "", timestamp: float | None = None) -> None:
         now = resolve_now(timestamp)
@@ -199,6 +210,7 @@ class ObservabilityState:
                 "last_prompt": self._last_prompt,
                 "last_reply": self._last_reply,
                 "estimated_cost_usd_total": float(self._estimated_cost_usd_total),
+                "clips_status": dict(self._clips_status),
             }
         return build_observability_snapshot(
             now=now,
@@ -221,6 +233,7 @@ class ObservabilityState:
             last_prompt=payload["last_prompt"],
             last_reply=payload["last_reply"],
             estimated_cost_usd_total=payload["estimated_cost_usd_total"],
+            clips_status=payload["clips_status"],
             bot_brand=bot_brand,
             bot_version=bot_version,
             bot_mode=bot_mode,

@@ -3,6 +3,7 @@ import asyncio
 from google.cloud import secretmanager  # pyright: ignore[reportAttributeAccessIssue]
 
 from bot.autonomy_runtime import autonomy_runtime
+from bot.clip_jobs_runtime import clip_jobs
 from bot.eventsub_runtime import ByteBot
 from bot.irc_runtime import IrcByteBot
 from bot.observability import observability
@@ -130,6 +131,36 @@ def run_irc_mode() -> None:
         running_loop = asyncio.get_running_loop()
         irc_channel_control.bind(loop=running_loop, bot=bot)
 
+        async def _check_clips_auth() -> None:
+            # Avoid circular import
+            from bot.control_plane import control_plane
+
+            try:
+                validation = await token_manager.validate_now()
+                if not validation:
+                    observability.update_clips_auth_status(token_valid=False, scope_ok=False)
+                    return
+
+                scopes = set(validation.get("scopes", []))
+                has_clips_edit = "clips:edit" in scopes
+
+                observability.update_clips_auth_status(token_valid=True, scope_ok=has_clips_edit)
+
+                config = control_plane.get_config()
+                if config.get("clip_pipeline_enabled") and not has_clips_edit:
+                    logger.warning("Pipeline de clips habilitado mas scope 'clips:edit' ausente no token.")
+
+            except Exception as error:
+                logger.error("Erro ao validar auth de clips: %s", error)
+                observability.record_error(category="clips_auth", details=str(error))
+
+        async def verify_clips_auth_loop() -> None:
+            # Initial check
+            await asyncio.sleep(5)  # Wait for boot
+            while True:
+                await _check_clips_auth()
+                await asyncio.sleep(3600)
+
         async def send_autonomy_chat(text: str) -> None:
             await bot.send_reply(text)
 
@@ -138,9 +169,18 @@ def run_irc_mode() -> None:
             mode="irc",
             auto_chat_dispatcher=send_autonomy_chat,
         )
+        
+        # Clip Jobs Runtime
+        clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
+        clip_jobs.start(running_loop)
+        
+        # Start background task
+        asyncio.create_task(verify_clips_auth_loop())
+
         try:
             await bot.run_forever()
         finally:
+            clip_jobs.stop()
             autonomy_runtime.unbind()
             irc_channel_control.unbind()
 

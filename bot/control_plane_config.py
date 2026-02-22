@@ -23,6 +23,9 @@ class ControlPlaneConfigRuntime:
         self._config = {
             "version": 1,
             "autonomy_enabled": False,
+            "clip_pipeline_enabled": False,
+            "clip_api_enabled": False,
+            "clip_mode_default": "live",
             "heartbeat_interval_seconds": 60,
             "min_cooldown_seconds": 90,
             "budget_messages_10m": 2,
@@ -63,6 +66,17 @@ class ControlPlaneConfigRuntime:
 
             if "autonomy_enabled" in payload:
                 config["autonomy_enabled"] = bool(payload.get("autonomy_enabled"))
+
+            if "clip_pipeline_enabled" in payload:
+                config["clip_pipeline_enabled"] = bool(payload.get("clip_pipeline_enabled"))
+
+            if "clip_api_enabled" in payload:
+                config["clip_api_enabled"] = bool(payload.get("clip_api_enabled"))
+
+            if "clip_mode_default" in payload:
+                val = str(payload.get("clip_mode_default") or "live").strip().lower()
+                if val in ("live", "vod"):
+                    config["clip_mode_default"] = val
 
             if "heartbeat_interval_seconds" in payload:
                 config["heartbeat_interval_seconds"] = to_int(

@@ -1,18 +1,21 @@
 import asyncio
 import threading
+import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Any, Awaitable, Callable
 
 from bot.byte_semantics import format_chat_reply
 from bot.control_plane import (
     RISK_AUTO_CHAT,
+    RISK_CLIP_CANDIDATE,
     RISK_MODERATION_ACTION,
     RISK_SUGGEST_STREAMER,
     control_plane,
 )
+from bot.control_plane_constants import utc_iso
 from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context
 from bot.observability import observability
-from bot.runtime_config import ENABLE_LIVE_CONTEXT_LEARNING, client, logger
+from bot.runtime_config import CHANNEL_ID, ENABLE_LIVE_CONTEXT_LEARNING, client, logger
 
 AutoChatDispatcher = Callable[[str], Awaitable[None]]
 
@@ -213,6 +216,66 @@ class AutonomyRuntime:
                 "outcome": "auto_chat_sent",
             }
 
+        if risk == RISK_CLIP_CANDIDATE:
+            cfg = control_plane.get_config()
+            if not cfg.get("clip_pipeline_enabled"):
+                observability.record_autonomy_goal(
+                    risk=risk,
+                    outcome="disabled",
+                    details="clip_pipeline_disabled",
+                )
+                return {
+                    "goal_id": goal_id,
+                    "risk": risk,
+                    "outcome": "disabled",
+                }
+
+            if len(generated_text) < 5 or "nada" in generated_text.lower():
+                control_plane.register_dispatch_failure("clip_candidate_none")
+                observability.record_autonomy_goal(
+                    risk=risk,
+                    outcome="no_candidate",
+                    details="LLM retornou NADA",
+                )
+                return {
+                    "goal_id": goal_id,
+                    "risk": risk,
+                    "outcome": "no_candidate",
+                }
+
+            now_ts = utc_iso(time.time())
+            candidate_payload = {
+                "candidate_id": f"clip_{int(time.time())}",
+                "broadcaster_id": str(CHANNEL_ID),
+                "mode": str(cfg.get("clip_mode_default", "live")),
+                "suggested_duration": 30.0,
+                "suggested_title": generated_text[:100],
+                "source": "autonomy_goal",
+                "source_ts": now_ts,
+                "context_excerpt": generated_text,
+                "dedupe_key": f"clip_{int(time.time() / 60)}",
+            }
+
+            queued_item = control_plane.enqueue_action(
+                kind="clip_candidate",
+                risk=RISK_CLIP_CANDIDATE,
+                title=f"Sugestao de Clip ({goal_name})",
+                body=generated_text,
+                payload=candidate_payload,
+                created_by="autonomy",
+            )
+            observability.record_autonomy_goal(
+                risk=risk,
+                outcome="queued",
+                details=queued_item.get("id", ""),
+            )
+            return {
+                "goal_id": goal_id,
+                "risk": risk,
+                "outcome": "queued",
+                "action_id": queued_item.get("id", ""),
+            }
+
         action_kind = "suggestion" if risk == RISK_SUGGEST_STREAMER else "moderation_review"
         queued_item = control_plane.enqueue_action(
             kind=action_kind,
@@ -254,6 +317,11 @@ class AutonomyRuntime:
             ),
             RISK_MODERATION_ACTION: (
                 "Identifique risco de moderacao e recomende acao conservadora com justificativa curta."
+            ),
+            RISK_CLIP_CANDIDATE: (
+                "Identifique um momento memoravel recente na live. "
+                "Se houver algo digno de clipe, descreva o motivo em 1 frase. "
+                "Se nao houver nada relevante, responda apenas 'NADA'."
             ),
         }.get(risk, "Responda com recomendacao objetiva.")
         autonomy_prompt = (

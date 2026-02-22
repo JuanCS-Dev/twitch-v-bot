@@ -5,10 +5,12 @@ from typing import Any
 RISK_AUTO_CHAT = "auto_chat"
 RISK_SUGGEST_STREAMER = "suggest_streamer"
 RISK_MODERATION_ACTION = "moderation_action"
+RISK_CLIP_CANDIDATE = "clip_candidate"
 SUPPORTED_RISK_LEVELS = {
     RISK_AUTO_CHAT,
     RISK_SUGGEST_STREAMER,
     RISK_MODERATION_ACTION,
+    RISK_CLIP_CANDIDATE,
 }
 SUPPORTED_DECISIONS = {"approve", "reject"}
 
@@ -36,6 +38,14 @@ DEFAULT_GOALS = [
         "risk": RISK_MODERATION_ACTION,
         "interval_seconds": 300,
         "enabled": True,
+    },
+    {
+        "id": "detect_clip",
+        "name": "Deteccao de clips",
+        "prompt": "Analise o contexto recente (chat e eventos) e identifique um momento digno de clipe.",
+        "risk": RISK_CLIP_CANDIDATE,
+        "interval_seconds": 600,
+        "enabled": False,
     },
 ]
 

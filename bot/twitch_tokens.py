@@ -183,3 +183,11 @@ class TwitchTokenManager:
             self._set_expiration(validation.get("expires_in"))
 
         return self.access_token
+
+    async def validate_now(self) -> dict[str, Any] | None:
+        """Valida o token atual e retorna o payload da Twitch (incluindo scopes)."""
+        validation = await asyncio.to_thread(self._validate_token_sync)
+        if validation:
+            self._set_expiration(validation.get("expires_in"))
+            self.validated_once = True
+        return validation

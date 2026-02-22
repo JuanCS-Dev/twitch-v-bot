@@ -3,6 +3,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from bot.autonomy_runtime import autonomy_runtime
+from bot.clip_jobs_runtime import clip_jobs
 from bot.control_plane import control_plane
 from bot.logic import BOT_BRAND, context
 from bot.observability import observability
@@ -110,6 +111,18 @@ def handle_get(handler: Any) -> None:
                 "ok": True,
                 "mode": TWITCH_CHAT_MODE,
                 **queue_payload,
+            },
+            status_code=200,
+        )
+        return
+
+    if route == "/api/clip-jobs":
+        jobs = clip_jobs.get_jobs()
+        handler._send_json(
+            {
+                "ok": True,
+                "mode": TWITCH_CHAT_MODE,
+                "items": jobs,
             },
             status_code=200,
         )

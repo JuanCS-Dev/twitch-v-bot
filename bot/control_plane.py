@@ -4,6 +4,7 @@ from bot.control_plane_actions import ControlPlaneActionQueue
 from bot.control_plane_config import ControlPlaneConfigRuntime
 from bot.control_plane_constants import (
     RISK_AUTO_CHAT,
+    RISK_CLIP_CANDIDATE,
     RISK_MODERATION_ACTION,
     RISK_SUGGEST_STREAMER,
     SUPPORTED_DECISIONS,
@@ -163,6 +164,7 @@ control_plane = ControlPlaneState()
 
 __all__ = [
     "RISK_AUTO_CHAT",
+    "RISK_CLIP_CANDIDATE",
     "RISK_SUGGEST_STREAMER",
     "RISK_MODERATION_ACTION",
     "SUPPORTED_RISK_LEVELS",
