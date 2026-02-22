@@ -464,3 +464,25 @@ Rollback:
 1. **Frontend Dashboard (Fase 3 UI)**: Implementar cards de clips e acoes na interface HTML/JS.
 2. **Modo VOD (Fase 4)**: Implementar logica retroativa.
 3. **Persistencia (Fase 5)**: Salvar estado dos jobs.
+
+## 12) Relatorio de Progresso - Fase 4 (Branch v2)
+
+**Status**: Fase 4 (VOD & Downloads) completa e validada.
+**Ultima Atualizacao**: 22/02/2026
+
+### Entregas Realizadas
+- **Backend API (Fase 4)**:
+    - [x] Implementado `create_clip_from_vod` (POST /helix/videos/clips).
+    - [x] Implementado `get_clip_download_url` (GET /helix/clips/downloads) com tratamento de rate limit 429.
+- **Runtime (Fase 4)**:
+    - [x] Suporte a `mode="vod"` no processamento de jobs.
+    - [x] Validacao de parametros VOD (`vod_offset >= duration`).
+    - [x] Ciclo de vida estendido: Jobs `ready` buscam `download_url` automaticamente.
+- **Frontend Dashboard (Fase 4)**:
+    - [x] Botao "Download" exibido condicionalmente nos cards.
+- **Qualidade**:
+    - [x] Nova suite de testes `bot/tests/scientific/suite_clips_vod.py` cobrindo cenarios de sucesso e falha.
+    - [x] Cobertura de rate limits especificos de download.
+
+### Proximos Passos
+1. **Persistencia (Fase 5)**: Salvar estado dos jobs para sobreviver a restarts do Cloud Run.
