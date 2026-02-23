@@ -1,0 +1,107 @@
+/* Scoped styles for Clip Cards */
+.clip-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-2);
+    position: relative;
+    overflow: hidden;
+    contain: content; /* Performance optimization */
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.clip-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+/* Status Indicator Bar via CSS pseudo-element */
+.clip-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--status-color);
+}
+
+/* Status Color Mapping */
+.clip-card[data-status="queued"] { --status-color: var(--color-gray-500); }
+.clip-card[data-status="creating"] { --status-color: var(--color-blue-500); }
+.clip-card[data-status="polling"] { --status-color: var(--color-purple-500); }
+.clip-card[data-status="ready"] { --status-color: var(--color-green-500); }
+.clip-card[data-status="failed"] { --status-color: var(--color-red-500); }
+
+.clip-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-2);
+}
+
+.clip-title {
+    margin: 0 0 var(--spacing-2) 0;
+    font-size: 1rem;
+    line-height: 1.4;
+    color: var(--text-main);
+}
+
+.clip-meta {
+    display: flex;
+    gap: var(--spacing-2);
+    font-size: 0.75rem;
+}
+
+.meta-item {
+    background: var(--surface-3);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.clip-error {
+    color: var(--color-red-400);
+    font-size: 0.8rem;
+    margin-top: var(--spacing-2);
+    background: rgba(239, 68, 68, 0.1);
+    padding: var(--spacing-2);
+    border-radius: var(--radius-sm);
+}
+
+.clip-actions {
+    margin-top: var(--spacing-3);
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+/* Skeleton Loading */
+.clips-skeleton .skeleton-card {
+    height: 120px;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-2);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.6; }
+}
+
+.empty-state {
+    padding: var(--spacing-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    background: var(--surface-1);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-color);
+}

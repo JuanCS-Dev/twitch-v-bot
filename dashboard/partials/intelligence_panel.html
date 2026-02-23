@@ -1,0 +1,54 @@
+<section class="grid-two" id="intelligenceSection">
+    <article class="panel">
+        <h2>Streamer HUD</h2>
+        <p class="panel-hint">Sugestoes privadas do agente para o streamer. Atualizacao em tempo real (3s).</p>
+
+        <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+            <span class="chip pending">Messages: <span id="hudMessageCount">0</span></span>
+            <label
+                style="display:inline-flex; align-items:center; gap:var(--spacing-2); font-size:0.85rem; color:var(--text-muted); cursor:pointer;">
+                <input id="hudTtsToggle" type="checkbox" />
+                TTS (Text-to-Speech)
+            </label>
+        </div>
+
+        <ul id="hudMessagesList" class="events-list" style="max-height:360px; overflow-y:auto;">
+            <li style="font-style:italic; color:var(--text-muted);">Nenhuma sugestão do agente ainda.</li>
+        </ul>
+    </article>
+
+    <article class="panel">
+        <h2>Intelligence Overview</h2>
+        <p class="panel-hint">Status consolidado das engines de visao, sentimento e recap.</p>
+        <dl class="kv">
+            <div>
+                <dt>Vision Status</dt>
+                <dd id="intVisionStatus">Idle</dd>
+            </div>
+            <div>
+                <dt>Vision Frames Total</dt>
+                <dd id="intVisionFramesTotal">0</dd>
+            </div>
+            <div>
+                <dt>Vision Last Analysis</dt>
+                <dd id="intVisionLastAnalysis">-</dd>
+            </div>
+            <div>
+                <dt>Sentiment Vibe</dt>
+                <dd id="intSentimentVibe">Chill</dd>
+            </div>
+            <div>
+                <dt>Sentiment Score (avg)</dt>
+                <dd id="intSentimentAvg">0.00</dd>
+            </div>
+            <div>
+                <dt>Sentiment Messages</dt>
+                <dd id="intSentimentCount">0</dd>
+            </div>
+            <div>
+                <dt>Positive / Negative</dt>
+                <dd><span id="intSentimentPositive">0</span> / <span id="intSentimentNegative">0</span></dd>
+            </div>
+        </dl>
+    </article>
+</section>

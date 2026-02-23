@@ -1,0 +1,157 @@
+from typing import Any
+
+from bot import byte_semantics
+from bot.logic import MAX_REPLY_LINES, agent_inference, context, has_grounding_signal
+from bot.observability import observability
+from bot.prompt_flow import (
+    BytePromptRuntime,
+    handle_byte_prompt_text as handle_byte_prompt_text_impl,
+    handle_movie_fact_sheet_prompt as handle_movie_fact_sheet_prompt_impl,
+    unwrap_inference_result as unwrap_inference_result_impl,
+)
+from bot.runtime_config import (
+    BYTE_HELP_MESSAGE,
+    BYTE_INTRO_TEMPLATES,
+    ENABLE_LIVE_CONTEXT_LEARNING,
+    MAX_CHAT_MESSAGE_LENGTH,
+    QUALITY_SAFE_FALLBACK,
+    SERIOUS_REPLY_MAX_LENGTH,
+    SERIOUS_REPLY_MAX_LINES,
+    client,
+    logger,
+)
+from bot.status_runtime import build_status_line
+
+
+compact_message = byte_semantics.compact_message
+format_chat_reply = byte_semantics.format_chat_reply
+build_intro_reply_templates = byte_semantics.BYTE_INTRO_TEMPLATES
+is_intro_prompt = byte_semantics.is_intro_prompt
+is_movie_fact_sheet_prompt = byte_semantics.is_movie_fact_sheet_prompt
+is_current_events_prompt = byte_semantics.is_current_events_prompt
+is_high_risk_current_events_prompt = byte_semantics.is_high_risk_current_events_prompt
+build_verifiable_prompt = byte_semantics.build_verifiable_prompt
+is_serious_technical_prompt = byte_semantics.is_serious_technical_prompt
+is_follow_up_prompt = byte_semantics.is_follow_up_prompt
+build_direct_answer_instruction = byte_semantics.build_direct_answer_instruction
+build_llm_enhanced_prompt = byte_semantics.build_llm_enhanced_prompt
+is_low_quality_answer = byte_semantics.is_low_quality_answer
+build_quality_rewrite_prompt = byte_semantics.build_quality_rewrite_prompt
+build_server_time_anchor_instruction = byte_semantics.build_server_time_anchor_instruction
+normalize_current_events_reply_contract = (
+    byte_semantics.normalize_current_events_reply_contract
+)
+build_current_events_safe_fallback_reply = (
+    byte_semantics.build_current_events_safe_fallback_reply
+)
+extract_multi_reply_parts = byte_semantics.extract_multi_reply_parts
+extract_movie_title = byte_semantics.extract_movie_title
+build_movie_fact_sheet_query = byte_semantics.build_movie_fact_sheet_query
+
+intro_template_index = 0
+
+
+def build_intro_reply() -> str:
+    global intro_template_index
+    template = BYTE_INTRO_TEMPLATES[intro_template_index % len(BYTE_INTRO_TEMPLATES)]
+    intro_template_index += 1
+    return template
+
+
+def unwrap_inference_result(result: Any) -> tuple[str, dict | None]:
+    return unwrap_inference_result_impl(result)
+
+
+def build_prompt_runtime() -> BytePromptRuntime:
+    return BytePromptRuntime(
+        agent_inference=agent_inference,
+        client=client,
+        context=context,
+        observability=observability,
+        logger=logger,
+        byte_help_message=BYTE_HELP_MESSAGE,
+        max_reply_lines=MAX_REPLY_LINES,
+        max_chat_message_length=MAX_CHAT_MESSAGE_LENGTH,
+        serious_reply_max_lines=SERIOUS_REPLY_MAX_LINES,
+        serious_reply_max_length=SERIOUS_REPLY_MAX_LENGTH,
+        quality_safe_fallback=QUALITY_SAFE_FALLBACK,
+        format_chat_reply=format_chat_reply,
+        is_serious_technical_prompt=is_serious_technical_prompt,
+        is_follow_up_prompt=is_follow_up_prompt,
+        is_current_events_prompt=is_current_events_prompt,
+        is_high_risk_current_events_prompt=is_high_risk_current_events_prompt,
+        build_server_time_anchor_instruction=build_server_time_anchor_instruction,
+        is_intro_prompt=is_intro_prompt,
+        build_intro_reply=build_intro_reply,
+        is_movie_fact_sheet_prompt=is_movie_fact_sheet_prompt,
+        extract_movie_title=extract_movie_title,
+        build_movie_fact_sheet_query=build_movie_fact_sheet_query,
+        build_llm_enhanced_prompt=build_llm_enhanced_prompt,
+        has_grounding_signal=has_grounding_signal,
+        normalize_current_events_reply_contract=normalize_current_events_reply_contract,
+        is_low_quality_answer=is_low_quality_answer,
+        build_quality_rewrite_prompt=build_quality_rewrite_prompt,
+        build_current_events_safe_fallback_reply=build_current_events_safe_fallback_reply,
+        extract_multi_reply_parts=extract_multi_reply_parts,
+        enable_live_context_learning=ENABLE_LIVE_CONTEXT_LEARNING,
+    )
+
+
+async def handle_movie_fact_sheet_prompt(
+    prompt: str,
+    author_name: str,
+    reply_fn,
+) -> None:
+    await handle_movie_fact_sheet_prompt_impl(
+        prompt,
+        author_name,
+        reply_fn,
+        runtime=build_prompt_runtime(),
+    )
+
+
+async def handle_byte_prompt_text(
+    prompt: str,
+    author_name: str,
+    reply_fn,
+    status_line_factory=None,
+) -> None:
+    # Recap detection — short-circuit to recap engine
+    from bot.recap_engine import is_recap_prompt, generate_recap
+
+    if is_recap_prompt(prompt):
+        recap_text = await generate_recap()
+        formatted = format_chat_reply(recap_text)
+        if formatted:
+            await reply_fn(formatted)
+            observability.record_byte_interaction(
+                route="recap",
+                author_name=author_name,
+                prompt_chars=len(prompt),
+                reply_parts=1,
+                reply_chars=len(formatted),
+                serious=False,
+                follow_up=False,
+                current_events=False,
+                latency_ms=0.0,
+            )
+        return
+
+    if callable(status_line_factory):
+
+        def effective_status_factory() -> str:
+            try:
+                return str(status_line_factory())
+            except Exception as error:
+                logger.warning("Falha ao montar status customizado: %s", error)
+                return build_status_line()
+    else:
+        effective_status_factory = build_status_line
+
+    await handle_byte_prompt_text_impl(
+        prompt,
+        author_name,
+        reply_fn,
+        runtime=build_prompt_runtime(),
+        status_line_factory=effective_status_factory,
+    )

@@ -1,0 +1,49 @@
+<section class="grid-two" id="actionQueueSection">
+  <article class="panel">
+    <h2>Risk Queue (Approve / Reject)</h2>
+    <p class="panel-hint">Acoes moderativas e sugestoes exigem decisao explicita para manter seguranca operacional.</p>
+
+    <div class="form-row" style="flex-wrap:wrap;">
+      <div class="form-group" style="min-width:170px;">
+        <label for="aqStatusFilter">Filtro status</label>
+        <select id="aqStatusFilter" class="form-control">
+          <option value="">all</option>
+          <option value="pending">pending</option>
+          <option value="approved">approved</option>
+          <option value="rejected">rejected</option>
+          <option value="ignored">ignored</option>
+        </select>
+      </div>
+      <div class="form-group" style="min-width:150px;">
+        <label for="aqLimitInput">Limite</label>
+        <input id="aqLimitInput" class="form-control" type="number" min="1" max="300" step="1" value="80" />
+      </div>
+      <div class="form-group">
+        <button id="aqRefreshBtn" class="btn btn-secondary" type="button">Refresh Queue</button>
+      </div>
+    </div>
+
+    <dl class="kv">
+      <div><dt>Pending</dt><dd id="aqPendingCount">0</dd></div>
+      <div><dt>Approved</dt><dd id="aqApprovedCount">0</dd></div>
+      <div><dt>Rejected</dt><dd id="aqRejectedCount">0</dd></div>
+      <div><dt>Ignored</dt><dd id="aqIgnoredCount">0</dd></div>
+      <div><dt>Total</dt><dd id="aqTotalCount">0</dd></div>
+    </dl>
+
+    <p id="aqFeedbackMsg" class="panel-hint event-level-info">Aguardando fila...</p>
+    <ul id="aqList" class="events-list" style="max-height: 560px; overflow-y: auto;"></ul>
+  </article>
+
+  <article class="panel">
+    <h2>Paridade Operacional</h2>
+    <p class="panel-hint">Esta dashboard cobre controle de canais, contrato de resposta 1x4, autonomia, fila de risco e outcomes/custo.</p>
+    <dl class="kv">
+      <div><dt>Channel Control</dt><dd>mode-aware com guard frontend + backend</dd></div>
+      <div><dt>Contrato de resposta</dt><dd>1 mensagem, ate 4 linhas</dd></div>
+      <div><dt>Autonomia</dt><dd>agenda + heartbeat + budget anti-spam</dd></div>
+      <div><dt>Risco</dt><dd>auto chat, sugestao, moderacao confirmada</dd></div>
+      <div><dt>Metrica de valor</dt><dd>engajamento util + correcoes + ignorados + custo/token</dd></div>
+    </dl>
+  </article>
+</section>

@@ -1,0 +1,7 @@
+twitchio==3.2.1
+openai
+psycopg2-binary
+asqlite
+duckduckgo-search
+python-dotenv
+supabase

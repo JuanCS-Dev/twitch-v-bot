@@ -1,0 +1,39 @@
+<!-- HERO V2: Manager Visual Guiado -->
+<section class="grid-hero" id="channelControlPanel">
+  <article class="panel">
+    <h2>Channel Manager</h2>
+    <p class="panel-hint">Canais monitorados simultaneamente. Sem terminal hostil.</p>
+    <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+      <span id="channelControlModeChip" class="chip pending">Mode: loading</span>
+      <span class="chip">Contract: 1 msg / 4 linhas</span>
+    </div>
+    <p id="channelControlModeReason" class="panel-hint">Carregando capacidades do runtime...</p>
+    
+    <div class="form-row">
+      <div class="form-group" style="flex:1;">
+        <label for="channelLoginInput">Twitch Channel (login sem arroba)</label>
+        <input id="channelLoginInput" class="form-control" type="text" autocomplete="off" placeholder="ex: gaules, oisakura" />
+      </div>
+      <div class="form-group">
+        <button id="btnJoinChannel" class="btn btn-primary" type="button">Conectar</button>
+      </div>
+      <div class="form-group">
+        <button id="btnSyncChannels" class="btn btn-secondary" type="button" title="Sincronizar a força">Re-Sync</button>
+      </div>
+    </div>
+    
+    <div class="form-group" style="opacity: 0.6; align-items:flex-end;">
+      <label for="adminTokenInput" style="font-weight: normal; font-size: 0.7rem;">Admin Override Token</label>
+      <input id="adminTokenInput" class="form-control" type="password" style="font-size: 0.75rem; padding: 0.3rem 0.5rem; max-width: 250px;" autocomplete="off" placeholder="Optional Auth" />
+    </div>
+
+    <p id="channelFeedbackMsg" class="panel-hint event-level-info" style="margin-top:var(--spacing-3); font-style: italic;">Aguardando ação...</p>
+  </article>
+
+  <article class="card tone-purple">
+    <h2>Conexões Ativas</h2>
+    <ul id="connectedChannelsList" class="events-list" style="margin-top:var(--spacing-3); display:flex; flex-wrap:wrap; flex-direction:row; border:0; background:transparent;">
+      <!-- Render dinâmico de chipes e botoes drop -->
+    </ul>
+  </article>
+</section>
