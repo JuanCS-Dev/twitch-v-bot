@@ -23,18 +23,15 @@ class SupabaseJobStore:
             return None
         try:
             # Tentar extrair componentes para conexao robusta sem DSN string
-            if self._db_url.startswith("postgresql://"):
-                url = self._db_url.split("://")[1]
-                auth, rest = url.split("@")
-                user, pwd = auth.split(":")
-                host_port, dbname = rest.split("/")
-                host, port = host_port.split(":")
+            if self._db_url.startswith("postgresql://") or self._db_url.startswith("postgres://"):
+                import urllib.parse
+                parsed = urllib.parse.urlparse(self._db_url)
                 conn = psycopg2.connect(
-                    user=user.strip(),
-                    password=pwd.strip(),
-                    host=host.strip(),
-                    port=int(port),
-                    database=dbname.strip(),
+                    user=urllib.parse.unquote(parsed.username or ""),
+                    password=urllib.parse.unquote(parsed.password or ""),
+                    host=parsed.hostname,
+                    port=parsed.port or 5432,
+                    database=parsed.path.lstrip("/"),
                     sslmode="require",
                     connect_timeout=10
                 )

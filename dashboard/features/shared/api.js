@@ -44,6 +44,12 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
             finalUrl = `https://juancs-dev-twitch-byte-bot.hf.space/${routePath}`;
         }
     }
+    
+    // Anexa o token na Query String como fallback (Proxy do HF bloqueia headers as vezes)
+    if (activeToken) {
+        const separator = finalUrl.includes("?") ? "&" : "?";
+        finalUrl = `${finalUrl}${separator}auth=${encodeURIComponent(activeToken)}`;
+    }
 
     try {
         const response = await fetch(finalUrl, fetchOptions);

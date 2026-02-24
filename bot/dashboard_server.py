@@ -58,6 +58,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.headers, BYTE_DASHBOARD_ADMIN_TOKEN
         )
         if not authorized:
+            import urllib.parse
+            import hmac
+            parsed_path = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed_path.query)
+            if "auth" in query_params:
+                provided_token = query_params["auth"][0].strip()
+                authorized = hmac.compare_digest(provided_token, BYTE_DASHBOARD_ADMIN_TOKEN.strip())
+                
+        if not authorized:
             from bot.runtime_config import logger
             logger.warning("Auth rejection for route %s from %s", self.path, self.address_string())
         return authorized
