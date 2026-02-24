@@ -1,5 +1,5 @@
 // dashboard/features/shared/api.js
-
+import { getStorageItem } from "./dom.js";
 export const TIMEOUT_DEFAULT_MS = 12000;
 
 /**
@@ -16,8 +16,12 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
     };
 
     const tokenInput = document.getElementById("adminTokenInput");
-    if (tokenInput && tokenInput.value) {
-        headers["X-Byte-Admin-Token"] = tokenInput.value.trim();
+    let domToken = tokenInput ? tokenInput.value.trim() : "";
+    let localToken = getStorageItem("byte_dashboard_admin_token");
+    let activeToken = domToken || localToken;
+
+    if (activeToken) {
+        headers["X-Byte-Admin-Token"] = activeToken;
     }
 
     const fetchOptions = {
