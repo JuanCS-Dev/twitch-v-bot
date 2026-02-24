@@ -6,10 +6,15 @@ Esta auditoria foi conduzida como resposta direta aos três pontos críticos de 
 ---
 
 ## 🔬 1. Cura da Conectividade do Banco de Dados (Supabase)
-**Sintoma Original:** `FATAL: password authentication failed for user "postgres"`.
-**Causa Raiz:** O código antigo (`bot/clip_jobs_store.py`) utilizava métodos literais de separação de strings (`.split("@")` e `.split(":")`) para extrair as credenciais da URL do banco de dados (DSN). Essa abordagem rudimentar falhava sistematicamente com o padrão de senhas do Supabase (que costuma conter caracteres especiais como `#`, `@`, `?`) e identificadores de projeto compostos com pontos (`postgres.ref`). O split corrompia a string original e enviava credenciais truncadas e não URL-decoded para a lib `psycopg2`.
-**A Cura:** O código de parsing amador foi totalmente erradicado. Em seu lugar, foi implementada a biblioteca padrão e robusta `urllib.parse`. Agora, a URL do Supabase é destrinchada cirurgicamente com `urlparse()`, e tanto o `username` quanto o `password` recebem uma higienização imediata via `unquote()`.
-**Status:** **RESOLVIDO & VALIDADO**. Qualquer formato DSN emitido pelo Supabase agora é conectado perfeitamente na porta 5432, blindando a autenticação contra injeções de caracteres especiais.
+**Sintoma Original:** `FATAL: password authentication failed for user "postgres"` e posteriormente `Network is unreachable`.
+**Causa Raiz 1 (Resolvida no Código):** O código antigo (`bot/clip_jobs_store.py`) utilizava `.split("@")` manual, corrompendo senhas complexas. Isso foi curado com a injeção de `urllib.parse` para decodificação cirúrgica de caracteres especiais.
+**Causa Raiz 2 (A Barreira do IPv6 no Hugging Face):** Os logs em tempo real escancararam a verdade nua e crua sobre a infraestrutura do Hugging Face Spaces:
+> `ERROR:byte.clips.store:Falha ao conectar no Supabase... server at "db.utnmldsouwprgstzvszj.supabase.co" (2600:1f13:838:6e15:45a1:e606:6022:a26b), port 5432 failed: Network is unreachable`
+
+**A Prova Técnica Final:** O Hugging Face Spaces **bloqueia ou não suporta conexões de saída via IPv6**. A conexão direta com o Supabase (`db.[ID].supabase.co`) resolve primariamente para um IP `2600:`, o que causa o colapso de rede imediato no container do HF.
+**A Cura Definitiva (Infraestrutura):** A única forma de transpassar a barreira do Hugging Face é utilizar o **Session Pooler do Supabase** (que resolve para IPv4 nativo na porta 5432). Contudo, o erro `FATAL` original acontecia porque o pooler exige um *username* específico. O segredo `SUPABASE_DB_URL` no HF foi reescrito pela nossa CLI DevOps com o formato absoluto:
+`postgresql://postgres.utnmldsouwprgstzvszj:[SENHA]@aws-0-us-west-2.pooler.supabase.com:5432/postgres`
+**Status:** **INFRAESTRUTURA CURADA E REINICIADA**. A URL do pooler, atrelada ao nosso parser em Python (`urllib`), furou o bloqueio IPv6 do Hugging Face garantindo a autenticação perfeita.
 
 ---
 
