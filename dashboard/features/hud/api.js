@@ -1,5 +1,6 @@
+import { fetchWithTimeout } from "../shared/api.js";
+
 export async function fetchHudMessages(since = 0) {
-    const res = await fetch(`./api/hud/messages?since=${since}`);
-    if (!res.ok) throw new Error("Falha ao buscar HUD messages");
-    return res.json();
+    const res = await fetchWithTimeout(`./api/hud/messages?since=${since}`, { method: "GET" });
+    return res;
 }

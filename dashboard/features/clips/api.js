@@ -1,5 +1,6 @@
+import { fetchWithTimeout } from "../shared/api.js";
+
 export async function fetchClipJobs() {
-    const res = await fetch("./api/clip-jobs");
-    if (!res.ok) throw new Error("Falha ao buscar clip jobs");
-    return res.json();
+    const res = await fetchWithTimeout("./api/clip-jobs", { method: "GET" });
+    return res;
 }
