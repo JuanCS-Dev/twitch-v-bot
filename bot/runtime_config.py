@@ -76,13 +76,13 @@ NEBIUS_BASE_URL = env_text("NEBIUS_BASE_URL", "https://api.studio.nebius.ai/v1")
 
 # Multi-modelo: cada tipo de requisicao usa o modelo otimizado
 # Default (chat geral): rapido, barato, bom para conversa casual
-NEBIUS_MODEL_DEFAULT = env_text("NEBIUS_MODEL_DEFAULT", "deepseek-ai/DeepSeek-V3-0324-fast")
+NEBIUS_MODEL_DEFAULT = env_text("NEBIUS_MODEL_DEFAULT", "moonshotai/Kimi-K2.5")
 # Search (current events com DDG): rapido + bom em seguir instrucoes com contexto injetado
-NEBIUS_MODEL_SEARCH = env_text("NEBIUS_MODEL_SEARCH", "deepseek-ai/DeepSeek-V3-0324-fast")
+NEBIUS_MODEL_SEARCH = env_text("NEBIUS_MODEL_SEARCH", "moonshotai/Kimi-K2.5")
 # Reasoning (perguntas tecnicas serias): pensamento profundo
-NEBIUS_MODEL_REASONING = env_text("NEBIUS_MODEL_REASONING", "deepseek-ai/DeepSeek-R1-0528-fast")
-# Vision (multimodal para imagens e frames)
-NEBIUS_MODEL_VISION = env_text("NEBIUS_MODEL_VISION", "Qwen/Qwen2.5-VL-72B-Instruct")
+NEBIUS_MODEL_REASONING = env_text("NEBIUS_MODEL_REASONING", "moonshotai/Kimi-K2-Thinking")
+# Vision (multimodal para imagens e frames) - Kimi 2.5 eh State of the Art nativo Multimodal
+NEBIUS_MODEL_VISION = env_text("NEBIUS_MODEL_VISION", "moonshotai/Kimi-K2.5")
 # Backward compatible: NEBIUS_MODEL sobrescreve DEFAULT se definido
 NEBIUS_MODEL = env_text("NEBIUS_MODEL") or NEBIUS_MODEL_DEFAULT
 

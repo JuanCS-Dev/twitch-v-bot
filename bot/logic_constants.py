@@ -29,8 +29,8 @@ SYSTEM_INSTRUCTION_TEMPLATE = (
     "6) para assunto atual, priorize informacao recente e verificavel. "
     "7) responda primeiro a pergunta principal, sem rodeio."
 )
-MODEL_NAME = "gemini-3-flash-preview"
-MODEL_MAX_OUTPUT_TOKENS = 320
+MODEL_NAME = "moonshotai/Kimi-K2.5"
+MODEL_MAX_OUTPUT_TOKENS = 1024
 MODEL_TEMPERATURE = 0.15
 MODEL_INPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_INPUT_COST_PER_1M_USD", "0.10")))
 MODEL_OUTPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_OUTPUT_COST_PER_1M_USD", "0.40")))
