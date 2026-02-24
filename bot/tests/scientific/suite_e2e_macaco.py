@@ -410,8 +410,10 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
-        mock_response = SimpleNamespace(text="PENTAKILL! Jogador massacre total!")
-        mock_client.models.generate_content.return_value = mock_response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "PENTAKILL! Jogador massacre total!"
+        mock_client.chat.completions.create.return_value = mock_response
 
         with patch("bot.vision_runtime.control_plane") as mock_cp:
             mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}

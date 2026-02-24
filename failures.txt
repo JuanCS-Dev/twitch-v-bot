@@ -1,0 +1,924 @@
+.....F..........F...............F..................................FFFFF [ 22%]
+.....................................................................FF. [ 45%]
+.....F.FF..F..........FF..............F...F..........F..............FFFF [ 68%]
+F....................................................................... [ 91%]
+...................F.FF..F..                                             [100%]
+=================================== FAILURES ===================================
+______________ ScientificHttpTestsMixin.test_get_secret_coverage _______________
+
+self = <bot.tests.scientific.suite_http.ScientificHttpTestsMixin testMethod=test_get_secret_coverage>
+mock_sm = <MagicMock name='SecretManagerServiceClient' id='133638063233872'>
+
+    @patch("google.cloud.secretmanager.SecretManagerServiceClient")
+    def test_get_secret_coverage(self, mock_sm):
+>       with patch("bot.bootstrap_runtime.PROJECT_ID", "test-proj"):
+
+bot/tests/scientific/suite_http.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b0770fd50>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+_____________ ScientificHttpTestsMixin.test_health_server_response _____________
+
+self = <MagicMock name='mock._send_text' id='133638029253456'>
+args = ('AGENT_ONLINE',), kwargs = {'status_code': 200}
+expected = "_send_text('AGENT_ONLINE', status_code=200)", actual = 'not called.'
+error_message = "expected call not found.\nExpected: _send_text('AGENT_ONLINE', status_code=200)\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: _send_text('AGENT_ONLINE', status_code=200)
+E             Actual: not called.
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:930: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+self = <bot.tests.scientific.suite_http.ScientificHttpTestsMixin testMethod=test_health_server_response>
+
+    def test_health_server_response(self):
+        mock_handler = MagicMock()
+        mock_handler.path = "/"
+        mock_handler._send_text = MagicMock()
+    
+        HealthHandler.do_GET(mock_handler)
+    
+>       mock_handler._send_text.assert_called_with("AGENT_ONLINE", status_code=200)
+E       AssertionError: expected call not found.
+E       Expected: _send_text('AGENT_ONLINE', status_code=200)
+E         Actual: not called.
+
+bot/tests/scientific/suite_http.py:18: AssertionError
+_ ScientificMacacoModeTestsMixin.test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline _
+
+self = <bot.tests.scientific.suite_e2e_macaco.ScientificMacacoModeTestsMixin testMethod=test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline>
+mock_obs = <MagicMock name='observability' id='133638028295696'>
+mock_client = <MagicMock name='client' id='133638030096976'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="PENTAKILL! Jogador massacre total!")
+        mock_client.models.generate_content.return_value = mock_response
+    
+        with patch("bot.vision_runtime.control_plane") as mock_cp:
+            mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}
+            rt = VisionRuntime()
+            result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+            self.assertTrue(result["ok"])
+>           self.assertTrue(result["clip_trigger"])
+E           AssertionError: False is not true
+
+bot/tests/scientific/suite_e2e_macaco.py:421: AssertionError
+_ ScientificIrcControlTestsMixin.test_irc_admin_join_requires_confirmation_ready_runtime _
+
+self = <bot.tests.scientific.suite_irc_control.ScientificIrcControlTestsMixin testMethod=test_irc_admin_join_requires_confirmation_ready_runtime>
+
+    def test_irc_admin_join_requires_confirmation_ready_runtime(self):
+        bot = IrcByteBot(
+            host="irc.chat.twitch.tv",
+            port=6697,
+            use_tls=True,
+            bot_login="byte_agent",
+            channel_logins=["canal_a"],
+            user_token="token",
+        )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:82: AssertionError
+_ ScientificIrcControlTestsMixin.test_irc_admin_join_returns_failure_on_confirmation_timeout _
+
+self = <bot.tests.scientific.suite_irc_control.ScientificIrcControlTestsMixin testMethod=test_irc_admin_join_returns_failure_on_confirmation_timeout>
+
+    def test_irc_admin_join_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:60: AssertionError
+_ ScientificIrcControlTestsMixin.test_irc_admin_join_waits_for_server_confirmation _
+
+self = <bot.tests.scientific.suite_irc_control.ScientificIrcControlTestsMixin testMethod=test_irc_admin_join_waits_for_server_confirmation>
+
+    def test_irc_admin_join_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        join_task = self.loop.create_task(bot.admin_join_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+>       self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
+E       AssertionError: 'JOIN #canal_b\r\n' not found in ''
+
+bot/tests/scientific/suite_irc_control.py:30: AssertionError
+_ ScientificIrcControlTestsMixin.test_irc_admin_part_returns_failure_on_confirmation_timeout _
+
+self = <bot.tests.scientific.suite_irc_control.ScientificIrcControlTestsMixin testMethod=test_irc_admin_part_returns_failure_on_confirmation_timeout>
+
+    def test_irc_admin_part_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_part_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:134: AssertionError
+_ ScientificIrcControlTestsMixin.test_irc_admin_part_waits_for_server_confirmation _
+
+self = <bot.tests.scientific.suite_irc_control.ScientificIrcControlTestsMixin testMethod=test_irc_admin_part_waits_for_server_confirmation>
+
+    def test_irc_admin_part_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        part_task = self.loop.create_task(bot.admin_part_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+>       self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
+E       AssertionError: 'PART #canal_b\r\n' not found in ''
+
+bot/tests/scientific/suite_irc_control.py:104: AssertionError
+_ ScientificTokenAndBootstrapTestsMixin.test_build_irc_token_manager_raises_without_client_secret _
+
+self = <bot.tests.scientific.suite_tokens.ScientificTokenAndBootstrapTestsMixin testMethod=test_build_irc_token_manager_raises_without_client_secret>
+mock_get_secret = <MagicMock name='get_secret' id='133638007417360'>
+
+    @patch("bot.bootstrap_runtime.get_secret")
+    def test_build_irc_token_manager_raises_without_client_secret(self, mock_get_secret):
+        mock_get_secret.return_value = ""
+>       with (
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", ""),
+        ):
+
+bot/tests/scientific/suite_tokens.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b05f21510>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+_ ScientificTokenAndBootstrapTestsMixin.test_build_irc_token_manager_with_secret_manager _
+
+self = <bot.tests.scientific.suite_tokens.ScientificTokenAndBootstrapTestsMixin testMethod=test_build_irc_token_manager_with_secret_manager>
+mock_get_secret = <MagicMock name='get_secret' id='133638007285968'>
+
+    @patch("bot.bootstrap_runtime.get_secret")
+    def test_build_irc_token_manager_with_secret_manager(self, mock_get_secret):
+        mock_get_secret.return_value = "secret_from_sm"
+>       with (
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", "proj"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "twitch-client-secret"),
+            patch("bot.bootstrap_runtime.TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", 300),
+        ):
+
+bot/tests/scientific/suite_tokens.py:74: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b05f3dc50>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+_ ScientificVisionTestsMixin.test_vision_clip_not_enqueued_when_pipeline_disabled _
+
+self = <bot.tests.scientific.suite_vision.ScientificVisionTestsMixin testMethod=test_vision_clip_not_enqueued_when_pipeline_disabled>
+mock_obs = <MagicMock name='observability' id='133638030035344'>
+mock_client = <MagicMock name='client' id='133638028815696'>
+mock_cp = <MagicMock name='control_plane' id='133638007698064'>
+
+    @patch("bot.vision_runtime.control_plane")
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_clip_not_enqueued_when_pipeline_disabled(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+        mock_cp: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="Pentakill!")
+        mock_client.models.generate_content.return_value = mock_response
+        mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+>       self.assertTrue(result["clip_trigger"])
+E       AssertionError: False is not true
+
+bot/tests/scientific/suite_vision.py:123: AssertionError
+________ ScientificVisionTestsMixin.test_vision_inference_error_handled ________
+
+self = <bot.tests.scientific.suite_vision.ScientificVisionTestsMixin testMethod=test_vision_inference_error_handled>
+mock_obs = <MagicMock name='observability' id='133638007619536'>
+mock_client = <MagicMock name='client' id='133638007181648'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_inference_error_handled(
+        self, mock_obs: MagicMock, mock_client: MagicMock
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_client.models.generate_content.side_effect = RuntimeError("API down")
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+>       self.assertFalse(result["ok"])
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_vision.py:137: AssertionError
+__________ ScientificVisionTestsMixin.test_vision_ingest_clip_trigger __________
+
+self = <bot.tests.scientific.suite_vision.ScientificVisionTestsMixin testMethod=test_vision_ingest_clip_trigger>
+mock_obs = <MagicMock name='observability' id='133638030094992'>
+mock_client = <MagicMock name='client' id='133638007965648'>
+mock_cp = <MagicMock name='control_plane' id='133638007965584'>
+
+    @patch("bot.vision_runtime.control_plane")
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_ingest_clip_trigger(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+        mock_cp: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="Pentakill incrivel do mid laner!")
+        mock_client.models.generate_content.return_value = mock_response
+        mock_cp.get_config.return_value = {
+            "clip_pipeline_enabled": True,
+            "clip_mode_default": "live",
+        }
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+>       self.assertTrue(result["clip_trigger"])
+E       AssertionError: False is not true
+
+bot/tests/scientific/suite_vision.py:99: AssertionError
+______ ScientificVisionTestsMixin.test_vision_ingest_success_normal_scene ______
+
+self = <bot.tests.scientific.suite_vision.ScientificVisionTestsMixin testMethod=test_vision_ingest_success_normal_scene>
+mock_obs = <MagicMock name='observability' id='133638007615888'>
+mock_client = <MagicMock name='client' id='133638007283728'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_ingest_success_normal_scene(
+        self, mock_obs: MagicMock, mock_client: MagicMock
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="CENA_NORMAL")
+        mock_client.models.generate_content.return_value = mock_response
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["clip_trigger"])
+>       self.assertEqual(result["analysis"], "CENA_NORMAL")
+E       AssertionError: <MagicMock name='client.chat.completions.[72 chars]448'> != 'CENA_NORMAL'
+
+bot/tests/scientific/suite_vision.py:75: AssertionError
+_ TestBotProduction90Plus.test_build_irc_token_manager_raises_without_client_secret _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_build_irc_token_manager_raises_without_client_secret>
+mock_get_secret = <MagicMock name='get_secret' id='133638003141904'>
+
+    @patch("bot.bootstrap_runtime.get_secret")
+    def test_build_irc_token_manager_raises_without_client_secret(self, mock_get_secret):
+        mock_get_secret.return_value = ""
+>       with (
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", ""),
+        ):
+
+bot/tests/scientific/suite_tokens.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b05b486d0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+___ TestBotProduction90Plus.test_build_irc_token_manager_with_secret_manager ___
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_build_irc_token_manager_with_secret_manager>
+mock_get_secret = <MagicMock name='get_secret' id='133638003410320'>
+
+    @patch("bot.bootstrap_runtime.get_secret")
+    def test_build_irc_token_manager_with_secret_manager(self, mock_get_secret):
+        mock_get_secret.return_value = "secret_from_sm"
+>       with (
+            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
+            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
+            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.PROJECT_ID", "proj"),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "twitch-client-secret"),
+            patch("bot.bootstrap_runtime.TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", 300),
+        ):
+
+bot/tests/scientific/suite_tokens.py:74: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b05b8fa10>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+_ TestBotProduction90Plus.test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline>
+mock_obs = <MagicMock name='observability' id='133638003941648'>
+mock_client = <MagicMock name='client' id='133638003933904'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="PENTAKILL! Jogador massacre total!")
+        mock_client.models.generate_content.return_value = mock_response
+    
+        with patch("bot.vision_runtime.control_plane") as mock_cp:
+            mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}
+            rt = VisionRuntime()
+            result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+            self.assertTrue(result["ok"])
+>           self.assertTrue(result["clip_trigger"])
+E           AssertionError: False is not true
+
+bot/tests/scientific/suite_e2e_macaco.py:421: AssertionError
+_______________ TestBotProduction90Plus.test_get_secret_coverage _______________
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_get_secret_coverage>
+mock_sm = <MagicMock name='SecretManagerServiceClient' id='133638007187216'>
+
+    @patch("google.cloud.secretmanager.SecretManagerServiceClient")
+    def test_get_secret_coverage(self, mock_sm):
+>       with patch("bot.bootstrap_runtime.PROJECT_ID", "test-proj"):
+
+bot/tests/scientific/suite_http.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1446: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x798b05f63350>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'bot.bootstrap_runtime' from '/media/juan/DATA/projetos/twich-bot/bot/bootstrap_runtime.py'> does not have the attribute 'PROJECT_ID'
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1419: AttributeError
+_____________ TestBotProduction90Plus.test_health_server_response ______________
+
+self = <MagicMock name='mock._send_text' id='133638003552464'>
+args = ('AGENT_ONLINE',), kwargs = {'status_code': 200}
+expected = "_send_text('AGENT_ONLINE', status_code=200)", actual = 'not called.'
+error_message = "expected call not found.\nExpected: _send_text('AGENT_ONLINE', status_code=200)\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: _send_text('AGENT_ONLINE', status_code=200)
+E             Actual: not called.
+
+/home/juan/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:930: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_health_server_response>
+
+    def test_health_server_response(self):
+        mock_handler = MagicMock()
+        mock_handler.path = "/"
+        mock_handler._send_text = MagicMock()
+    
+        HealthHandler.do_GET(mock_handler)
+    
+>       mock_handler._send_text.assert_called_with("AGENT_ONLINE", status_code=200)
+E       AssertionError: expected call not found.
+E       Expected: _send_text('AGENT_ONLINE', status_code=200)
+E         Actual: not called.
+
+bot/tests/scientific/suite_http.py:18: AssertionError
+_ TestBotProduction90Plus.test_irc_admin_join_requires_confirmation_ready_runtime _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_irc_admin_join_requires_confirmation_ready_runtime>
+
+    def test_irc_admin_join_requires_confirmation_ready_runtime(self):
+        bot = IrcByteBot(
+            host="irc.chat.twitch.tv",
+            port=6697,
+            use_tls=True,
+            bot_login="byte_agent",
+            channel_logins=["canal_a"],
+            user_token="token",
+        )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:82: AssertionError
+_ TestBotProduction90Plus.test_irc_admin_join_returns_failure_on_confirmation_timeout _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_irc_admin_join_returns_failure_on_confirmation_timeout>
+
+    def test_irc_admin_join_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_join_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:60: AssertionError
+__ TestBotProduction90Plus.test_irc_admin_join_waits_for_server_confirmation ___
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_irc_admin_join_waits_for_server_confirmation>
+
+    def test_irc_admin_join_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        join_task = self.loop.create_task(bot.admin_join_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+>       self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
+E       AssertionError: 'JOIN #canal_b\r\n' not found in ''
+
+bot/tests/scientific/suite_irc_control.py:30: AssertionError
+_ TestBotProduction90Plus.test_irc_admin_part_returns_failure_on_confirmation_timeout _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_irc_admin_part_returns_failure_on_confirmation_timeout>
+
+    def test_irc_admin_part_returns_failure_on_confirmation_timeout(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        success, message, channels = self.loop.run_until_complete(
+            bot.admin_part_channel("canal_b")
+        )
+    
+>       self.assertFalse(success)
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_irc_control.py:134: AssertionError
+__ TestBotProduction90Plus.test_irc_admin_part_waits_for_server_confirmation ___
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_irc_admin_part_waits_for_server_confirmation>
+
+    def test_irc_admin_part_waits_for_server_confirmation(self):
+        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
+            bot = IrcByteBot(
+                host="irc.chat.twitch.tv",
+                port=6697,
+                use_tls=True,
+                bot_login="byte_agent",
+                channel_logins=["canal_a", "canal_b"],
+                user_token="token",
+            )
+        writer = DummyIrcWriter()
+        bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
+    
+        part_task = self.loop.create_task(bot.admin_part_channel("canal_b"))
+        self.loop.run_until_complete(asyncio.sleep(0))
+>       self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
+E       AssertionError: 'PART #canal_b\r\n' not found in ''
+
+bot/tests/scientific/suite_irc_control.py:104: AssertionError
+_ TestBotProduction90Plus.test_vision_clip_not_enqueued_when_pipeline_disabled _
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_vision_clip_not_enqueued_when_pipeline_disabled>
+mock_obs = <MagicMock name='observability' id='133638003441168'>
+mock_client = <MagicMock name='client' id='133638003435984'>
+mock_cp = <MagicMock name='control_plane' id='133638007435408'>
+
+    @patch("bot.vision_runtime.control_plane")
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_clip_not_enqueued_when_pipeline_disabled(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+        mock_cp: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="Pentakill!")
+        mock_client.models.generate_content.return_value = mock_response
+        mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+>       self.assertTrue(result["clip_trigger"])
+E       AssertionError: False is not true
+
+bot/tests/scientific/suite_vision.py:123: AssertionError
+_________ TestBotProduction90Plus.test_vision_inference_error_handled __________
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_vision_inference_error_handled>
+mock_obs = <MagicMock name='observability' id='133638003838480'>
+mock_client = <MagicMock name='client' id='133638003838672'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_inference_error_handled(
+        self, mock_obs: MagicMock, mock_client: MagicMock
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_client.models.generate_content.side_effect = RuntimeError("API down")
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+>       self.assertFalse(result["ok"])
+E       AssertionError: True is not false
+
+bot/tests/scientific/suite_vision.py:137: AssertionError
+___________ TestBotProduction90Plus.test_vision_ingest_clip_trigger ____________
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_vision_ingest_clip_trigger>
+mock_obs = <MagicMock name='observability' id='133638003850896'>
+mock_client = <MagicMock name='client' id='133638003789136'>
+mock_cp = <MagicMock name='control_plane' id='133638003790032'>
+
+    @patch("bot.vision_runtime.control_plane")
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_ingest_clip_trigger(
+        self,
+        mock_obs: MagicMock,
+        mock_client: MagicMock,
+        mock_cp: MagicMock,
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="Pentakill incrivel do mid laner!")
+        mock_client.models.generate_content.return_value = mock_response
+        mock_cp.get_config.return_value = {
+            "clip_pipeline_enabled": True,
+            "clip_mode_default": "live",
+        }
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+>       self.assertTrue(result["clip_trigger"])
+E       AssertionError: False is not true
+
+bot/tests/scientific/suite_vision.py:99: AssertionError
+_______ TestBotProduction90Plus.test_vision_ingest_success_normal_scene ________
+
+self = <bot.tests.test_scientific.TestBotProduction90Plus testMethod=test_vision_ingest_success_normal_scene>
+mock_obs = <MagicMock name='observability' id='133638005573136'>
+mock_client = <MagicMock name='client' id='133638005572816'>
+
+    @patch("bot.vision_runtime.client")
+    @patch("bot.vision_runtime.observability")
+    def test_vision_ingest_success_normal_scene(
+        self, mock_obs: MagicMock, mock_client: MagicMock
+    ) -> None:
+        from bot.vision_runtime import VisionRuntime
+    
+        mock_response = SimpleNamespace(text="CENA_NORMAL")
+        mock_client.models.generate_content.return_value = mock_response
+    
+        rt = VisionRuntime()
+        result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["clip_trigger"])
+>       self.assertEqual(result["analysis"], "CENA_NORMAL")
+E       AssertionError: <MagicMock name='client.chat.completions.[72 chars]976'> != 'CENA_NORMAL'
+
+bot/tests/scientific/suite_vision.py:75: AssertionError
+=============================== warnings summary ===============================
+../../../../../home/juan/.pyenv/versions/3.11.13/lib/python3.11/site-packages/twitchio/web/aio_adapter.py:61
+  /home/juan/.pyenv/versions/3.11.13/lib/python3.11/site-packages/twitchio/web/aio_adapter.py:61: DeprecationWarning: Inheritance class AiohttpAdapter from web.Application is discouraged
+    class AiohttpAdapter(BaseAdapter[BT], web.Application):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED bot/tests/test_scientific.py::ScientificHttpTestsMixin::test_get_secret_coverage
+FAILED bot/tests/test_scientific.py::ScientificHttpTestsMixin::test_health_server_response
+FAILED bot/tests/test_scientific.py::ScientificMacacoModeTestsMixin::test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline
+FAILED bot/tests/test_scientific.py::ScientificIrcControlTestsMixin::test_irc_admin_join_requires_confirmation_ready_runtime
+FAILED bot/tests/test_scientific.py::ScientificIrcControlTestsMixin::test_irc_admin_join_returns_failure_on_confirmation_timeout
+FAILED bot/tests/test_scientific.py::ScientificIrcControlTestsMixin::test_irc_admin_join_waits_for_server_confirmation
+FAILED bot/tests/test_scientific.py::ScientificIrcControlTestsMixin::test_irc_admin_part_returns_failure_on_confirmation_timeout
+FAILED bot/tests/test_scientific.py::ScientificIrcControlTestsMixin::test_irc_admin_part_waits_for_server_confirmation
+FAILED bot/tests/test_scientific.py::ScientificTokenAndBootstrapTestsMixin::test_build_irc_token_manager_raises_without_client_secret
+FAILED bot/tests/test_scientific.py::ScientificTokenAndBootstrapTestsMixin::test_build_irc_token_manager_with_secret_manager
+FAILED bot/tests/test_scientific.py::ScientificVisionTestsMixin::test_vision_clip_not_enqueued_when_pipeline_disabled
+FAILED bot/tests/test_scientific.py::ScientificVisionTestsMixin::test_vision_inference_error_handled
+FAILED bot/tests/test_scientific.py::ScientificVisionTestsMixin::test_vision_ingest_clip_trigger
+FAILED bot/tests/test_scientific.py::ScientificVisionTestsMixin::test_vision_ingest_success_normal_scene
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_build_irc_token_manager_raises_without_client_secret
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_build_irc_token_manager_with_secret_manager
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_e2e_vision_ingest_and_clip_trigger_with_disabled_pipeline
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_get_secret_coverage
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_health_server_response
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_irc_admin_join_requires_confirmation_ready_runtime
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_irc_admin_join_returns_failure_on_confirmation_timeout
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_irc_admin_join_waits_for_server_confirmation
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_irc_admin_part_returns_failure_on_confirmation_timeout
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_irc_admin_part_waits_for_server_confirmation
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_vision_clip_not_enqueued_when_pipeline_disabled
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_vision_inference_error_handled
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_vision_ingest_clip_trigger
+FAILED bot/tests/test_scientific.py::TestBotProduction90Plus::test_vision_ingest_success_normal_scene
+28 failed, 288 passed, 1 warning in 13.73s

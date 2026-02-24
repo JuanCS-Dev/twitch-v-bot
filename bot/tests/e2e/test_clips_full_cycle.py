@@ -2,9 +2,14 @@ import asyncio
 import unittest
 from unittest.mock import MagicMock, patch
 
+import os
+import sys
+# Adiciona o diretorio raiz ao PYTHONPATH para testes no vscode ou pytest chamados isoladamente
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
 from bot.autonomy_logic import process_autonomy_goal
 from bot.clip_jobs_runtime import ClipJobsRuntime
-from bot.clip_jobs_store import FirestoreJobStore
+from bot.clip_jobs_store import SupabaseJobStore
 from bot.control_plane import control_plane, RISK_CLIP_CANDIDATE
 
 class TestE2EClipsPipeline(unittest.TestCase):
@@ -15,7 +20,7 @@ class TestE2EClipsPipeline(unittest.TestCase):
 
     def setUp(self):
         # Reset global state
-        self.store_mock = MagicMock(spec=FirestoreJobStore)
+        self.store_mock = MagicMock(spec=SupabaseJobStore)
         self.store_mock.load_active_jobs.return_value = []
         
         # Patch store at module level for runtime

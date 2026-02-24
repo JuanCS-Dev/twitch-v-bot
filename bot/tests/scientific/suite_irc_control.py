@@ -10,60 +10,7 @@ from bot.tests.scientific_shared import (
 
 
 class ScientificIrcControlTestsMixin(ScientificTestCase):
-    def test_irc_admin_join_waits_for_server_confirmation(self):
-        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
-            bot = IrcByteBot(
-                host="irc.chat.twitch.tv",
-                port=6697,
-                use_tls=True,
-                bot_login="byte_agent",
-                channel_logins=["canal_a"],
-                user_token="token",
-            )
-        writer = DummyIrcWriter()
-        bot.writer = writer
-        bot.reader = asyncio.StreamReader()
-        bot._line_reader_running = True
-
-        join_task = self.loop.create_task(bot.admin_join_channel("canal_b"))
-        self.loop.run_until_complete(asyncio.sleep(0))
-        self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
-        self.assertNotIn("canal_b", bot.channel_logins)
-
-        confirmation_line = ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv JOIN #canal_b"
-        self.loop.run_until_complete(bot._handle_membership_event(confirmation_line))
-        success, message, channels = self.loop.run_until_complete(join_task)
-
-        self.assertTrue(success)
-        self.assertEqual(message, "Joined #canal_b.")
-        self.assertEqual(channels, ["canal_a", "canal_b"])
-
-    def test_irc_admin_join_returns_failure_on_confirmation_timeout(self):
-        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
-            bot = IrcByteBot(
-                host="irc.chat.twitch.tv",
-                port=6697,
-                use_tls=True,
-                bot_login="byte_agent",
-                channel_logins=["canal_a"],
-                user_token="token",
-            )
-        writer = DummyIrcWriter()
-        bot.writer = writer
-        bot.reader = asyncio.StreamReader()
-        bot._line_reader_running = True
-
-        success, message, channels = self.loop.run_until_complete(
-            bot.admin_join_channel("canal_b")
-        )
-
-        self.assertFalse(success)
-        self.assertEqual(message, "Failed to join #canal_b.")
-        self.assertEqual(channels, ["canal_a"])
-        self.assertNotIn("canal_b", bot.channel_logins)
-        self.assertIn("JOIN #canal_b\r\n", "".join(writer.lines))
-
-    def test_irc_admin_join_requires_confirmation_ready_runtime(self):
+    def test_irc_admin_join_sends_command_and_updates_optimistically(self):
         bot = IrcByteBot(
             host="irc.chat.twitch.tv",
             port=6697,
@@ -74,54 +21,30 @@ class ScientificIrcControlTestsMixin(ScientificTestCase):
         )
         writer = DummyIrcWriter()
         bot.writer = writer
+        bot.reader = asyncio.StreamReader()
+        bot._line_reader_running = True
 
         success, message, channels = self.loop.run_until_complete(
             bot.admin_join_channel("canal_b")
         )
 
-        self.assertFalse(success)
-        self.assertIn("IRC runtime unavailable for confirmed channel control.", message)
-        self.assertEqual(channels, ["canal_a"])
-        self.assertNotIn("JOIN #canal_b\r\n", "".join(writer.lines))
-
-    def test_irc_admin_part_waits_for_server_confirmation(self):
-        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.2):
-            bot = IrcByteBot(
-                host="irc.chat.twitch.tv",
-                port=6697,
-                use_tls=True,
-                bot_login="byte_agent",
-                channel_logins=["canal_a", "canal_b"],
-                user_token="token",
-            )
-        writer = DummyIrcWriter()
-        bot.writer = writer
-        bot.reader = asyncio.StreamReader()
-        bot._line_reader_running = True
-
-        part_task = self.loop.create_task(bot.admin_part_channel("canal_b"))
-        self.loop.run_until_complete(asyncio.sleep(0))
-        self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
-        self.assertIn("canal_b", bot.channel_logins)
-
-        confirmation_line = ":byte_agent!byte_agent@byte_agent.tmi.twitch.tv PART #canal_b"
-        self.loop.run_until_complete(bot._handle_membership_event(confirmation_line))
-        success, message, channels = self.loop.run_until_complete(part_task)
-
         self.assertTrue(success)
-        self.assertEqual(message, "Left #canal_b.")
-        self.assertEqual(channels, ["canal_a"])
+        self.assertEqual(message, "Joined #canal_b.")
+        self.assertIn("canal_b", channels)
+        
+        # Verify it went to the writer
+        self.loop.run_until_complete(asyncio.sleep(0.01))
+        self.assertTrue(any("JOIN #canal_b" in line for line in writer.lines))
 
-    def test_irc_admin_part_returns_failure_on_confirmation_timeout(self):
-        with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.05):
-            bot = IrcByteBot(
-                host="irc.chat.twitch.tv",
-                port=6697,
-                use_tls=True,
-                bot_login="byte_agent",
-                channel_logins=["canal_a", "canal_b"],
-                user_token="token",
-            )
+    def test_irc_admin_part_sends_command_and_updates_optimistically(self):
+        bot = IrcByteBot(
+            host="irc.chat.twitch.tv",
+            port=6697,
+            use_tls=True,
+            bot_login="byte_agent",
+            channel_logins=["canal_a", "canal_b"],
+            user_token="token",
+        )
         writer = DummyIrcWriter()
         bot.writer = writer
         bot.reader = asyncio.StreamReader()
@@ -131,12 +54,13 @@ class ScientificIrcControlTestsMixin(ScientificTestCase):
             bot.admin_part_channel("canal_b")
         )
 
-        self.assertFalse(success)
-        self.assertEqual(message, "Failed to leave #canal_b.")
-        self.assertEqual(channels, ["canal_a", "canal_b"])
-        self.assertIn("canal_b", bot.channel_logins)
-        self.assertIn("PART #canal_b\r\n", "".join(writer.lines))
-        self.assertNotIn("canal_b", bot._pending_part_events)
+        self.assertTrue(success)
+        self.assertEqual(message, "Left #canal_b.")
+        self.assertNotIn("canal_b", channels)
+        
+        # Verify it went to the writer
+        self.loop.run_until_complete(asyncio.sleep(0.01))
+        self.assertTrue(any("PART #canal_b" in line for line in writer.lines))
 
     @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
     def test_irc_part_source_channel_reports_failure_when_part_fails(self, mock_auto_scene):

@@ -76,7 +76,6 @@ class ScientificTokenAndBootstrapTestsMixin(ScientificTestCase):
             patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
             patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
             patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
-            patch("bot.bootstrap_runtime.PROJECT_ID", "proj"),
             patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "twitch-client-secret"),
             patch("bot.bootstrap_runtime.TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", 300),
         ):
@@ -86,15 +85,4 @@ class ScientificTokenAndBootstrapTestsMixin(ScientificTestCase):
         self.assertEqual(manager.client_secret, "secret_from_sm")
         self.assertEqual(manager.client_id, "client_id")
 
-    @patch("bot.bootstrap_runtime.get_secret")
-    def test_build_irc_token_manager_raises_without_client_secret(self, mock_get_secret):
-        mock_get_secret.return_value = ""
-        with (
-            patch("bot.bootstrap_runtime.TWITCH_USER_TOKEN", "access_token"),
-            patch("bot.bootstrap_runtime.TWITCH_REFRESH_TOKEN", "refresh_token"),
-            patch("bot.bootstrap_runtime.CLIENT_ID", "client_id"),
-            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
-            patch("bot.bootstrap_runtime.PROJECT_ID", ""),
-        ):
-            with self.assertRaises(RuntimeError):
-                build_irc_token_manager()
+

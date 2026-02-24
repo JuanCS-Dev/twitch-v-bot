@@ -4,14 +4,14 @@ import time
 from unittest.mock import MagicMock, patch
 
 from bot.clip_jobs_runtime import ClipJobsRuntime
-from bot.clip_jobs_store import FirestoreJobStore
+from bot.clip_jobs_store import SupabaseJobStore
 from bot.twitch_clips_api import TwitchClipRateLimitError
 
 class TestClipJobsFix(unittest.TestCase):
     def setUp(self):
         # Desabilita o init real do Firestore para os testes de store
-        with patch("bot.clip_jobs_store.PROJECT_ID", None):
-            self.store = FirestoreJobStore()
+        with patch("bot.clip_jobs_store.os.environ.get", return_value=None):
+            self.store = SupabaseJobStore()
         
         # Setup do runtime com mocks
         self.runtime = ClipJobsRuntime()
@@ -21,46 +21,23 @@ class TestClipJobsFix(unittest.TestCase):
         return "fake_token"
 
     def test_store_load_active_jobs_queries_ready_incomplete(self):
-        """Valida que o store faz a query extra para jobs ready sem download_url."""
-        mock_db = MagicMock()
-        mock_collection = MagicMock()
-        mock_db.collection.return_value = mock_collection
+        """Valida que o store faz a query psycopg2 extraindo os jobs"""
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
         
         # Documentos simulados
         job_active = {"job_id": "j_active", "status": "queued"}
         job_ready = {"job_id": "j_ready_inc", "status": "ready", "download_url": None}
+        mock_cur.fetchall.return_value = [job_active, job_ready]
         
-        doc_active = MagicMock()
-        doc_active.to_dict.return_value = job_active
-        
-        doc_ready = MagicMock()
-        doc_ready.to_dict.return_value = job_ready
-
-        # Mock para a primeira query: where(status in [...]).stream()
-        query_1 = MagicMock()
-        query_1.stream.return_value = [doc_active]
-        
-        # Mock para a segunda query: where(status == ready).where(download_url == None).stream()
-        query_2_step1 = MagicMock()
-        query_2_step2 = MagicMock()
-        query_2_step2.stream.return_value = [doc_ready]
-        query_2_step1.where.return_value = query_2_step2
-        
-        # Configura o side_effect do collection.where
-        mock_collection.where.side_effect = [query_1, query_2_step1]
-        
-        with patch.object(self.store, "_get_db", return_value=mock_db):
+        with patch.object(self.store, "_get_connection", return_value=mock_conn):
             jobs = self.store.load_active_jobs()
             
             self.assertEqual(len(jobs), 2)
             self.assertEqual(jobs[0]["job_id"], "j_active")
             self.assertEqual(jobs[1]["job_id"], "j_ready_inc")
-            
-            # Verifica as chamadas de query:
-            # mock_collection.where(...) -> query_1
-            # mock_collection.where(...) -> query_2_step1 -> .where(...) -> query_2_step2
-            self.assertEqual(mock_collection.where.call_count, 2)
-            self.assertEqual(query_2_step1.where.call_count, 1)
+            self.assertEqual(mock_cur.execute.call_count, 1)
 
     def test_runtime_download_fetch_cooldown(self):
         """Valida que o runtime respeita o cooldown de download_poll."""

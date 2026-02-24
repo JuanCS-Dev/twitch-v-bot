@@ -10,7 +10,7 @@ from bot.tests.scientific_shared import (
 class ScientificHttpTestsMixin(ScientificTestCase):
     def test_health_server_response(self):
         mock_handler = MagicMock()
-        mock_handler.path = "/"
+        mock_handler.path = "/health"
         mock_handler._send_text = MagicMock()
 
         HealthHandler.do_GET(mock_handler)
@@ -214,12 +214,7 @@ class ScientificHttpTestsMixin(ScientificTestCase):
         self.assertIn("capabilities", payload)
         self.assertEqual(kwargs["status_code"], 200)
 
-    @patch("google.cloud.secretmanager.SecretManagerServiceClient")
-    def test_get_secret_coverage(self, mock_sm):
-        with patch("bot.bootstrap_runtime.PROJECT_ID", "test-proj"):
-            mock_client = mock_sm.return_value
-            mock_client.access_secret_version.return_value.payload.data.decode.return_value = (
-                "top-secret"
-            )
+    def test_get_secret_coverage(self):
+        with patch.dict("os.environ", {"TWITCH_CLIENT_SECRET": "hf_secret"}):
             res = get_secret()
-            self.assertEqual(res, "top-secret")
+            self.assertEqual(res, "hf_secret")

@@ -154,11 +154,11 @@ class IrcChannelStateMixin:
             if current_event is event:
                 pending_map.pop(channel_login, None)
 
-    async def _join_channel(self, channel_login: str) -> bool:
+    async def _join_channel(self, channel_login: str, force: bool = False) -> bool:
         target_channel = normalize_channel_login(channel_login)
         if not target_channel:
             return False
-        if target_channel in self.joined_channels:
+        if target_channel in self.joined_channels and not force:
             return False
 
         should_wait_confirmation = self._can_wait_for_channel_confirmation()
@@ -181,13 +181,13 @@ class IrcChannelStateMixin:
         )
         return True
 
-    async def _part_channel(self, channel_login: str) -> bool:
+    async def _part_channel(self, channel_login: str, force: bool = False) -> bool:
         target_channel = normalize_channel_login(channel_login)
         if not target_channel:
             return False
-        if target_channel not in self.joined_channels:
+        if target_channel not in self.joined_channels and not force:
             return False
-        if len(self.channel_logins) <= 1:
+        if len(self.channel_logins) <= 1 and not force:
             return False
 
         should_wait_confirmation = self._can_wait_for_channel_confirmation()
@@ -230,7 +230,7 @@ class IrcChannelStateMixin:
         self._mark_channel_joined(target_channel)
         
         # Trigger the actual IRC join (fire and forget via background logic)
-        await self._join_channel(target_channel)
+        asyncio.create_task(self._join_channel(target_channel, force=True))
         
         return (True, f"Joined #{target_channel}.", list(self.channel_logins))
 
@@ -259,6 +259,6 @@ class IrcChannelStateMixin:
         self._mark_channel_parted(target_channel)
         
         # Trigger actual IRC part
-        await self._part_channel(target_channel)
+        asyncio.create_task(self._part_channel(target_channel, force=True))
         
         return (True, f"Left #{target_channel}.", list(self.channel_logins))

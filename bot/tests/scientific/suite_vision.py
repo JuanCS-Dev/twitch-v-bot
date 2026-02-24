@@ -65,8 +65,10 @@ class ScientificVisionTestsMixin(ScientificTestCase):
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
-        mock_response = SimpleNamespace(text="CENA_NORMAL")
-        mock_client.models.generate_content.return_value = mock_response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "CENA_NORMAL"
+        mock_client.chat.completions.create.return_value = mock_response
 
         rt = VisionRuntime()
         result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
@@ -86,8 +88,10 @@ class ScientificVisionTestsMixin(ScientificTestCase):
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
-        mock_response = SimpleNamespace(text="Pentakill incrivel do mid laner!")
-        mock_client.models.generate_content.return_value = mock_response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Pentakill incrivel do mid laner!"
+        mock_client.chat.completions.create.return_value = mock_response
         mock_cp.get_config.return_value = {
             "clip_pipeline_enabled": True,
             "clip_mode_default": "live",
@@ -113,8 +117,10 @@ class ScientificVisionTestsMixin(ScientificTestCase):
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
-        mock_response = SimpleNamespace(text="Pentakill!")
-        mock_client.models.generate_content.return_value = mock_response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Pentakill!"
+        mock_client.chat.completions.create.return_value = mock_response
         mock_cp.get_config.return_value = {"clip_pipeline_enabled": False}
 
         rt = VisionRuntime()
@@ -130,7 +136,7 @@ class ScientificVisionTestsMixin(ScientificTestCase):
     ) -> None:
         from bot.vision_runtime import VisionRuntime
 
-        mock_client.models.generate_content.side_effect = RuntimeError("API down")
+        mock_client.chat.completions.create.side_effect = RuntimeError("API down")
 
         rt = VisionRuntime()
         result = rt.ingest_frame(b"\xff\xd8\xff\xe0", mime_type="image/jpeg")
