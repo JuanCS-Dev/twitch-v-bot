@@ -22,7 +22,7 @@ class ScientificQualityDetectionTestsMixin(ScientificTestCase):
     def test_quality_detector_flags_current_events_without_verifiable_base(self):
         prompt = "quais as noticias mais relevantes de IA nesta semana?"
         weak_answer = (
-            "OpenAI lancou o Sora e o Google anunciou o Gemini 1.5 Pro. "
+            "OpenAI lancou o Sora e o Nebius anunciou o Llama 3.1 70B. "
             "A NVIDIA apresentou novos chips e a Apple publicou pesquisa interna. "
             "Esses foram os maiores anuncios recentes."
         )

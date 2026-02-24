@@ -9,7 +9,7 @@ from bot.twitch_clips_api import TwitchClipRateLimitError
 
 class TestClipJobsFix(unittest.TestCase):
     def setUp(self):
-        # Desabilita o init real do Firestore para os testes de store
+        # Desabilita o init real do banco de dados para os testes de store
         with patch("bot.clip_jobs_store.os.environ.get", return_value=None):
             self.store = SupabaseJobStore()
         
