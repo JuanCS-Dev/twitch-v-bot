@@ -10,6 +10,7 @@ from bot.dashboard_server_routes import (
     handle_get,
     handle_post,
     handle_put,
+    handle_get_config_js,
 )
 from bot.runtime_config import (
     BYTE_DASHBOARD_ADMIN_TOKEN,

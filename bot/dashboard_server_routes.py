@@ -147,10 +147,20 @@ def handle_get(handler: Any) -> None:
         handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
         return
 
+    if route == "/dashboard/config.js":
+        handle_get_config_js(handler)
+        return
+
     if _dashboard_asset_route(handler, route):
         return
 
     handler._send_text("Not Found", status_code=404)
+
+
+def handle_get_config_js(handler: Any) -> None:
+    from bot.runtime_config import BYTE_DASHBOARD_ADMIN_TOKEN
+    payload = f"window.BYTE_CONFIG = {{ adminToken: '{BYTE_DASHBOARD_ADMIN_TOKEN}' }};"
+    handler._send_bytes(payload.encode("utf-8"), content_type="application/javascript; charset=utf-8")
 
 
 def handle_put(handler: Any) -> None:
@@ -198,8 +208,8 @@ from bot.dashboard_server_routes_post import handle_post  # noqa: E402, F401
 
 __all__ = [
     "build_observability_payload",
-    "handle_get",
     "handle_put",
     "handle_post",
+    "handle_get_config_js",
 ]
 

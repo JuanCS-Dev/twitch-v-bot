@@ -27,7 +27,19 @@ class SupabaseJobStore:
                 self._ensure_table(conn)
             return conn
         except Exception as e:
-            logger.error("Falha ao conectar no Supabase/Postgres: %s", e)
+            # Mask sensitive info for debug
+            masked_url = self._db_url
+            if "@" in self._db_url:
+                parts = self._db_url.split("@")
+                creds = parts[0].split("://")[-1]
+                host_port = parts[1]
+                user_pass = creds.split(":")
+                user = user_pass[0]
+                pwd = user_pass[1] if len(user_pass) > 1 else ""
+                masked_pwd = f"{pwd[:3]}...{pwd[-3:]}" if len(pwd) > 6 else "***"
+                masked_url = f"postgresql://{user}:{masked_pwd}@{host_port}"
+            
+            logger.error("Falha ao conectar no Supabase/Postgres [%s]: %s", masked_url, e)
             return None
 
     def _ensure_table(self, conn):

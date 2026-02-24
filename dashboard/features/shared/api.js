@@ -18,7 +18,8 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
     const tokenInput = document.getElementById("adminTokenInput");
     let domToken = tokenInput ? tokenInput.value.trim() : "";
     let localToken = getStorageItem("byte_dashboard_admin_token");
-    let activeToken = domToken || localToken;
+    let serverToken = window.BYTE_CONFIG?.adminToken || "";
+    let activeToken = domToken || localToken || serverToken;
 
     if (activeToken) {
         headers["X-Byte-Admin-Token"] = activeToken;
