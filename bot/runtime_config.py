@@ -65,6 +65,10 @@ TWITCH_TOKEN_REFRESH_TIMEOUT_SECONDS = float(
 )
 
 BYTE_DASHBOARD_ADMIN_TOKEN = env_text("BYTE_DASHBOARD_ADMIN_TOKEN")
+if BYTE_DASHBOARD_ADMIN_TOKEN:
+    logger.info("Configuracao: Dashboard Admin Token ativo (comprimento: %d)", len(BYTE_DASHBOARD_ADMIN_TOKEN))
+else:
+    logger.warning("Configuracao: Dashboard Admin Token NAO definido. Dashboard operando sem seguranca!")
 
 METADATA_CACHE_TTL_SECONDS = int(env_text("AUTO_SCENE_CACHE_TTL_SECONDS", "900"))
 METADATA_TIMEOUT_SECONDS = float(env_text("AUTO_SCENE_METADATA_TIMEOUT_SECONDS", "3.0"))
