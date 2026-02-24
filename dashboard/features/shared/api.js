@@ -63,6 +63,22 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
             const err = new Error(serverMessage);
             err.status = response.status;
             err.payload = payload;
+
+            // Alerta visual de falta de permissão se for 403
+            if (response.status === 403) {
+                console.warn("Acesso Negado (403). Verifique seu Admin Token.");
+                const feedback = document.getElementById("channelFeedbackMsg");
+                if (feedback) {
+                    feedback.textContent = "Erro 403: Token de Admin inválido ou ausente em 'Optional Auth'.";
+                    feedback.className = "panel-hint event-level-error";
+                }
+                const tokenInput = document.getElementById("adminTokenInput");
+                if (tokenInput) {
+                    tokenInput.style.border = "2px solid var(--danger)";
+                    tokenInput.placeholder = "INSIRA O TOKEN AQUI";
+                }
+            }
+
             throw err;
         }
 

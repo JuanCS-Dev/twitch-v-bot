@@ -63,12 +63,20 @@ async function bootstrapDashboard() {
     actionQueueController.bindActionQueueEvents();
     hudController.bindEvents();
 
-    await controlPlaneController.loadControlPlaneState(false);
-    await channelControlController.handleChannelAction("list");
-    await Promise.all([
-        observabilityController.fetchAndRenderObservability(),
-        actionQueueController.refreshActionQueue({ showFeedback: false }),
-    ]);
+    try {
+        await controlPlaneController.loadControlPlaneState(false);
+        await channelControlController.handleChannelAction("list");
+        await Promise.all([
+            observabilityController.fetchAndRenderObservability(),
+            actionQueueController.refreshActionQueue({ showFeedback: false }),
+        ]);
+    } catch (err) {
+        if (err.status === 403) {
+            console.warn("Bootstrap: Acesso negado. Aguardando input do Admin Token.");
+        } else {
+            console.error("Erro durante o carregamento inicial:", err);
+        }
+    }
 
     observabilityController.scheduleObservabilityPolling();
     actionQueueController.scheduleActionQueuePolling();

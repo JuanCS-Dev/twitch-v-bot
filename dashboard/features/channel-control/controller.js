@@ -78,12 +78,18 @@ export function createChannelControlController({
 
         if (ctrlEls.syncBtn) {
             ctrlEls.syncBtn.addEventListener("click", () => {
+                if (ctrlEls.adminToken) {
+                    localStorage.setItem("byte_dashboard_admin_token", ctrlEls.adminToken.value.trim());
+                }
                 handleChannelAction("list");
             });
         }
 
         if (ctrlEls.joinBtn) {
             ctrlEls.joinBtn.addEventListener("click", () => {
+                if (ctrlEls.adminToken) {
+                    localStorage.setItem("byte_dashboard_admin_token", ctrlEls.adminToken.value.trim());
+                }
                 const channelLogin = (ctrlEls.channelInput?.value || "").trim();
                 if (!channelLogin) {
                     showChannelFeedback(
