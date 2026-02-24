@@ -11,12 +11,12 @@ COLLECTION_NAME = "clip_jobs"
 
 class SupabaseJobStore:
     def __init__(self) -> None:
-        self._db_url = os.environ.get("SUPABASE_DB_URL")
+        self._db_url = os.environ.get("SUPABASE_AUTH_URL") or os.environ.get("SUPABASE_DB_URL")
         self._lock = threading.Lock()
         self._initialized = False
         
         if not self._db_url:
-            logger.warning("SUPABASE_DB_URL nao definido. SupabaseJobStore operando em modo offline (no-op).")
+            logger.warning("Variável de banco de dados (SUPABASE_AUTH_URL/SUPABASE_DB_URL) nao definida. SupabaseJobStore operando em modo offline.")
 
     def _get_connection(self):
         if not self._db_url:
