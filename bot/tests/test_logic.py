@@ -1,8 +1,9 @@
-import unittest
 import asyncio
 import time
+import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from bot.logic import (
     EMPTY_RESPONSE_FALLBACK,
     MAX_REPLY_LINES,
@@ -17,7 +18,9 @@ from bot.logic import (
 )
 
 
-def _make_openai_response(text: str | None = None, usage: tuple[int, int] | None = None) -> MagicMock:
+def _make_openai_response(
+    text: str | None = None, usage: tuple[int, int] | None = None
+) -> MagicMock:
     """Build a mock OpenAI-style chat completion response."""
     resp = MagicMock()
     if text is not None:
@@ -36,7 +39,6 @@ def _make_openai_response(text: str | None = None, usage: tuple[int, int] | None
 
 
 class TestBotLogic(unittest.TestCase):
-
     def test_uptime_calculation(self):
         ctx = StreamContext()
         ctx.start_time = time.time() - 120
@@ -76,7 +78,7 @@ class TestBotLogic(unittest.TestCase):
         self.assertFalse(ctx.update_content("invalid", "X"))
 
     @patch("bot.logic_inference.search_web", new_callable=AsyncMock)
-    @patch('asyncio.to_thread')
+    @patch("asyncio.to_thread")
     def test_agent_inference_success(self, mock_thread, mock_search):
         client = MagicMock()
         context = StreamContext()
@@ -93,7 +95,9 @@ class TestBotLogic(unittest.TestCase):
             text=None,
             candidates=[
                 SimpleNamespace(
-                    content=SimpleNamespace(parts=[SimpleNamespace(text="Resposta vinda de parts")]),
+                    content=SimpleNamespace(
+                        parts=[SimpleNamespace(text="Resposta vinda de parts")]
+                    ),
                 )
             ],
         )
@@ -140,7 +144,7 @@ class TestBotLogic(unittest.TestCase):
         self.assertFalse(metadata["enabled"])  # grounding not requested
 
     @patch("bot.logic_inference.search_web", new_callable=AsyncMock)
-    @patch('asyncio.to_thread')
+    @patch("asyncio.to_thread")
     def test_agent_inference_failure(self, mock_thread, mock_search):
         client = MagicMock()
         context = StreamContext()
@@ -152,7 +156,7 @@ class TestBotLogic(unittest.TestCase):
         self.assertIn("Conexao com o modelo instavel", res)
 
     @patch("bot.logic_inference.search_web", new_callable=AsyncMock)
-    @patch('asyncio.to_thread')
+    @patch("asyncio.to_thread")
     def test_agent_inference_empty_choices(self, mock_thread, mock_search):
         client = MagicMock()
         context = StreamContext()
@@ -167,7 +171,9 @@ class TestBotLogic(unittest.TestCase):
     @patch("bot.logic_inference.search_web", new_callable=AsyncMock)
     @patch("asyncio.sleep", new_callable=AsyncMock)
     @patch("asyncio.to_thread")
-    def test_agent_inference_retries_on_429_then_succeeds(self, mock_thread, mock_sleep, mock_search):
+    def test_agent_inference_retries_on_429_then_succeeds(
+        self, mock_thread, mock_sleep, mock_search
+    ):
         client = MagicMock()
         context = StreamContext()
         mock_search.return_value = []
@@ -252,8 +258,14 @@ class TestBotLogic(unittest.TestCase):
         mock_thread.return_value = mock_resp
 
         answer, metadata = asyncio.run(
-            agent_inference("o que aconteceu hoje?", "Juan", client, context,
-                           enable_grounding=True, return_metadata=True)
+            agent_inference(
+                "o que aconteceu hoje?",
+                "Juan",
+                client,
+                context,
+                enable_grounding=True,
+                return_metadata=True,
+            )
         )
         self.assertEqual(answer, "Resposta com busca web.")
         self.assertTrue(metadata["enabled"])
@@ -263,5 +275,5 @@ class TestBotLogic(unittest.TestCase):
         mock_search.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

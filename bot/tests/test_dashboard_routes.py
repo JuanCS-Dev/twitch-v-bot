@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from urllib.parse import urlparse
+from unittest.mock import MagicMock, patch
+
 import bot.dashboard_server_routes as routes
+
 
 class TestDashboardRoutes(unittest.TestCase):
     def setUp(self):
@@ -25,13 +26,13 @@ class TestDashboardRoutes(unittest.TestCase):
         self.handler.path = "/api/observability"
         mock_obs.snapshot.return_value = {"agent_outcomes": {}}
         mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {}}
-        
-        # routes.py calls handler._build_observability_payload() 
-        # which is likely defined in dashboard_server.py but 
+
+        # routes.py calls handler._build_observability_payload()
+        # which is likely defined in dashboard_server.py but
         # routes.py also defines build_observability_payload() standalone.
         # Let's mock what the handler expects.
         self.handler._build_observability_payload.return_value = {"ok": True}
-        
+
         routes.handle_get(self.handler)
         self.handler._send_json.assert_called()
         args = self.handler._send_json.call_args[0]
@@ -41,7 +42,7 @@ class TestDashboardRoutes(unittest.TestCase):
     def test_handle_get_action_queue(self, mock_cp):
         self.handler.path = "/api/action-queue?status=pending&limit=10"
         mock_cp.list_actions.return_value = {"items": []}
-        
+
         routes.handle_get(self.handler)
         mock_cp.list_actions.assert_called_with(status="pending", limit=10)
         self.handler._send_json.assert_called()
@@ -63,7 +64,7 @@ class TestDashboardRoutes(unittest.TestCase):
         self.handler.path = "/api/control-plane"
         self.handler._read_json_payload.return_value = {"key": "val"}
         mock_cp.update_config.return_value = {"key": "val"}
-        
+
         routes.handle_put(self.handler)
         mock_cp.update_config.assert_called_with({"key": "val"})
         self.handler._send_json.assert_called()
@@ -71,9 +72,8 @@ class TestDashboardRoutes(unittest.TestCase):
     def test_handle_put_control_plane_invalid_json(self):
         self.handler.path = "/api/control-plane"
         self.handler._read_json_payload.side_effect = ValueError("Bad JSON")
-        
+
         routes.handle_put(self.handler)
         self.handler._send_json.assert_called_with(
-            {"ok": False, "error": "invalid_request", "message": "Bad JSON"},
-            status_code=400
+            {"ok": False, "error": "invalid_request", "message": "Bad JSON"}, status_code=400
         )

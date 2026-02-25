@@ -5,8 +5,14 @@ from bot.logic import MAX_REPLY_LINES, agent_inference, context, has_grounding_s
 from bot.observability import observability
 from bot.prompt_flow import (
     BytePromptRuntime,
+)
+from bot.prompt_flow import (
     handle_byte_prompt_text as handle_byte_prompt_text_impl,
+)
+from bot.prompt_flow import (
     handle_movie_fact_sheet_prompt as handle_movie_fact_sheet_prompt_impl,
+)
+from bot.prompt_flow import (
     unwrap_inference_result as unwrap_inference_result_impl,
 )
 from bot.runtime_config import (
@@ -21,7 +27,6 @@ from bot.runtime_config import (
     logger,
 )
 from bot.status_runtime import build_status_line
-
 
 compact_message = byte_semantics.compact_message
 format_chat_reply = byte_semantics.format_chat_reply
@@ -38,12 +43,8 @@ build_llm_enhanced_prompt = byte_semantics.build_llm_enhanced_prompt
 is_low_quality_answer = byte_semantics.is_low_quality_answer
 build_quality_rewrite_prompt = byte_semantics.build_quality_rewrite_prompt
 build_server_time_anchor_instruction = byte_semantics.build_server_time_anchor_instruction
-normalize_current_events_reply_contract = (
-    byte_semantics.normalize_current_events_reply_contract
-)
-build_current_events_safe_fallback_reply = (
-    byte_semantics.build_current_events_safe_fallback_reply
-)
+normalize_current_events_reply_contract = byte_semantics.normalize_current_events_reply_contract
+build_current_events_safe_fallback_reply = byte_semantics.build_current_events_safe_fallback_reply
 extract_multi_reply_parts = byte_semantics.extract_multi_reply_parts
 extract_movie_title = byte_semantics.extract_movie_title
 build_movie_fact_sheet_query = byte_semantics.build_movie_fact_sheet_query
@@ -117,7 +118,7 @@ async def handle_byte_prompt_text(
     status_line_factory=None,
 ) -> None:
     # Recap detection — short-circuit to recap engine
-    from bot.recap_engine import is_recap_prompt, generate_recap
+    from bot.recap_engine import generate_recap, is_recap_prompt
 
     if is_recap_prompt(prompt):
         recap_text = await generate_recap()
@@ -145,6 +146,7 @@ async def handle_byte_prompt_text(
             except Exception as error:
                 logger.warning("Falha ao montar status customizado: %s", error)
                 return build_status_line()
+
     else:
         effective_status_factory = build_status_line
 

@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from bot.byte_semantics_base import (
@@ -24,17 +24,21 @@ from bot.logic import enforce_reply_limits, has_grounding_signal
 def build_server_time_anchor_instruction(reference_utc_iso: str | None = None) -> str:
     now_utc_iso = (reference_utc_iso or "").strip()
     if not now_utc_iso:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         now_utc_iso = now_utc.isoformat(timespec="seconds").replace("+00:00", "Z")
     return f"Timestamp de referencia do servidor (UTC): {now_utc_iso}. Use esse horario para interpretar hoje/agora/nesta semana."
 
 
-def build_verifiable_prompt(prompt: str, concise_mode: bool = True, server_time_instruction: str | None = None) -> str:
+def build_verifiable_prompt(
+    prompt: str, concise_mode: bool = True, server_time_instruction: str | None = None
+) -> str:
     clean_prompt = (prompt or "").strip()
     if not clean_prompt:
         return clean_prompt
     is_current_events = is_current_events_prompt(clean_prompt)
-    active_server_time_instruction = server_time_instruction or build_server_time_anchor_instruction()
+    active_server_time_instruction = (
+        server_time_instruction or build_server_time_anchor_instruction()
+    )
     if not concise_mode:
         return (
             f"{clean_prompt}\n"
@@ -131,8 +135,12 @@ def _is_canonical_high_risk_fallback(answer: str) -> bool:
     if not lines or lines[0].lower() != QUALITY_SAFE_FALLBACK.lower():
         return False
     lowered_lines = [line.lower() for line in lines]
-    has_low_confidence = any(line.startswith(("confianca: baixa", "confiança: baixa")) for line in lowered_lines)
-    has_pending_source = any(line == CURRENT_EVENTS_PENDING_SOURCE.lower() for line in lowered_lines)
+    has_low_confidence = any(
+        line.startswith(("confianca: baixa", "confiança: baixa")) for line in lowered_lines
+    )
+    has_pending_source = any(
+        line == CURRENT_EVENTS_PENDING_SOURCE.lower() for line in lowered_lines
+    )
     if not has_low_confidence or not has_pending_source:
         return False
     for line in lowered_lines[1:]:
@@ -142,9 +150,15 @@ def _is_canonical_high_risk_fallback(answer: str) -> bool:
     return True
 
 
-def _fit_high_risk_current_events_reply(body_lines: list[str], confidence_line: str, source_line: str, temporal_line: str = "") -> str:
+def _fit_high_risk_current_events_reply(
+    body_lines: list[str], confidence_line: str, source_line: str, temporal_line: str = ""
+) -> str:
     normalized_body = [line.strip() for line in body_lines if line and line.strip()]
-    tail_lines = [line.strip() for line in (temporal_line, confidence_line, source_line) if line and line.strip()]
+    tail_lines = [
+        line.strip()
+        for line in (temporal_line, confidence_line, source_line)
+        if line and line.strip()
+    ]
     tail_text = "\n".join(tail_lines)
     if not tail_text:
         return enforce_reply_limits("\n".join(normalized_body))
@@ -154,7 +168,9 @@ def _fit_high_risk_current_events_reply(body_lines: list[str], confidence_line: 
     max_body_length = MAX_CHAT_MESSAGE_LENGTH - len(tail_text) - 1
     if max_body_length <= 0:
         return tail_text[:MAX_CHAT_MESSAGE_LENGTH].strip()
-    body_text = enforce_reply_limits("\n".join(normalized_body), max_lines=max_body_lines, max_length=max_body_length).strip()
+    body_text = enforce_reply_limits(
+        "\n".join(normalized_body), max_lines=max_body_lines, max_length=max_body_length
+    ).strip()
     combined = f"{body_text}\n{tail_text}" if body_text else tail_text
     if len(combined) <= MAX_CHAT_MESSAGE_LENGTH:
         return combined
@@ -193,11 +209,19 @@ def normalize_current_events_reply_contract(
     must_validate_grounding = grounding_metadata is not None
     grounding_signal_present = has_grounding_signal(grounding_metadata)
     if high_risk_current_events and has_uncertainty:
-        return build_current_events_safe_fallback_reply(clean_prompt, server_time_instruction=server_time_instruction)
+        return build_current_events_safe_fallback_reply(
+            clean_prompt, server_time_instruction=server_time_instruction
+        )
     if high_risk_current_events and must_validate_grounding and not grounding_signal_present:
-        return build_current_events_safe_fallback_reply(clean_prompt, server_time_instruction=server_time_instruction)
+        return build_current_events_safe_fallback_reply(
+            clean_prompt, server_time_instruction=server_time_instruction
+        )
     if not has_temporal_anchor and not has_uncertainty:
-        added_temporal_line = f"Recorte temporal: {reference_utc_iso} UTC." if reference_utc_iso else "Recorte temporal: agora (UTC)."
+        added_temporal_line = (
+            f"Recorte temporal: {reference_utc_iso} UTC."
+            if reference_utc_iso
+            else "Recorte temporal: agora (UTC)."
+        )
         lines.append(added_temporal_line)
     if not high_risk_current_events:
         return "\n".join(lines)
@@ -220,16 +244,26 @@ def normalize_current_events_reply_contract(
 
     confidence_line = "Confianca: media"
     source_line = _build_grounding_source_line(grounding_metadata)
-    return _fit_high_risk_current_events_reply(body_lines, confidence_line, source_line, temporal_line=added_temporal_line)
+    return _fit_high_risk_current_events_reply(
+        body_lines, confidence_line, source_line, temporal_line=added_temporal_line
+    )
 
 
-def build_current_events_safe_fallback_reply(prompt: str, server_time_instruction: str | None = None) -> str:
+def build_current_events_safe_fallback_reply(
+    prompt: str, server_time_instruction: str | None = None
+) -> str:
     clean_prompt = (prompt or "").strip()
     if not is_high_risk_current_events_prompt(clean_prompt):
         return QUALITY_SAFE_FALLBACK
     reference_utc_iso = _extract_reference_utc_iso(server_time_instruction)
-    temporal_line = f"Recorte temporal: {reference_utc_iso} UTC." if reference_utc_iso else "Recorte temporal: agora (UTC)."
-    return "\n".join([QUALITY_SAFE_FALLBACK, temporal_line, "Confianca: baixa", CURRENT_EVENTS_PENDING_SOURCE])
+    temporal_line = (
+        f"Recorte temporal: {reference_utc_iso} UTC."
+        if reference_utc_iso
+        else "Recorte temporal: agora (UTC)."
+    )
+    return "\n".join(
+        [QUALITY_SAFE_FALLBACK, temporal_line, "Confianca: baixa", CURRENT_EVENTS_PENDING_SOURCE]
+    )
 
 
 def has_current_events_source_anchor(text: str) -> bool:
@@ -244,7 +278,9 @@ def has_current_events_confidence_label(text: str) -> bool:
 
 def has_current_events_temporal_anchor(text: str) -> bool:
     lowered = (text or "").lower()
-    return any(term in lowered for term in TEMPORAL_ANCHOR_TERMS) or bool(re.search(r"\b20(2[5-9]|3[0-9])\b", lowered))
+    return any(term in lowered for term in TEMPORAL_ANCHOR_TERMS) or bool(
+        re.search(r"\b20(2[5-9]|3[0-9])\b", lowered)
+    )
 
 
 def has_current_events_uncertainty(text: str) -> bool:

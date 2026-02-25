@@ -1,7 +1,7 @@
 import time
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Mapping
-
+from typing import Any
 
 ReplyFn = Callable[[str], Awaitable[None]]
 InferenceFn = Callable[..., Awaitable[Any]]
@@ -95,8 +95,8 @@ async def handle_byte_prompt_text(
     serious_mode = runtime.is_serious_technical_prompt(normalized_prompt)
     follow_up_mode = runtime.is_follow_up_prompt(normalized_prompt)
     current_events_mode = runtime.is_current_events_prompt(normalized_prompt)
-    high_risk_current_events_mode = current_events_mode and runtime.is_high_risk_current_events_prompt(
-        normalized_prompt
+    high_risk_current_events_mode = (
+        current_events_mode and runtime.is_high_risk_current_events_prompt(normalized_prompt)
     )
     sent_replies: list[str] = []
     interaction_started_at = time.perf_counter()
@@ -191,7 +191,9 @@ async def handle_byte_prompt_text(
         enable_live_context=runtime.enable_live_context_learning,
         enable_grounding=enable_grounding,
         max_lines=runtime.serious_reply_max_lines if serious_mode else runtime.max_reply_lines,
-        max_length=runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length,
+        max_length=(
+            runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length
+        ),
         return_metadata=True,
     )
     answer, grounding_metadata = unwrap_inference_result(inference_result)
@@ -219,7 +221,11 @@ async def handle_byte_prompt_text(
             enable_live_context=runtime.enable_live_context_learning,
             enable_grounding=enable_grounding,
             max_lines=runtime.serious_reply_max_lines if serious_mode else runtime.max_reply_lines,
-            max_length=runtime.serious_reply_max_length if serious_mode else runtime.max_chat_message_length,
+            max_length=(
+                runtime.serious_reply_max_length
+                if serious_mode
+                else runtime.max_chat_message_length
+            ),
             return_metadata=True,
         )
         retry_answer, retry_grounding_metadata = unwrap_inference_result(retry_inference_result)
@@ -233,14 +239,18 @@ async def handle_byte_prompt_text(
         if retry_answer and not retry_failed:
             answer = retry_answer
             quality_route_suffix = "_quality_retry"
-            runtime.observability.record_quality_gate(outcome="retry_success", reason=quality_reason)
+            runtime.observability.record_quality_gate(
+                outcome="retry_success", reason=quality_reason
+            )
         else:
             answer = runtime.build_current_events_safe_fallback_reply(
                 normalized_prompt,
                 server_time_instruction=server_time_instruction,
             )
             quality_route_suffix = "_quality_fallback"
-            runtime.observability.record_quality_gate(outcome="fallback", reason=retry_reason or quality_reason)
+            runtime.observability.record_quality_gate(
+                outcome="fallback", reason=retry_reason or quality_reason
+            )
     else:
         runtime.observability.record_quality_gate(outcome="pass", reason="ok")
 

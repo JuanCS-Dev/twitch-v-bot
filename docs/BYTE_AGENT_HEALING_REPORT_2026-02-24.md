@@ -8,7 +8,7 @@ Esta auditoria foi conduzida como resposta direta aos três pontos críticos de 
 ## 🔬 1. Cura da Conectividade do Banco de Dados (Supabase)
 **Sintoma Original:** `FATAL: password authentication failed for user "postgres"` e `Network is unreachable`.
 
-**Causa Raiz 1 (O Código):** O parsing manual de DSN via `.split()` corrompia senhas complexas. 
+**Causa Raiz 1 (O Código):** O parsing manual de DSN via `.split()` corrompia senhas complexas.
 - **A Cura:** Implementação de `urllib.parse` para decodificação cirúrgica de caracteres especiais.
 
 **Causa Raiz 2 (A Barreira IPv6):** O Hugging Face Spaces bloqueia conexões de saída via IPv6. A "Direct Connection" do Supabase resolve para endereços IPv6 (`2600:`), resultando em falha total de rede.

@@ -256,4 +256,3 @@ def record_vision_frame_locked(state: Any, *, now: float, analysis: str) -> None
     state._counters["vision_frames_total"] += 1
     append_event_locked(state, now, "INFO", "vision_frame", safe_analysis or "frame ingested")
     prune_locked(state, now)
-

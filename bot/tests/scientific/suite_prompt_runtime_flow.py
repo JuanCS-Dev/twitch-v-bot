@@ -1,8 +1,8 @@
 from bot.tests.scientific_shared import (
-    AsyncMock,
     MAX_CHAT_MESSAGE_LENGTH,
     MAX_REPLY_LINES,
     QUALITY_SAFE_FALLBACK,
+    AsyncMock,
     ScientificTestCase,
     build_intro_reply,
     context,
@@ -31,9 +31,7 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
         async def fake_reply(text):
             replies.append(text)
 
-        self.loop.run_until_complete(
-            handle_byte_prompt_text("se apresente", "viewer", fake_reply)
-        )
+        self.loop.run_until_complete(handle_byte_prompt_text("se apresente", "viewer", fake_reply))
         self.assertTrue(replies)
         self.assertTrue(context.last_byte_reply)
         mock_inference.assert_not_called()
@@ -46,9 +44,7 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
         async def fake_reply(text):
             replies.append(text)
 
-        self.loop.run_until_complete(
-            handle_byte_prompt_text("e agora?", "viewer", fake_reply)
-        )
+        self.loop.run_until_complete(handle_byte_prompt_text("e agora?", "viewer", fake_reply))
 
         self.assertTrue(replies)
         self.assertTrue(context.last_byte_reply)
@@ -58,14 +54,18 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
 
     @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
     def test_non_current_prompt_uses_inference_without_grounding(self, mock_inference):
-        mock_inference.return_value = "RAG consulta base externa; fine-tuning altera pesos do modelo base."
+        mock_inference.return_value = (
+            "RAG consulta base externa; fine-tuning altera pesos do modelo base."
+        )
         replies = []
 
         async def fake_reply(text):
             replies.append(text)
 
         self.loop.run_until_complete(
-            handle_byte_prompt_text("qual a diferenca entre RAG e fine-tuning?", "viewer", fake_reply)
+            handle_byte_prompt_text(
+                "qual a diferenca entre RAG e fine-tuning?", "viewer", fake_reply
+            )
         )
 
         self.assertTrue(replies)
@@ -203,7 +203,9 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
             replies.append(text)
 
         self.loop.run_until_complete(
-            handle_byte_prompt_text("quais as noticias mais relevantes de IA nesta semana?", "viewer", fake_reply)
+            handle_byte_prompt_text(
+                "quais as noticias mais relevantes de IA nesta semana?", "viewer", fake_reply
+            )
         )
 
         self.assertTrue(replies)

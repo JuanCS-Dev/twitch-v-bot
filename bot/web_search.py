@@ -32,7 +32,7 @@ async def search_web(
             timeout=WEB_SEARCH_TIMEOUT_SECONDS,
         )
         return results
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("DDG search timeout for query: %.80s", clean_query)
         return []
     except Exception as error:

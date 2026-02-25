@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # =============================================================================
+  # CODE QUALITY - Lint, Format, Type Check
+  # =============================================================================
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy black
+
+      - name: Check Ruff
+        run: ruff check bot/ --output-format=github
+
+      - name: Check Ruff Format
+        run: ruff format --check bot/ --output-format=github
+
+      - name: Check Black
+        run: black --check bot/ --config=pyproject.toml
+
+      - name: Run MyPy
+        run: |
+          pip install -r bot/requirements.txt
+          mypy bot/ --config-file=pyproject.toml --output-format=github
+
+  # =============================================================================
+  # TEST SUITE - Run all tests with coverage
+  # =============================================================================
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r bot/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run tests with coverage
+        run: |
+          pytest bot/tests/ \
+            --cov=bot/ \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=80 \
+            -v
+
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.xml
+            coverage/
+          retention-days: 7
+
+  # =============================================================================
+  # SECURITY - Scan for vulnerabilities
+  # =============================================================================
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install ruff
+
+      - name: Run Ruff Security Check
+        run: ruff check bot/ --select=SEC --output-format=github
+
+  # =============================================================================
+  # PRE-COMMIT - Run pre-commit checks
+  # =============================================================================
+  precommit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  # =============================================================================
+  # BUILD - Docker build check
+  # =============================================================================
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./bot/Dockerfile
+          push: false
+          load: true
+          tags: twitch-v-bot:test
+
+      - name: Verify image
+        run: docker run --rm twitch-v-bot:test python --version
+
+  # =============================================================================
+  # NOTIFICATIONS - Notify on failure
+  # =============================================================================
+  notify:
+    name: Notify
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'pull_request'
+
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "CI failed! Check the workflow run for details."
+          echo "Workflow URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -34,22 +34,17 @@ class ScientificTokenAndBootstrapTestsMixin(ScientificTestCase):
         self.assertEqual(manager.access_token, "novo_access_token")
         self.assertEqual(manager.refresh_token, "novo_refresh_token")
         self.assertTrue(
-            manager.expires_at_monotonic
-            and manager.expires_at_monotonic > time.monotonic()
+            manager.expires_at_monotonic and manager.expires_at_monotonic > time.monotonic()
         )
 
     def test_irc_auth_failure_detector(self):
         self.assertTrue(
-            is_irc_auth_failure_line(
-                ":tmi.twitch.tv NOTICE * :Login authentication failed"
-            )
+            is_irc_auth_failure_line(":tmi.twitch.tv NOTICE * :Login authentication failed")
         )
         self.assertTrue(
             is_irc_auth_failure_line(":tmi.twitch.tv NOTICE * :Improperly formatted auth")
         )
-        self.assertFalse(
-            is_irc_auth_failure_line(":tmi.twitch.tv 001 byte_agent :Welcome, GLHF!")
-        )
+        self.assertFalse(is_irc_auth_failure_line(":tmi.twitch.tv 001 byte_agent :Welcome, GLHF!"))
 
     def test_irc_notice_delivery_block_detector(self):
         self.assertTrue(is_irc_notice_delivery_block("msg_requires_verified_phone_number", ""))
@@ -84,5 +79,3 @@ class ScientificTokenAndBootstrapTestsMixin(ScientificTestCase):
         self.assertTrue(manager.can_refresh)
         self.assertEqual(manager.client_secret, "secret_from_sm")
         self.assertEqual(manager.client_id, "client_id")
-
-

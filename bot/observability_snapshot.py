@@ -1,19 +1,21 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
+from bot.observability_analytics import (
+    compute_autonomy_metrics,
+    compute_chat_metrics,
+    compute_interaction_metrics,
+    compute_leaderboards,
+    compute_quality_metrics,
+    compute_token_metrics,
+)
 from bot.observability_helpers import (
     TIMELINE_WINDOW_MINUTES,
     clip_preview,
     compute_p95,
     utc_iso,
 )
-from bot.observability_analytics import (
-    compute_chat_metrics,
-    compute_interaction_metrics,
-    compute_quality_metrics,
-    compute_token_metrics,
-    compute_autonomy_metrics,
-    compute_leaderboards,
-)
+
 
 def build_observability_snapshot(
     *,
@@ -46,48 +48,50 @@ def build_observability_snapshot(
     # Active users
     active_chatters_10m = sum(1 for value in chatter_last_seen.values() if now - value <= 600)
     active_chatters_60m = sum(1 for value in chatter_last_seen.values() if now - value <= 3600)
-    
+
     # Latency
     avg_latency_ms = round(sum(latencies_ms) / len(latencies_ms), 1) if latencies_ms else 0.0
     p95_latency_ms = compute_p95(latencies_ms)
-    
+
     # Analytics
     chat_metrics = compute_chat_metrics(chat_events, now)
     interaction_metrics = compute_interaction_metrics(interaction_events, now)
     quality_metrics = compute_quality_metrics(
-        quality_events, 
-        interaction_metrics["llm_interactions_60m"], 
-        now
+        quality_events, interaction_metrics["llm_interactions_60m"], now
     )
     token_metrics = compute_token_metrics(token_usage_events, now)
     autonomy_metrics = compute_autonomy_metrics(autonomy_goal_events, now)
-    
+
     # Leaderboards
     # Need byte_trigger_events filtered for 60m first
     cutoff_60m = now - 3600
     trigger_events_60m = [e for e in byte_trigger_events if float(e.get("ts", 0.0)) >= cutoff_60m]
-    
+
     leaderboards = compute_leaderboards(
-        chat_metrics.pop("events_60m"), # Pop to remove from result dict
+        chat_metrics.pop("events_60m"),  # Pop to remove from result dict
         trigger_events_60m,
         chatter_message_totals,
         trigger_user_totals,
     )
-    
+
     source_counts = leaderboards.pop("source_counts_60m")
     chat_metrics["source_counts_60m"] = {
         "irc": int(source_counts.get("irc", 0)),
         "eventsub": int(source_counts.get("eventsub", 0)),
         "unknown": int(source_counts.get("unknown", 0)),
     }
-    chat_metrics["byte_triggers_10m"] = len([e for e in byte_trigger_events if float(e.get("ts", 0.0)) >= now - 600])
+    chat_metrics["byte_triggers_10m"] = len(
+        [e for e in byte_trigger_events if float(e.get("ts", 0.0)) >= now - 600]
+    )
     chat_metrics["byte_triggers_60m"] = len(trigger_events_60m)
 
     # Context
     context_vibe = str(getattr(stream_context, "stream_vibe", "Conversa") or "Conversa")
     context_last_event = str(getattr(stream_context, "last_event", "Bot Online") or "Bot Online")
     raw_observability = getattr(stream_context, "live_observability", {}) or {}
-    context_items = {str(key): str(value) for key, value in dict(raw_observability).items() if str(value).strip()}
+    context_items = {
+        str(key): str(value) for key, value in dict(raw_observability).items() if str(value).strip()
+    }
     context_active_count = len(context_items)
 
     get_uptime_minutes = getattr(stream_context, "get_uptime_minutes", None)
@@ -108,7 +112,7 @@ def build_observability_snapshot(
         timeline.append(
             {
                 "minute_epoch": minute_key * 60,
-                "label": datetime.fromtimestamp(minute_key * 60, tz=timezone.utc).strftime("%H:%M"),
+                "label": datetime.fromtimestamp(minute_key * 60, tz=UTC).strftime("%H:%M"),
                 "chat_messages": int(bucket.get("chat_messages", 0)),
                 "byte_triggers": int(bucket.get("byte_triggers", 0)),
                 "replies_sent": int(bucket.get("replies_sent", 0)),
@@ -141,7 +145,9 @@ def build_observability_snapshot(
             "replies_total": int(counters.get("replies_total", 0)),
             "llm_interactions_total": int(counters.get("llm_interactions_total", 0)),
             "serious_interactions_total": int(counters.get("serious_interactions_total", 0)),
-            "current_events_interactions_total": int(counters.get("current_events_interactions_total", 0)),
+            "current_events_interactions_total": int(
+                counters.get("current_events_interactions_total", 0)
+            ),
             "follow_up_interactions_total": int(counters.get("follow_up_interactions_total", 0)),
             "quality_checks_total": int(counters.get("quality_checks_total", 0)),
             "quality_retry_total": int(counters.get("quality_retry_total", 0)),

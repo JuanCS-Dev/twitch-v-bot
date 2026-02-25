@@ -10,7 +10,7 @@ function escapeHtml(str) {
 export function renderClipCard(job) {
     const createdTime = new Date(job.created_at).toLocaleTimeString();
     const status = job.status || "queued";
-    
+
     // Links condicionais baseados no status
     let actionsHtml = '';
     if (status === 'ready' && job.clip_url) {

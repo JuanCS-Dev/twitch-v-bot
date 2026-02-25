@@ -1,8 +1,8 @@
 # Relatório de Validação: byte-costreamer-roadmap.md
 
-**Data:** 2026-02-21  
-**Analista:** opencode (análise profunda de código)  
-**Arquivos analisados:** ~40 arquivos Python + frontend JS/HTML  
+**Data:** 2026-02-21
+**Analista:** opencode (análise profunda de código)
+**Arquivos analisados:** ~40 arquivos Python + frontend JS/HTML
 
 ---
 
@@ -150,7 +150,7 @@ Adicionar uma seção "Features já implementadas (não fazer)" para evitar retr
 ## Features Já Implementadas (Baseline)
 
 - [x] Contrato 1 msg / 4 linhas
-- [x] Autonomia com goals + budget anti-spam  
+- [x] Autonomia com goals + budget anti-spam
 - [x] Fila de risco (approve/reject)
 - [x] Channel control (IRC mode)
 - [x] Observabilidade (snapshots, métricas)

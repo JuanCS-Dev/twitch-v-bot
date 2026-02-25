@@ -13,8 +13,8 @@ from bot.observability_snapshot import build_observability_snapshot
 from bot.observability_state_core import prune_locked, resolve_now
 from bot.observability_state_recorders import (
     record_auth_failure_locked,
-    record_autonomy_goal_locked,
     record_auto_scene_update_locked,
+    record_autonomy_goal_locked,
     record_byte_interaction_locked,
     record_byte_trigger_locked,
     record_chat_message_locked,
@@ -39,11 +39,19 @@ class ObservabilityState:
         self._chatter_last_seen: dict[str, float] = {}
         self._known_chatters: set[str] = set()
         self._chat_events: deque[dict[str, Any]] = deque(maxlen=CHAT_EVENTS_MAX_ITEMS)
-        self._byte_trigger_events: deque[dict[str, Any]] = deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
-        self._interaction_events: deque[dict[str, Any]] = deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+        self._byte_trigger_events: deque[dict[str, Any]] = deque(
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS
+        )
+        self._interaction_events: deque[dict[str, Any]] = deque(
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS
+        )
         self._quality_events: deque[dict[str, Any]] = deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
-        self._token_usage_events: deque[dict[str, Any]] = deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
-        self._autonomy_goal_events: deque[dict[str, Any]] = deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+        self._token_usage_events: deque[dict[str, Any]] = deque(
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS
+        )
+        self._autonomy_goal_events: deque[dict[str, Any]] = deque(
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS
+        )
         self._chatter_message_totals: Counter[str] = Counter()
         self._trigger_user_totals: Counter[str] = Counter()
         self._last_prompt = ""
@@ -54,13 +62,17 @@ class ObservabilityState:
             "scope_ok": False,
         }
 
-    def update_clips_auth_status(self, *, token_valid: bool, scope_ok: bool, timestamp: float | None = None) -> None:
+    def update_clips_auth_status(
+        self, *, token_valid: bool, scope_ok: bool, timestamp: float | None = None
+    ) -> None:
         with self._lock:
             self._clips_status["token_valid"] = bool(token_valid)
             self._clips_status["scope_ok"] = bool(scope_ok)
             # We could record an event here if needed, but the requirement is just status.
 
-    def record_chat_message(self, *, author_name: str, source: str, text: str = "", timestamp: float | None = None) -> None:
+    def record_chat_message(
+        self, *, author_name: str, source: str, text: str = "", timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
             record_chat_message_locked(
@@ -71,7 +83,9 @@ class ObservabilityState:
                 text=text,
             )
 
-    def record_byte_trigger(self, *, prompt: str, source: str, author_name: str = "", timestamp: float | None = None) -> None:
+    def record_byte_trigger(
+        self, *, prompt: str, source: str, author_name: str = "", timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
             record_byte_trigger_locked(
@@ -87,7 +101,9 @@ class ObservabilityState:
         with self._lock:
             record_reply_locked(self, now=now, text=text)
 
-    def record_quality_gate(self, *, outcome: str, reason: str, timestamp: float | None = None) -> None:
+    def record_quality_gate(
+        self, *, outcome: str, reason: str, timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
             record_quality_gate_locked(self, now=now, outcome=outcome, reason=reason)
@@ -158,7 +174,9 @@ class ObservabilityState:
                 details=details,
             )
 
-    def record_auto_scene_update(self, *, update_types: list[str], timestamp: float | None = None) -> None:
+    def record_auto_scene_update(
+        self, *, update_types: list[str], timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
             record_auto_scene_update_locked(self, now=now, update_types=update_types)
@@ -222,4 +240,3 @@ class ObservabilityState:
                 bot_mode=bot_mode,
                 stream_context=stream_context,
             )
-

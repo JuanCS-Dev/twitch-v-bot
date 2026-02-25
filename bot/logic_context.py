@@ -1,6 +1,5 @@
 import time
-from datetime import datetime, timezone
-from typing import Dict
+from datetime import UTC, datetime
 
 from bot.logic_constants import (
     BOT_BRAND,
@@ -35,7 +34,7 @@ class StreamContext:
         self.stream_vibe = "Conversa"
         self.last_event = "Bot Online"
         self.style_profile = DEFAULT_STYLE_PROFILE
-        self.live_observability: Dict[str, str] = {
+        self.live_observability: dict[str, str] = {
             "game": "",
             "movie": "",
             "series": "",
@@ -107,7 +106,7 @@ class StreamContext:
     def format_recent_chat(self, limit: int = MAX_RECENT_CHAT_PROMPT_ENTRIES) -> str:
         if not self.recent_chat_entries:
             return "Sem historico recente."
-        selected = self.recent_chat_entries[-max(1, limit):]
+        selected = self.recent_chat_entries[-max(1, limit) :]
         return " || ".join(selected)
 
 
@@ -119,7 +118,7 @@ def build_system_instruction(ctx: StreamContext) -> str:
 
 
 def get_server_clock_snapshot() -> tuple[str, int]:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     now_utc_iso = now_utc.isoformat(timespec="seconds").replace("+00:00", "Z")
     return now_utc_iso, int(now_utc.timestamp())
 
@@ -155,7 +154,9 @@ def build_dynamic_prompt(
     )
 
 
-def enforce_reply_limits(text: str, max_lines: int = MAX_REPLY_LINES, max_length: int = MAX_REPLY_LENGTH) -> str:
+def enforce_reply_limits(
+    text: str, max_lines: int = MAX_REPLY_LINES, max_length: int = MAX_REPLY_LENGTH
+) -> str:
     cleaned = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not cleaned:
         return ""

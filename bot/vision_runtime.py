@@ -3,7 +3,6 @@ import threading
 import time
 from typing import Any
 
-
 from bot.control_plane import RISK_CLIP_CANDIDATE, control_plane
 from bot.control_plane_constants import utc_iso
 from bot.logic import context
@@ -90,11 +89,12 @@ class VisionRuntime:
 
     def _analyze_frame(self, frame_bytes: bytes, mime_type: str) -> str:
         import base64
+
         from bot.runtime_config import NEBIUS_MODEL_VISION
-        
-        b64_img = base64.b64encode(frame_bytes).decode('utf-8')
+
+        b64_img = base64.b64encode(frame_bytes).decode("utf-8")
         data_url = f"data:{mime_type};base64,{b64_img}"
-        
+
         response = client.chat.completions.create(
             model=NEBIUS_MODEL_VISION,
             messages=[
@@ -102,14 +102,14 @@ class VisionRuntime:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": VISION_SCENE_PROMPT},
-                        {"type": "image_url", "image_url": {"url": data_url}}
-                    ]
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
                 }
             ],
             temperature=0.1,
-            max_tokens=200
+            max_tokens=200,
         )
-        
+
         if not response.choices:
             return ""
         return (response.choices[0].message.content or "").strip()

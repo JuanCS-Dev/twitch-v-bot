@@ -1,6 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from bot.clip_jobs_store import SupabaseJobStore
+
 
 class TestClipJobsStoreV2(unittest.TestCase):
     def test_get_connection_invalid_url_scheme(self):
@@ -14,7 +16,9 @@ class TestClipJobsStoreV2(unittest.TestCase):
     def test_ensure_table_exception(self):
         store = SupabaseJobStore()
         mock_conn = MagicMock()
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("db error")
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "db error"
+        )
         # Should not crash, just log
         store._ensure_table(mock_conn)
         self.assertFalse(store._initialized)
@@ -23,8 +27,10 @@ class TestClipJobsStoreV2(unittest.TestCase):
         store = SupabaseJobStore()
         mock_conn = MagicMock()
         store._get_connection = MagicMock(return_value=mock_conn)
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("save error")
-        
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "save error"
+        )
+
         store.save_job({"job_id": "1"})
         mock_conn.close.assert_called_once()
 
@@ -32,8 +38,10 @@ class TestClipJobsStoreV2(unittest.TestCase):
         store = SupabaseJobStore()
         mock_conn = MagicMock()
         store._get_connection = MagicMock(return_value=mock_conn)
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("load error")
-        
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "load error"
+        )
+
         res = store.load_active_jobs()
         self.assertEqual(res, [])
         mock_conn.close.assert_called_once()
@@ -42,8 +50,10 @@ class TestClipJobsStoreV2(unittest.TestCase):
         store = SupabaseJobStore()
         mock_conn = MagicMock()
         store._get_connection = MagicMock(return_value=mock_conn)
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception("get error")
-        
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "get error"
+        )
+
         res = store.get_job("1")
         self.assertIsNone(res)
         mock_conn.close.assert_called_once()

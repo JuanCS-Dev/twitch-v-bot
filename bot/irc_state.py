@@ -20,6 +20,7 @@ class IrcChannelStateMixin:
     _pending_part_events: dict[str, asyncio.Event]
 
     if TYPE_CHECKING:
+
         async def _send_raw(self, line: str) -> None: ...
 
     def build_status_line(self) -> str:
@@ -33,9 +34,7 @@ class IrcChannelStateMixin:
         return flatten_chat_text(format_chat_reply(text))
 
     async def send_reply(self, text: str, channel_login: str | None = None) -> None:
-        target_channel = normalize_channel_login(
-            channel_login or self.primary_channel_login
-        )
+        target_channel = normalize_channel_login(channel_login or self.primary_channel_login)
         if not target_channel:
             target_channel = self.primary_channel_login
         if target_channel not in self.joined_channels:
@@ -69,10 +68,7 @@ class IrcChannelStateMixin:
         if target_channel not in self.channel_logins:
             self.channel_logins.append(target_channel)
             changed = True
-        if (
-            not self.primary_channel_login
-            or self.primary_channel_login not in self.joined_channels
-        ):
+        if not self.primary_channel_login or self.primary_channel_login not in self.joined_channels:
             self.primary_channel_login = self.channel_logins[0]
             changed = True
         return changed
@@ -95,12 +91,8 @@ class IrcChannelStateMixin:
         if not self.channel_logins and self.joined_channels:
             self.channel_logins = sorted(self.joined_channels)
             changed = True
-        if self.primary_channel_login == target_channel:
-            self.primary_channel_login = self.channel_logins[0] if self.channel_logins else ""
-            changed = True
-        elif (
-            self.primary_channel_login
-            and self.primary_channel_login not in self.joined_channels
+        if self.primary_channel_login == target_channel or (
+            self.primary_channel_login and self.primary_channel_login not in self.joined_channels
         ):
             self.primary_channel_login = self.channel_logins[0] if self.channel_logins else ""
             changed = True
@@ -164,7 +156,7 @@ class IrcChannelStateMixin:
         should_wait_confirmation = self._can_wait_for_channel_confirmation()
         if should_wait_confirmation and target_channel not in self._pending_join_events:
             self._pending_join_events[target_channel] = asyncio.Event()
-        
+
         logger.info("IRC SEND: JOIN #%s", target_channel)
         await self._send_raw(f"JOIN #{target_channel}")
 
@@ -225,13 +217,13 @@ class IrcChannelStateMixin:
                 f"Already connected to #{target_channel}.",
                 list(self.channel_logins),
             )
-        
+
         # Optimistic Update: Mark as joined in memory immediately for instant UX
         self._mark_channel_joined(target_channel)
-        
+
         # Trigger the actual IRC join (fire and forget via background logic)
         asyncio.create_task(self._join_channel(target_channel, force=True))
-        
+
         return (True, f"Joined #{target_channel}.", list(self.channel_logins))
 
     async def admin_part_channel(self, channel_login: str) -> tuple[bool, str, list[str]]:
@@ -254,11 +246,11 @@ class IrcChannelStateMixin:
                 "Cannot leave the last active channel. Join another one first.",
                 list(self.channel_logins),
             )
-        
+
         # Optimistic Update: Remove from memory immediately
         self._mark_channel_parted(target_channel)
-        
+
         # Trigger actual IRC part
         asyncio.create_task(self._part_channel(target_channel, force=True))
-        
+
         return (True, f"Left #{target_channel}.", list(self.channel_logins))

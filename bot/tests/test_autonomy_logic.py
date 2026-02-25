@@ -1,7 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
-import bot.autonomy_logic as autonomy_logic
-from bot.control_plane import RISK_AUTO_CHAT, RISK_CLIP_CANDIDATE, RISK_SUGGEST_STREAMER
+from unittest.mock import AsyncMock, patch
+
+from bot import autonomy_logic
+from bot.control_plane import RISK_AUTO_CHAT, RISK_CLIP_CANDIDATE
+
 
 class TestAutonomyLogic(unittest.IsolatedAsyncioTestCase):
     @patch("bot.autonomy_logic.agent_inference", new_callable=AsyncMock)
@@ -23,6 +25,6 @@ class TestAutonomyLogic(unittest.IsolatedAsyncioTestCase):
         mock_gen.return_value = "Hello"
         mock_cp.can_send_auto_chat.return_value = (True, "", {})
         mock_cp.enqueue_action.return_value = {"id": "act1"}
-        
+
         result = await autonomy_logic.process_autonomy_goal({"risk": RISK_AUTO_CHAT}, None)
         self.assertEqual(result["outcome"], "queued_no_dispatcher")

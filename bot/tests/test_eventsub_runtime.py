@@ -1,13 +1,16 @@
-import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
-import bot.eventsub_runtime as es_runtime
 import os
+import unittest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import bot.eventsub_runtime as es_runtime
+
 
 class TestEventSubHelpers(unittest.TestCase):
     def test_get_ctx_message_text(self):
         ctx = MagicMock()
         ctx.message.text = "hello"
         self.assertEqual(es_runtime.get_ctx_message_text(ctx), "hello")
+
 
 class TestAgentComponent(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -34,16 +37,18 @@ class TestAgentComponent(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(mock_context.stream_vibe, "high energy")
             ctx.reply.assert_called()
 
+
 class TestByteBot(unittest.IsolatedAsyncioTestCase):
     @patch("bot.eventsub_runtime.commands.Bot.__init__")
     def test_init(self, mock_super):
-        with patch.dict(os.environ, {
-            "TWITCH_CLIENT_ID": "cid",
-            "TWITCH_BOT_ID": "bid",
-            "TWITCH_CHANNEL_ID": "chid"
-        }):
-            with patch("bot.eventsub_runtime.BOT_ID", None), \
-                 patch("bot.eventsub_runtime.CLIENT_ID", None):
+        with patch.dict(
+            os.environ,
+            {"TWITCH_CLIENT_ID": "cid", "TWITCH_BOT_ID": "bid", "TWITCH_CHANNEL_ID": "chid"},
+        ):
+            with (
+                patch("bot.eventsub_runtime.BOT_ID", None),
+                patch("bot.eventsub_runtime.CLIENT_ID", None),
+            ):
                 bot = es_runtime.ByteBot(client_secret="sec")
                 mock_super.assert_called_once()
 
@@ -63,11 +68,11 @@ class TestByteBot(unittest.IsolatedAsyncioTestCase):
                 with patch("bot.eventsub_runtime.commands.Bot.close", new_callable=AsyncMock):
                     await bot.close()
                     mock_runtime.unbind.assert_called_once()
-                    
+
     async def test_event_message_echo(self):
         with patch("bot.eventsub_runtime.commands.Bot.__init__", return_value=None):
             with patch.dict(os.environ, {"TWITCH_BOT_ID": "123"}):
                 bot = es_runtime.ByteBot(client_secret="s")
                 payload = MagicMock()
                 payload.echo = True
-                await bot.event_message(payload) # Should return immediately
+                await bot.event_message(payload)  # Should return immediately

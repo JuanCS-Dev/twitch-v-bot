@@ -9,4 +9,3 @@ export function getErrorMessage(error, fallbackMessage) {
     }
     return fallbackMessage;
 }
-

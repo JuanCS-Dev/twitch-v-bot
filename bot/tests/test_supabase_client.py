@@ -1,8 +1,9 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import os
-import importlib
-import bot.supabase_client as supabase_client
+import unittest
+from unittest.mock import MagicMock, patch
+
+from bot import supabase_client
+
 
 class TestSupabaseClient(unittest.TestCase):
     def setUp(self):
@@ -10,8 +11,10 @@ class TestSupabaseClient(unittest.TestCase):
         supabase_client._client = None
         supabase_client._enabled = False
         # Clear env vars
-        if "SUPABASE_URL" in os.environ: del os.environ["SUPABASE_URL"]
-        if "SUPABASE_KEY" in os.environ: del os.environ["SUPABASE_KEY"]
+        if "SUPABASE_URL" in os.environ:
+            del os.environ["SUPABASE_URL"]
+        if "SUPABASE_KEY" in os.environ:
+            del os.environ["SUPABASE_KEY"]
 
     def test_get_client_not_configured(self):
         """Should stay disabled if env vars are missing."""
@@ -24,10 +27,10 @@ class TestSupabaseClient(unittest.TestCase):
         """Should enable client when env vars are present."""
         os.environ["SUPABASE_URL"] = "https://xyz.supabase.co"
         os.environ["SUPABASE_KEY"] = "fake-key"
-        
+
         mock_instance = MagicMock()
         mock_create.return_value = mock_instance
-        
+
         client = supabase_client._get_client()
         self.assertEqual(client, mock_instance)
         self.assertTrue(supabase_client.is_enabled())
@@ -39,7 +42,7 @@ class TestSupabaseClient(unittest.TestCase):
         os.environ["SUPABASE_URL"] = "https://xyz.supabase.co"
         os.environ["SUPABASE_KEY"] = "fake-key"
         mock_create.side_effect = Exception("Connection failed")
-        
+
         client = supabase_client._get_client()
         self.assertFalse(client)
         self.assertFalse(supabase_client.is_enabled())
@@ -50,10 +53,10 @@ class TestSupabaseClient(unittest.TestCase):
         """Should truncate messages longer than 2000 chars."""
         mock_db = MagicMock()
         mock_get_client.return_value = mock_db
-        
+
         long_message = "A" * 3000
         supabase_client.log_message("user", long_message, "chan")
-        
+
         mock_db.table.assert_called_with("chat_messages")
         insert_data = mock_db.table().insert.call_args[0][0]
         self.assertEqual(len(insert_data["message"]), 2000)
@@ -65,9 +68,9 @@ class TestSupabaseClient(unittest.TestCase):
         """Should log bot replies correctly."""
         mock_db = MagicMock()
         mock_get_client.return_value = mock_db
-        
+
         supabase_client.log_reply("hello", "world", "user", "model-x", True, 100)
-        
+
         mock_db.table.assert_called_with("bot_replies")
         insert_data = mock_db.table().insert.call_args[0][0]
         self.assertEqual(insert_data["prompt"], "hello")
@@ -80,10 +83,10 @@ class TestSupabaseClient(unittest.TestCase):
         """Should log events with optional metadata."""
         mock_db = MagicMock()
         mock_get_client.return_value = mock_db
-        
+
         metadata = {"foo": "bar"}
         supabase_client.log_event("test_cat", "details", metadata)
-        
+
         mock_db.table.assert_called_with("observability_events")
         insert_data = mock_db.table().insert.call_args[0][0]
         self.assertEqual(insert_data["category"], "test_cat")
@@ -96,7 +99,7 @@ class TestSupabaseClient(unittest.TestCase):
         mock_db = MagicMock()
         mock_db.table().insert().execute.side_effect = Exception("DB Down")
         mock_get_client.return_value = mock_db
-        
+
         # Should not raise exception
         supabase_client.log_message("user", "msg")
         supabase_client.log_reply("p", "r", "u")

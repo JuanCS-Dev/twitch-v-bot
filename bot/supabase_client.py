@@ -54,12 +54,14 @@ def log_message(author_name: str, message: str, channel: str = "", source: str =
     if not is_enabled():
         return
     try:
-        _get_client().table("chat_messages").insert({
-            "author_name": author_name,
-            "message": message[:2000],
-            "channel": channel,
-            "source": source,
-        }).execute()
+        _get_client().table("chat_messages").insert(
+            {
+                "author_name": author_name,
+                "message": message[:2000],
+                "channel": channel,
+                "source": source,
+            }
+        ).execute()
     except Exception as error:
         logger.debug("Supabase log_message error: %s", error)
 
@@ -76,14 +78,16 @@ def log_reply(
     if not is_enabled():
         return
     try:
-        _get_client().table("bot_replies").insert({
-            "prompt": prompt[:2000],
-            "reply": reply[:2000],
-            "author_name": author_name,
-            "model": model,
-            "grounded": grounded,
-            "latency_ms": latency_ms,
-        }).execute()
+        _get_client().table("bot_replies").insert(
+            {
+                "prompt": prompt[:2000],
+                "reply": reply[:2000],
+                "author_name": author_name,
+                "model": model,
+                "grounded": grounded,
+                "latency_ms": latency_ms,
+            }
+        ).execute()
     except Exception as error:
         logger.debug("Supabase log_reply error: %s", error)
 
@@ -93,10 +97,12 @@ def log_event(category: str, details: str = "", metadata: dict[str, Any] | None 
     if not is_enabled():
         return
     try:
-        _get_client().table("observability_events").insert({
-            "category": category,
-            "details": details[:2000],
-            "metadata": metadata or {},
-        }).execute()
+        _get_client().table("observability_events").insert(
+            {
+                "category": category,
+                "details": details[:2000],
+                "metadata": metadata or {},
+            }
+        ).execute()
     except Exception as error:
         logger.debug("Supabase log_event error: %s", error)

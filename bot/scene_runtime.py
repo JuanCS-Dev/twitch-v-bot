@@ -1,8 +1,7 @@
 from typing import Any
 
-from bot.byte_semantics import compact_message, normalize_text_for_scene
-from bot.scene_metadata import SceneMetadataService
 from bot.access_control import is_trusted_curator
+from bot.byte_semantics import compact_message, normalize_text_for_scene
 from bot.logic import context
 from bot.runtime_config import (
     AUTO_SCENE_REQUIRE_METADATA,
@@ -11,7 +10,7 @@ from bot.runtime_config import (
     OWNER_ID,
     logger,
 )
-
+from bot.scene_metadata import SceneMetadataService
 
 scene_metadata_service = SceneMetadataService(
     metadata_cache_ttl_seconds=METADATA_CACHE_TTL_SECONDS,
@@ -115,9 +114,7 @@ async def auto_update_scene_from_message(message: Any) -> list[str]:
 
         metadata = await resolve_scene_metadata(url, content_type)
         if not is_safe_scene_metadata(metadata, message_text, url):
-            logger.warning(
-                "Auto-observabilidade bloqueada apos classificacao de metadata: %s", url
-            )
+            logger.warning("Auto-observabilidade bloqueada apos classificacao de metadata: %s", url)
             continue
 
         author_name = str(getattr(author, "name", "autor") or "autor")

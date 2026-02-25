@@ -3,7 +3,7 @@
   /* Cores de Marca */
   --color-accent: #9147FF;
   --color-accent-soft: #BF94FF;
-  
+
   /* Tema Dark (padrão) */
   color-scheme: dark;
   --bg-base: #0E0E10;
@@ -12,7 +12,7 @@
   --text-primary: #EFEFF1;
   --text-muted: #ADADB8;
   --border-default: #3A3A45;
-  
+
   /* Semânticas de Estado */
   --status-ok: #4EE1A8;
   --status-warn: #FFD26D;
@@ -22,7 +22,7 @@
   /* Tipografia */
   --font-family-sans: "Roobert", "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-family-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-  
+
   /* Escala de Espaçamento */
   --spacing-1: 0.25rem; /* 4px */
   --spacing-2: 0.5rem;  /* 8px */
@@ -30,17 +30,17 @@
   --spacing-4: 1rem;    /* 16px */
   --spacing-5: 1.5rem;  /* 24px */
   --spacing-6: 2rem;    /* 32px */
-  
+
   /* Raio de bordo (Border Radius) */
   --radius-sm: 0.33rem;
   --radius-md: 0.48rem;
   --radius-lg: 0.8rem;
   --radius-pill: 9999px;
-  
+
   /* Microanimações / Transições (suaves, sem re-render) */
   --transition-fast: 0.1s ease-out;
   --transition-med: 0.2s ease;
-  
+
   /* Sombras (focando leveza e contraste) */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -57,7 +57,7 @@
   --text-primary: #0E0E10;
   --text-muted: #53535F;
   --border-default: #D9D8DD;
-  
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-accent: 0 0 12px rgba(145, 71, 255, 0.2);

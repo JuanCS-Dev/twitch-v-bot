@@ -10,7 +10,6 @@ from bot.dashboard_server_routes import (
     handle_get,
     handle_post,
     handle_put,
-    handle_get_config_js,
 )
 from bot.runtime_config import (
     BYTE_DASHBOARD_ADMIN_TOKEN,
@@ -27,11 +26,11 @@ class HealthHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Byte-Admin-Token, Authorization")
+        self.send_header(
+            "Access-Control-Allow-Headers", "Content-Type, X-Byte-Admin-Token, Authorization"
+        )
 
-    def _send_bytes(
-        self, payload: bytes, content_type: str, status_code: int = 200
-    ) -> None:
+    def _send_bytes(self, payload: bytes, content_type: str, status_code: int = 200) -> None:
         self.send_response(status_code)
         self._send_cors_headers()
         self.send_header("Content-Type", content_type)
@@ -42,32 +41,28 @@ class HealthHandler(BaseHTTPRequestHandler):
 
     def _send_json(self, payload: dict[str, Any], status_code: int = 200) -> None:
         serialized = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self._send_bytes(
-            serialized, "application/json; charset=utf-8", status_code=status_code
-        )
+        self._send_bytes(serialized, "application/json; charset=utf-8", status_code=status_code)
 
     def _send_text(self, text: str, status_code: int = 200) -> None:
-        self._send_bytes(
-            text.encode("utf-8"), "text/plain; charset=utf-8", status_code=status_code
-        )
+        self._send_bytes(text.encode("utf-8"), "text/plain; charset=utf-8", status_code=status_code)
 
     def _dashboard_authorized(self) -> bool:
         if not BYTE_DASHBOARD_ADMIN_TOKEN:
             return True
-        authorized = is_dashboard_admin_authorized(
-            self.headers, BYTE_DASHBOARD_ADMIN_TOKEN
-        )
+        authorized = is_dashboard_admin_authorized(self.headers, BYTE_DASHBOARD_ADMIN_TOKEN)
         if not authorized:
-            import urllib.parse
             import hmac
+            import urllib.parse
+
             parsed_path = urllib.parse.urlparse(self.path)
             query_params = urllib.parse.parse_qs(parsed_path.query)
             if "auth" in query_params:
                 provided_token = query_params["auth"][0].strip()
                 authorized = hmac.compare_digest(provided_token, BYTE_DASHBOARD_ADMIN_TOKEN.strip())
-                
+
         if not authorized:
             from bot.runtime_config import logger
+
             logger.warning("Auth rejection for route %s from %s", self.path, self.address_string())
         return authorized
 
@@ -121,9 +116,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         if not target_path.is_file():
             self._send_text("Not Found", status_code=404)
             return True
-        self._send_bytes(
-            target_path.read_bytes(), content_type=content_type, status_code=200
-        )
+        self._send_bytes(target_path.read_bytes(), content_type=content_type, status_code=200)
         return True
 
     def _build_observability_payload(self) -> dict[str, Any]:

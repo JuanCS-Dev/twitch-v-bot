@@ -1,5 +1,6 @@
 import time
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from bot.byte_semantics import format_chat_reply
 from bot.control_plane import (
@@ -17,11 +18,13 @@ from bot.runtime_config import CHANNEL_ID, ENABLE_LIVE_CONTEXT_LEARNING, client
 
 AutoChatDispatcher = Callable[[str], Awaitable[None]]
 
+
 def _clip_line(text: str, max_chars: int = 80) -> str:
     compact = " ".join((text or "").split())
     if len(compact) <= max_chars:
         return compact
     return compact[: max_chars - 3].rstrip() + "..."
+
 
 async def generate_goal_text(prompt: str, risk: str) -> str:
     risk_hint = {
@@ -42,7 +45,7 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
             "Se nao houver nada relevante, responda apenas 'NADA'."
         ),
     }.get(risk, "Responda com recomendacao objetiva.")
-    
+
     autonomy_prompt = (
         "Modo autonomia Byte para Twitch.\n"
         f"Risco: {risk}\n"
@@ -50,7 +53,7 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
         f"{risk_hint}\n"
         "Contrato de saida: 1 mensagem, no maximo 4 linhas, alta densidade, sem markdown."
     )
-    
+
     answer = await agent_inference(
         autonomy_prompt,
         "autonomy",
@@ -62,6 +65,7 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
     )
     safe_text = format_chat_reply(str(answer or ""))
     return safe_text.replace("[BYTE_SPLIT]", "").strip()
+
 
 async def process_autonomy_goal(
     goal: dict[str, Any],
@@ -95,6 +99,7 @@ async def process_autonomy_goal(
         return _handle_clip_candidate(goal_id, risk, goal_name, generated_text)
 
     return _handle_generic_suggestion(goal_id, risk, goal_name, safe_prompt, generated_text)
+
 
 async def _handle_auto_chat(
     goal_id: str,
@@ -169,6 +174,7 @@ async def _handle_auto_chat(
         "outcome": "auto_chat_sent",
     }
 
+
 def _handle_clip_candidate(
     goal_id: str,
     risk: str,
@@ -233,6 +239,7 @@ def _handle_clip_candidate(
         "outcome": "queued",
         "action_id": queued_item.get("id", ""),
     }
+
 
 def _handle_generic_suggestion(
     goal_id: str,

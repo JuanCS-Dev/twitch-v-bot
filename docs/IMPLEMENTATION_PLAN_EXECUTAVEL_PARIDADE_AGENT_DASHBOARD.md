@@ -1,7 +1,7 @@
 # Plano de Implementacao Executavel - Blindagem IRC + Paridade Total Agent/Dashboard
 
-Data: 2026-02-21  
-Status: pronto para execucao  
+Data: 2026-02-21
+Status: pronto para execucao
 Escopo: este plano substitui rascunhos para implementacao final sem ambiguidade.
 
 Links rapidos:
@@ -27,12 +27,12 @@ Links rapidos:
 
 ## 3) Requisitos obrigatorios (nao negociaveis)
 
-R1. Corrigir payload de Health na dashboard: `counters -> metrics`.  
-R2. Channel Control mode-aware no UI/UX: em `eventsub`, desabilitar `join/part` e explicar claramente.  
-R3. Enforcar contrato estrito: 1 mensagem com ate 4 linhas, removendo split em 2 partes no modo serio.  
-R4. Implantar loop autonomo com agenda: heartbeat + goal scheduler + budget anti-spam.  
-R5. Separar acoes por risco: auto chat, sugestao ao streamer, moderacao com confirmacao obrigatoria.  
-R6. Adicionar metricas de resultado do agente: engajamento util, taxa de ignorados, taxa de correcao, custo/token.  
+R1. Corrigir payload de Health na dashboard: `counters -> metrics`.
+R2. Channel Control mode-aware no UI/UX: em `eventsub`, desabilitar `join/part` e explicar claramente.
+R3. Enforcar contrato estrito: 1 mensagem com ate 4 linhas, removendo split em 2 partes no modo serio.
+R4. Implantar loop autonomo com agenda: heartbeat + goal scheduler + budget anti-spam.
+R5. Separar acoes por risco: auto chat, sugestao ao streamer, moderacao com confirmacao obrigatoria.
+R6. Adicionar metricas de resultado do agente: engajamento util, taxa de ignorados, taxa de correcao, custo/token.
 R7. Paridade total na dashboard: todo controle novo no agente deve existir na UI, com estado atual e historico.
 
 ## 4) Principios anti-debito tecnico

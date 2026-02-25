@@ -7,6 +7,8 @@ from typing import Any
 from bot.control_plane_config_helpers import (
     budget_usage,
     normalize_goals,
+)
+from bot.control_plane_config_helpers import (
     runtime_base_snapshot as build_runtime_base_snapshot,
 )
 from bot.control_plane_constants import (
@@ -182,7 +184,9 @@ class ControlPlaneConfigRuntime:
             self._runtime["autonomy_last_block_reason"] = clip_text(reason, max_chars=80)
             self._runtime["last_heartbeat_at"] = now
 
-    def can_send_auto_chat(self, timestamp: float | None = None) -> tuple[bool, str, dict[str, int]]:
+    def can_send_auto_chat(
+        self, timestamp: float | None = None
+    ) -> tuple[bool, str, dict[str, int]]:
         now = time.time() if timestamp is None else float(timestamp)
         with self._lock:
             usage = budget_usage(self._auto_chat_sent_timestamps, now)
@@ -191,15 +195,21 @@ class ControlPlaneConfigRuntime:
             if int(cfg["budget_messages_daily"]) <= 0:
                 return False, "budget_daily_disabled", usage
 
-            last_sent = self._auto_chat_sent_timestamps[-1] if self._auto_chat_sent_timestamps else 0.0
+            last_sent = (
+                self._auto_chat_sent_timestamps[-1] if self._auto_chat_sent_timestamps else 0.0
+            )
             min_cooldown = int(cfg["min_cooldown_seconds"])
             if last_sent > 0 and now - last_sent < min_cooldown:
                 return False, "cooldown_active", usage
 
-            if int(cfg["budget_messages_10m"]) >= 0 and usage["messages_10m"] >= int(cfg["budget_messages_10m"]):
+            if int(cfg["budget_messages_10m"]) >= 0 and usage["messages_10m"] >= int(
+                cfg["budget_messages_10m"]
+            ):
                 return False, "budget_10m_exceeded", usage
 
-            if int(cfg["budget_messages_60m"]) >= 0 and usage["messages_60m"] >= int(cfg["budget_messages_60m"]):
+            if int(cfg["budget_messages_60m"]) >= 0 and usage["messages_60m"] >= int(
+                cfg["budget_messages_60m"]
+            ):
                 return False, "budget_60m_exceeded", usage
 
             if usage["messages_daily"] >= int(cfg["budget_messages_daily"]):
@@ -214,7 +224,9 @@ class ControlPlaneConfigRuntime:
             self._runtime["autonomy_auto_chat_sent_total"] += 1
             self._runtime["last_heartbeat_at"] = now
 
-    def consume_due_goals(self, *, force: bool = False, timestamp: float | None = None) -> list[dict[str, Any]]:
+    def consume_due_goals(
+        self, *, force: bool = False, timestamp: float | None = None
+    ) -> list[dict[str, Any]]:
         now = time.time() if timestamp is None else float(timestamp)
         with self._lock:
             if not self._config.get("autonomy_enabled", False) and not force:

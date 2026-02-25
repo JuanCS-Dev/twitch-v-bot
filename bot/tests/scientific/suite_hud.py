@@ -66,7 +66,7 @@ class ScientificHudTestsMixin(ScientificTestCase):
         self.assertGreaterEqual(len(recent), 1)
 
     def test_hud_max_buffer(self) -> None:
-        from bot.hud_runtime import HudRuntime, MAX_HUD_MESSAGES
+        from bot.hud_runtime import MAX_HUD_MESSAGES, HudRuntime
 
         rt = HudRuntime()
         for i in range(MAX_HUD_MESSAGES + 5):
@@ -87,7 +87,7 @@ class ScientificHudTestsMixin(ScientificTestCase):
         self.assertEqual(len(rt.get_messages(since=0.0)), 0)
 
     def test_hud_get_status(self) -> None:
-        from bot.hud_runtime import HudRuntime, MAX_HUD_MESSAGES
+        from bot.hud_runtime import MAX_HUD_MESSAGES, HudRuntime
 
         rt = HudRuntime()
         status = rt.get_status()
@@ -100,14 +100,14 @@ class ScientificHudTestsMixin(ScientificTestCase):
         self.assertEqual(status["count"], 2)
 
     @patch("bot.autonomy_logic.hud_runtime")
-    def test_hud_integration_suggest_streamer_pushes(
-        self, mock_hud: MagicMock
-    ) -> None:
+    def test_hud_integration_suggest_streamer_pushes(self, mock_hud: MagicMock) -> None:
         from bot.autonomy_logic import _handle_generic_suggestion
         from bot.control_plane_constants import RISK_SUGGEST_STREAMER
 
-        with patch("bot.autonomy_logic.control_plane") as mock_cp, \
-             patch("bot.autonomy_logic.observability"):
+        with (
+            patch("bot.autonomy_logic.control_plane") as mock_cp,
+            patch("bot.autonomy_logic.observability"),
+        ):
             mock_cp.enqueue_action.return_value = {"id": "test-action-1"}
             _handle_generic_suggestion(
                 goal_id="g1",
@@ -121,14 +121,14 @@ class ScientificHudTestsMixin(ScientificTestCase):
             )
 
     @patch("bot.autonomy_logic.hud_runtime")
-    def test_hud_integration_moderation_does_not_push(
-        self, mock_hud: MagicMock
-    ) -> None:
+    def test_hud_integration_moderation_does_not_push(self, mock_hud: MagicMock) -> None:
         from bot.autonomy_logic import _handle_generic_suggestion
         from bot.control_plane_constants import RISK_MODERATION_ACTION
 
-        with patch("bot.autonomy_logic.control_plane") as mock_cp, \
-             patch("bot.autonomy_logic.observability"):
+        with (
+            patch("bot.autonomy_logic.control_plane") as mock_cp,
+            patch("bot.autonomy_logic.observability"),
+        ):
             mock_cp.enqueue_action.return_value = {"id": "test-action-2"}
             _handle_generic_suggestion(
                 goal_id="g2",

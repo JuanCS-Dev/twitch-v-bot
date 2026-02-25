@@ -1,7 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
+
 import bot.twitch_clips_api as clips_api
+
 
 class TestTwitchClipsApiSyncFixed(unittest.TestCase):
     @patch("bot.twitch_clips_api.urlopen")
@@ -10,7 +12,7 @@ class TestTwitchClipsApiSyncFixed(unittest.TestCase):
         mock_resp.status = 202
         mock_resp.read.return_value = b'{"data": [{"id": "SyncClip"}]}'
         mock_urlopen.return_value.__enter__.return_value = mock_resp
-        
+
         result = clips_api._create_clip_sync("b", "t", "c", title="test", duration=45)
         self.assertEqual(result["id"], "SyncClip")
 
@@ -39,7 +41,7 @@ class TestTwitchClipsApiSyncFixed(unittest.TestCase):
         mock_resp = MagicMock()
         mock_resp.read.return_value = b'{"data": []}'
         mock_urlopen.return_value.__enter__.return_value = mock_resp
-        
+
         result = clips_api._get_clip_sync("1", "t", "c")
         self.assertIsNone(result)
 
@@ -48,6 +50,6 @@ class TestTwitchClipsApiSyncFixed(unittest.TestCase):
         mock_resp = MagicMock()
         mock_resp.read.return_value = b'{"data": [{"landscape_download_url": "https://dl"}]}'
         mock_urlopen.return_value.__enter__.return_value = mock_resp
-        
+
         result = clips_api._get_clip_download_url_sync("1", "t", "c", "b", "e")
         self.assertEqual(result, "https://dl")

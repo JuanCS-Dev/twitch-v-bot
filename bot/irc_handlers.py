@@ -21,7 +21,6 @@ from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import normalize_channel_login
 from bot.twitch_tokens import TwitchAuthError
 
-
 parse_byte_prompt = byte_semantics.parse_byte_prompt
 
 
@@ -52,9 +51,7 @@ class IrcLineHandlersMixin:
             target_channel = normalize_channel_login(join_match.group("channel") or "")
             if author_login == self.bot_login and target_channel:
                 changed = self._mark_channel_joined(target_channel)
-                self._signal_pending_channel_action(
-                    self._pending_join_events, target_channel
-                )
+                self._signal_pending_channel_action(self._pending_join_events, target_channel)
                 if changed:
                     logger.info("Byte entrou no canal IRC #%s", target_channel)
             return
@@ -125,9 +122,7 @@ class IrcLineHandlersMixin:
         if not text.startswith("!") or byte_prompt is not None:
             if ENABLE_LIVE_CONTEXT_LEARNING:
                 context.remember_user_message(author.name, text)
-            observability.record_chat_message(
-                author_name=author.name, source="irc", text=text
-            )
+            observability.record_chat_message(author_name=author.name, source="irc", text=text)
             sentiment_engine.ingest_message(text)
 
         updates: list[str] = []
@@ -136,17 +131,14 @@ class IrcLineHandlersMixin:
             context.stream_vibe = sentiment_engine.get_vibe()
         if updates:
             labels = ", ".join(
-                OBSERVABILITY_TYPES.get(content_type, content_type)
-                for content_type in updates
+                OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
             )
             logger.info("Observabilidade automatica atualizada: %s", labels)
             observability.record_auto_scene_update(update_types=updates)
 
         if byte_prompt is None:
             return
-        observability.record_byte_trigger(
-            prompt=byte_prompt, source="irc", author_name=author.name
-        )
+        observability.record_byte_trigger(prompt=byte_prompt, source="irc", author_name=author.name)
         management_handled = await self._handle_channel_management_prompt(
             byte_prompt, author, channel
         )
@@ -172,9 +164,7 @@ class IrcLineHandlersMixin:
             return True
         except Exception as refresh_error:
             logger.error("Refresh automatico falhou: %s", refresh_error)
-            observability.record_error(
-                category="irc_refresh", details=str(refresh_error)
-            )
+            observability.record_error(category="irc_refresh", details=str(refresh_error))
             return False
 
     def _raise_auth_error(self, line: str) -> None:

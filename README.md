@@ -71,7 +71,7 @@ O bot utiliza o cofre de segredos do Hugging Face (**Settings -> Variables and S
 
 ## 🛡️ Segurança e Governança
 
-Este projeto segue a **Constituição Vértice v3.0**. 
+Este projeto segue a **Constituição Vértice v3.0**.
 - Nenhuma credencial é logada ou comitada.
 - Commits assinados via GPG.
 - Scanning automático de malware e segredos via HF HubOps.

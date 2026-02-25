@@ -67,9 +67,7 @@ class TestSearchWeb(unittest.TestCase):
     @patch("bot.web_search._ddg_search_sync")
     def test_successful_search(self, mock_ddg: MagicMock) -> None:
         mock_ddg.return_value = [
-            WebSearchResult(
-                title="Result", snippet="Info found.", url="https://site.com"
-            ),
+            WebSearchResult(title="Result", snippet="Info found.", url="https://site.com"),
         ]
         results = asyncio.run(search_web("test query"))
         self.assertEqual(len(results), 1)
@@ -126,9 +124,7 @@ class TestDdgSearchSync(unittest.TestCase):
         mock_instance.news.assert_called_once()
 
     @patch("duckduckgo_search.DDGS")
-    def test_sync_search_news_skips_empty_snippet(
-        self, mock_ddgs_cls: MagicMock
-    ) -> None:
+    def test_sync_search_news_skips_empty_snippet(self, mock_ddgs_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.__enter__ = MagicMock(return_value=mock_instance)
         mock_instance.__exit__ = MagicMock(return_value=False)
@@ -147,9 +143,7 @@ class TestDdgSearchSync(unittest.TestCase):
         self.assertEqual(results[0].snippet, "Content here.")
 
     @patch("duckduckgo_search.DDGS")
-    def test_sync_search_news_exception_fallback(
-        self, mock_ddgs_cls: MagicMock
-    ) -> None:
+    def test_sync_search_news_exception_fallback(self, mock_ddgs_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.__enter__ = MagicMock(return_value=mock_instance)
         mock_instance.__exit__ = MagicMock(return_value=False)

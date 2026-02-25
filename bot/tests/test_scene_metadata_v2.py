@@ -1,9 +1,10 @@
-import unittest
-import asyncio
 import time
-from unittest.mock import patch, MagicMock
-from bot.scene_metadata import SceneMetadataService
+import unittest
+from unittest.mock import MagicMock, patch
 from urllib.error import URLError
+
+from bot.scene_metadata import SceneMetadataService
+
 
 class TestSceneMetadataV2(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -47,7 +48,9 @@ class TestSceneMetadataV2(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.service.get_cached_metadata(url))
 
     def test_build_sanitized_scene_description_variants(self):
-        def mock_norm(t, max_len=None): return t
+        def mock_norm(t, max_len=None):
+            return t
+
         res = self.service.build_sanitized_scene_description(
             "youtube", "Juan", {"title": "Top 10"}, normalize_text_for_scene=mock_norm
         )
@@ -58,5 +61,9 @@ class TestSceneMetadataV2(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Elon", res)
 
     def test_is_safe_scene_metadata_require_fail(self):
-        self.assertFalse(self.service.is_safe_scene_metadata(None, "msg", "url", require_metadata=True))
-        self.assertTrue(self.service.is_safe_scene_metadata(None, "msg", "url", require_metadata=False))
+        self.assertFalse(
+            self.service.is_safe_scene_metadata(None, "msg", "url", require_metadata=True)
+        )
+        self.assertTrue(
+            self.service.is_safe_scene_metadata(None, "msg", "url", require_metadata=False)
+        )

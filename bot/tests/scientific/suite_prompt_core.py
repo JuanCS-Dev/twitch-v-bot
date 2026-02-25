@@ -31,12 +31,12 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         ctx.reply = AsyncMock()
         mock_inf.return_value = "bot-ans"
 
-        self.loop.run_until_complete(getattr(comp.ask, "callback")(comp, ctx))
+        self.loop.run_until_complete(comp.ask.callback(comp, ctx))
         ctx.reply.assert_called_with("bot-ans")
 
         ctx_status = MagicMock()
         ctx_status.reply = AsyncMock()
-        self.loop.run_until_complete(getattr(comp.status, "callback")(comp, ctx_status))
+        self.loop.run_until_complete(comp.status.callback(comp, ctx_status))
         ctx_status.reply.assert_called()
 
         with patch("bot.eventsub_runtime.OWNER_ID", "123"):
@@ -44,7 +44,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             ctx_vibe.message.author.id = "123"
             ctx_vibe.message.text = "!vibe Chill"
             ctx_vibe.reply = AsyncMock()
-            self.loop.run_until_complete(getattr(comp.vibe, "callback")(comp, ctx_vibe))
+            self.loop.run_until_complete(comp.vibe.callback(comp, ctx_vibe))
             self.assertEqual(context.stream_vibe, "Chill")
             ctx_vibe.reply.assert_called()
 
@@ -52,7 +52,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             ctx_style.message.author.id = "123"
             ctx_style.message.text = "!style Tom geral e analitico"
             ctx_style.reply = AsyncMock()
-            self.loop.run_until_complete(getattr(comp.style, "callback")(comp, ctx_style))
+            self.loop.run_until_complete(comp.style.callback(comp, ctx_style))
             self.assertEqual(context.style_profile, "Tom geral e analitico")
             ctx_style.reply.assert_called()
 
@@ -60,7 +60,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             ctx_scene.message.author.id = "123"
             ctx_scene.message.text = "!scene movie Interestelar"
             ctx_scene.reply = AsyncMock()
-            self.loop.run_until_complete(getattr(comp.scene, "callback")(comp, ctx_scene))
+            self.loop.run_until_complete(comp.scene.callback(comp, ctx_scene))
             self.assertEqual(context.live_observability["movie"], "Interestelar")
             ctx_scene.reply.assert_called()
 
@@ -162,9 +162,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         self.assertIn("Evite texto generico", enriched)
 
     def test_serious_prompt_uses_research_enrichment(self):
-        prompt = (
-            "como funciona a laminina no tratamento de paraplegia e qual a evidencia atual?"
-        )
+        prompt = "como funciona a laminina no tratamento de paraplegia e qual a evidencia atual?"
         self.assertTrue(is_serious_technical_prompt(prompt))
 
         enriched = build_llm_enhanced_prompt(prompt)
@@ -190,9 +188,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             "Timestamp de referencia do servidor (UTC): 2026-02-20T12:00:00Z. "
             "Use esse horario para interpretar hoje/agora/nesta semana."
         )
-        enriched = build_llm_enhanced_prompt(
-            prompt, server_time_instruction=server_anchor
-        )
+        enriched = build_llm_enhanced_prompt(prompt, server_time_instruction=server_anchor)
         markers = re.findall(
             r"Timestamp de referencia do servidor \(UTC\): ([0-9T:\-]+Z)\.", enriched
         )

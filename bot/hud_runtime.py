@@ -3,7 +3,6 @@ import time
 from collections import deque
 from typing import Any
 
-
 MAX_HUD_MESSAGES = 20
 HUD_MESSAGE_TTL_SECONDS = 600.0  # 10 minutos
 
@@ -49,4 +48,4 @@ class HudRuntime:
 
 hud_runtime = HudRuntime()
 
-__all__ = ["HudRuntime", "hud_runtime", "MAX_HUD_MESSAGES"]
+__all__ = ["MAX_HUD_MESSAGES", "HudRuntime", "hud_runtime"]

@@ -1,5 +1,5 @@
 import copy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 RISK_AUTO_CHAT = "auto_chat"
@@ -51,9 +51,11 @@ DEFAULT_GOALS = [
 
 
 def utc_iso(timestamp: float) -> str:
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(
-        timespec="seconds"
-    ).replace("+00:00", "Z")
+    return (
+        datetime.fromtimestamp(timestamp, tz=UTC)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
 
 def clip_text(text: str, max_chars: int = 360) -> str:
@@ -73,4 +75,3 @@ def to_int(value: Any, *, minimum: int, maximum: int, fallback: int) -> int:
 
 def default_goals_copy() -> list[dict[str, Any]]:
     return copy.deepcopy(DEFAULT_GOALS)
-

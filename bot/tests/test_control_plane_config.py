@@ -1,6 +1,8 @@
-import unittest
 import time
+import unittest
+
 from bot.control_plane_config import ControlPlaneConfigRuntime
+
 
 class TestControlPlaneConfig(unittest.TestCase):
     def setUp(self):
@@ -28,7 +30,7 @@ class TestControlPlaneConfig(unittest.TestCase):
         self.cpc.update_config({"min_cooldown_seconds": 60})
         # Record a send 30s ago
         self.cpc.register_auto_chat_sent(timestamp=now - 30)
-        
+
         allowed, reason, usage = self.cpc.can_send_auto_chat(timestamp=now)
         self.assertFalse(allowed)
         self.assertEqual(reason, "cooldown_active")
@@ -39,13 +41,15 @@ class TestControlPlaneConfig(unittest.TestCase):
         self.cpc.update_config({"budget_messages_10m": 1, "min_cooldown_seconds": 15})
         # Record a send 100s ago (passes cooldown but uses budget)
         self.cpc.register_auto_chat_sent(timestamp=now - 100)
-        
+
         allowed, reason, usage = self.cpc.can_send_auto_chat(timestamp=now)
         self.assertFalse(allowed)
         self.assertEqual(reason, "budget_10m_exceeded")
 
     def test_consume_due_goals_force(self):
-        self.cpc.update_config({"autonomy_enabled": False, "goals": [{"id": "g1", "interval_seconds": 60}]})
+        self.cpc.update_config(
+            {"autonomy_enabled": False, "goals": [{"id": "g1", "interval_seconds": 60}]}
+        )
         # Even if disabled, force works
         goals = self.cpc.consume_due_goals(force=True)
         self.assertEqual(len(goals), 1)
@@ -53,12 +57,14 @@ class TestControlPlaneConfig(unittest.TestCase):
 
     def test_consume_due_goals_intervals(self):
         now = time.time()
-        self.cpc.update_config({"autonomy_enabled": True, "goals": [{"id": "g1", "interval_seconds": 60}]})
-        
+        self.cpc.update_config(
+            {"autonomy_enabled": True, "goals": [{"id": "g1", "interval_seconds": 60}]}
+        )
+
         # First call initializes due_at (sets it to now + 60)
         self.cpc.consume_due_goals(timestamp=now)
         self.assertEqual(len(self.cpc.consume_due_goals(timestamp=now)), 0)
-        
+
         # After interval
         goals = self.cpc.consume_due_goals(timestamp=now + 61)
         self.assertEqual(len(goals), 1)
@@ -68,7 +74,7 @@ class TestControlPlaneConfig(unittest.TestCase):
         self.cpc.register_goal_run(goal_id="g", risk="r")
         self.cpc.register_budget_block(reason="b")
         self.cpc.register_dispatch_failure(reason="f")
-        
+
         snap = self.cpc.runtime_base_snapshot()
         # Snapshot structure: autonomy_ticks_total is top-level or in autonomy key
         # Looking at control_plane_config_helpers.py might be needed but let's check snap

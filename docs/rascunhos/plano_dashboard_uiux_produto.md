@@ -1,6 +1,6 @@
 # Plano Completo de Implementacao - Dashboard Byte (UI/UX + Funcional)
 
-Data: 2026-02-21  
+Data: 2026-02-21
 Status: rascunho para execucao
 
 ## 1) Objetivo de produto
@@ -303,9 +303,9 @@ Risco: aumento de complexidade JS.
 
 ### A. Oportunidades de Observabilidade (Dados Reais Disponíveis)
 O `observability_state.py` expõe métricas valiosas que o frontend MVP atual subutiliza ou agrupa sem hierarquia. Podemos expô-las de forma visualmente rica (tipografia limpa, cards estruturados), sem gerar mocks:
-1. **Agent Health & Quality Gates:** O state rastreia `quality_checks_total`, outcomes de retry/fallback, falhas de auth e `token_refreshes_total`. 
+1. **Agent Health & Quality Gates:** O state rastreia `quality_checks_total`, outcomes de retry/fallback, falhas de auth e `token_refreshes_total`.
    - *Sugestão:* Criar um painel de "System Health" exibindo a taxa de rejeição/correção do LLM e a saúde das credenciais em tempo real.
-2. **Live AI Activity:** O state expõe `last_prompt` e `last_reply`. 
+2. **Live AI Activity:** O state expõe `last_prompt` e `last_reply`.
    - *Sugestão:* Um feed minimalista listando a última interação do bot, permitindo leitura rápida do operador sobre o que a IA acabou de processar.
 3. **Métricas de Engajamento Estrito:** A contagem de `trigger_user_totals` (quem mais invoca o bot) e volume segmentado por rotas (`route_counts`, diferenciando queries dinâmicas de comandos estáticos).
 4. **Log Direcionado e Filtrável:** Os eventos em `recent_events` já possuem nível (`INFO`, `WARN`, `ERROR`) e categoria explícita.

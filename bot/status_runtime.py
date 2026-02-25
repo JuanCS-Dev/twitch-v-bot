@@ -1,8 +1,14 @@
 from bot.channel_status import (
     TWITCH_CHANNEL_LOGIN_PATTERN,
     compose_status_line,
+)
+from bot.channel_status import (
     format_status_channels as format_status_channels_impl,
+)
+from bot.channel_status import (
     normalize_channel_login as normalize_channel_login_impl,
+)
+from bot.channel_status import (
     parse_channel_logins as parse_channel_logins_impl,
 )
 from bot.logic import BOT_BRAND, context
@@ -16,18 +22,14 @@ from bot.runtime_config import (
 
 
 def normalize_channel_login(channel_login: str) -> str:
-    return normalize_channel_login_impl(
-        channel_login, pattern=TWITCH_CHANNEL_LOGIN_PATTERN
-    )
+    return normalize_channel_login_impl(channel_login, pattern=TWITCH_CHANNEL_LOGIN_PATTERN)
 
 
 def parse_channel_logins(raw_value: str) -> list[str]:
     return parse_channel_logins_impl(raw_value, pattern=TWITCH_CHANNEL_LOGIN_PATTERN)
 
 
-def format_status_channels(
-    channel_logins: list[str] | None = None, max_items: int = 3
-) -> str:
+def format_status_channels(channel_logins: list[str] | None = None, max_items: int = 3) -> str:
     fallback = parse_channel_logins(TWITCH_CHANNEL_LOGINS_RAW) or parse_channel_logins(
         TWITCH_CHANNEL_LOGIN
     )
@@ -50,9 +52,7 @@ def build_status_line(channel_logins: list[str] | None = None) -> str:
     metrics = snapshot.get("metrics", {})
     chatters = snapshot.get("chatters", {})
     chat_analytics = snapshot.get("chat_analytics", {})
-    uptime = int(
-        snapshot.get("bot", {}).get("uptime_minutes", context.get_uptime_minutes())
-    )
+    uptime = int(snapshot.get("bot", {}).get("uptime_minutes", context.get_uptime_minutes()))
     chat_10m = int(chat_analytics.get("messages_10m", 0))
     active_10m = int(chatters.get("active_10m", 0))
     triggers_10m = int(chat_analytics.get("byte_triggers_10m", 0))

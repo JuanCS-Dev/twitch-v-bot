@@ -1,7 +1,9 @@
-import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
 import os
+import unittest
+from unittest.mock import MagicMock, patch
+
 import bot.bootstrap_runtime as bootstrap
+
 
 class TestBootstrapRuntime(unittest.TestCase):
     def test_get_secret_success(self):
@@ -17,16 +19,20 @@ class TestBootstrapRuntime(unittest.TestCase):
         # Case 1: Inline secret
         with patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", "inline"):
             self.assertEqual(bootstrap.resolve_client_secret_for_irc_refresh(), "inline")
-        
+
         # Case 2: From secret name
-        with patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""), \
-             patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "my-sec"):
+        with (
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
+            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "my-sec"),
+        ):
             with patch("bot.bootstrap_runtime.get_secret", return_value="secret_val"):
                 self.assertEqual(bootstrap.resolve_client_secret_for_irc_refresh(), "secret_val")
 
     def test_resolve_irc_channel_logins_fallback(self):
-        with patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGINS_RAW", ""), \
-             patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGIN", "only_one"):
+        with (
+            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGINS_RAW", ""),
+            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGIN", "only_one"),
+        ):
             self.assertEqual(bootstrap.resolve_irc_channel_logins(), ["only_one"])
 
     @patch("bot.bootstrap_runtime.IrcByteBot")

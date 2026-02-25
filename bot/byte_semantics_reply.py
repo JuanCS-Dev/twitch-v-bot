@@ -8,7 +8,9 @@ from bot.byte_semantics_constants import (
 )
 
 
-def split_text_for_chat(text: str, max_len: int = MAX_CHAT_MESSAGE_LENGTH, max_parts: int = 2) -> list[str]:
+def split_text_for_chat(
+    text: str, max_len: int = MAX_CHAT_MESSAGE_LENGTH, max_parts: int = 2
+) -> list[str]:
     clean_text = (text or "").strip()
     if not clean_text:
         return []
@@ -25,7 +27,9 @@ def split_text_for_chat(text: str, max_len: int = MAX_CHAT_MESSAGE_LENGTH, max_p
 
         cut = remaining.rfind("\n", 0, max_len + 1)
         if cut < int(max_len * 0.5):
-            sentence_cuts = [remaining.rfind(symbol, 0, max_len + 1) for symbol in (". ", "? ", "! ")]
+            sentence_cuts = [
+                remaining.rfind(symbol, 0, max_len + 1) for symbol in (". ", "? ", "! ")
+            ]
             cut = max(sentence_cuts)
         if cut < int(max_len * 0.5):
             cut = remaining.rfind(" ", 0, max_len + 1)
@@ -50,7 +54,9 @@ def extract_multi_reply_parts(answer_text: str, max_parts: int = 2) -> list[str]
     if not answer_text:
         return []
 
-    raw_parts = [segment.strip() for segment in answer_text.split(MULTIPART_SEPARATOR) if segment.strip()]
+    raw_parts = [
+        segment.strip() for segment in answer_text.split(MULTIPART_SEPARATOR) if segment.strip()
+    ]
     if len(raw_parts) >= 2:
         normalized = [format_chat_reply(part) for part in raw_parts[:max_parts]]
         return [part for part in normalized if part]

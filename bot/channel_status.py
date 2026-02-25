@@ -3,7 +3,9 @@ import re
 TWITCH_CHANNEL_LOGIN_PATTERN = re.compile(r"^[a-z0-9_]{3,25}$")
 
 
-def normalize_channel_login(channel_login: str, *, pattern: re.Pattern[str] = TWITCH_CHANNEL_LOGIN_PATTERN) -> str:
+def normalize_channel_login(
+    channel_login: str, *, pattern: re.Pattern[str] = TWITCH_CHANNEL_LOGIN_PATTERN
+) -> str:
     normalized = (channel_login or "").strip().lstrip("#").lower()
     if not normalized:
         return ""
@@ -12,7 +14,9 @@ def normalize_channel_login(channel_login: str, *, pattern: re.Pattern[str] = TW
     return normalized
 
 
-def parse_channel_logins(raw_value: str, *, pattern: re.Pattern[str] = TWITCH_CHANNEL_LOGIN_PATTERN) -> list[str]:
+def parse_channel_logins(
+    raw_value: str, *, pattern: re.Pattern[str] = TWITCH_CHANNEL_LOGIN_PATTERN
+) -> list[str]:
     unique_logins: list[str] = []
     seen: set[str] = set()
     for token in re.split(r"[,\s]+", raw_value or ""):
@@ -35,12 +39,14 @@ def format_status_channels(
     resolved = [normalize_channel_login(login, pattern=pattern) for login in (channel_logins or [])]
     resolved = [login for login in resolved if login]
     if not resolved:
-        resolved = [normalize_channel_login(login, pattern=pattern) for login in (fallback_channels or [])]
+        resolved = [
+            normalize_channel_login(login, pattern=pattern) for login in (fallback_channels or [])
+        ]
         resolved = [login for login in resolved if login]
     if not resolved:
         return "eventsub" if fallback_mode == "eventsub" else "n/a"
 
-    visible = resolved[:max(1, max_items)]
+    visible = resolved[: max(1, max_items)]
     if len(resolved) <= len(visible):
         return ", ".join(visible)
     return f"{', '.join(visible)} +{len(resolved) - len(visible)}"

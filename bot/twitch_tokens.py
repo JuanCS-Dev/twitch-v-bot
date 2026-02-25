@@ -1,8 +1,9 @@
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -10,7 +11,9 @@ from urllib.request import Request, urlopen
 
 def is_irc_auth_failure_line(line: str) -> bool:
     lowered_line = (line or "").lower()
-    return "login authentication failed" in lowered_line or "improperly formatted auth" in lowered_line
+    return (
+        "login authentication failed" in lowered_line or "improperly formatted auth" in lowered_line
+    )
 
 
 class TwitchAuthError(RuntimeError):
@@ -77,7 +80,9 @@ class TwitchTokenManager:
             headers={"Authorization": f"OAuth {self.access_token}"},
         )
         try:
-            with self.urlopen_fn(request, timeout=self.settings.validate_timeout_seconds) as response:
+            with self.urlopen_fn(
+                request, timeout=self.settings.validate_timeout_seconds
+            ) as response:
                 if response.status != 200:
                     return None
                 payload = response.read()
@@ -110,7 +115,9 @@ class TwitchTokenManager:
         )
 
         try:
-            with self.urlopen_fn(request, timeout=self.settings.refresh_timeout_seconds) as response:
+            with self.urlopen_fn(
+                request, timeout=self.settings.refresh_timeout_seconds
+            ) as response:
                 raw_payload = response.read()
                 status_code = response.status
         except HTTPError as error:
@@ -142,7 +149,9 @@ class TwitchTokenManager:
                 "Refresh automatico requer TWITCH_REFRESH_TOKEN, TWITCH_CLIENT_ID e TWITCH_CLIENT_SECRET."
             )
         refreshed_payload = await asyncio.to_thread(self._refresh_token_sync)
-        self.access_token = str(refreshed_payload.get("access_token", "")).strip().removeprefix("oauth:")
+        self.access_token = (
+            str(refreshed_payload.get("access_token", "")).strip().removeprefix("oauth:")
+        )
         previous_refresh_token = self.refresh_token
         rotated_refresh_token = str(refreshed_payload.get("refresh_token", "")).strip()
         if rotated_refresh_token:
@@ -167,7 +176,9 @@ class TwitchTokenManager:
                 self.validated_once = True
                 if validation is None:
                     if self.logger:
-                        self.logger.warning("Token Twitch invalido. Tentando renovar automaticamente...")
+                        self.logger.warning(
+                            "Token Twitch invalido. Tentando renovar automaticamente..."
+                        )
                     await self.force_refresh("token invalido antes da conexao IRC")
                 else:
                     self._set_expiration(validation.get("expires_in"))
@@ -179,7 +190,9 @@ class TwitchTokenManager:
             validation = await asyncio.to_thread(self._validate_token_sync)
             self.validated_once = True
             if validation is None:
-                raise TwitchAuthError("TWITCH_USER_TOKEN invalido e refresh automatico nao configurado.")
+                raise TwitchAuthError(
+                    "TWITCH_USER_TOKEN invalido e refresh automatico nao configurado."
+                )
             self._set_expiration(validation.get("expires_in"))
 
         return self.access_token
@@ -207,10 +220,7 @@ class TwitchTokenManager:
                 scope_ok = "clips:edit" in scopes
             elif isinstance(scopes, str):
                 scope_ok = "clips:edit" in scopes.split()
-                
+
         if self.observability and hasattr(self.observability, "update_clips_auth_status"):
-            self.observability.update_clips_auth_status(
-                token_valid=token_valid,
-                scope_ok=scope_ok
-            )
+            self.observability.update_clips_auth_status(token_valid=token_valid, scope_ok=scope_ok)
         return token_valid, scope_ok

@@ -14,7 +14,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
     def test_auto_scene_update_for_trusted_link(self):
         with (
             patch("bot.scene_runtime.OWNER_ID", "123"),
-            patch("bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock) as mock_metadata,
+            patch(
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
+            ) as mock_metadata,
         ):
             mock_metadata.return_value = {"title": "Review sem spoiler"}
             msg = MagicMock()
@@ -45,7 +47,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
     def test_auto_scene_update_for_x_link(self):
         with (
             patch("bot.scene_runtime.OWNER_ID", "123"),
-            patch("bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock) as mock_metadata,
+            patch(
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
+            ) as mock_metadata,
         ):
             mock_metadata.return_value = {"author_name": "CinemaCentral"}
             msg = MagicMock()
@@ -64,7 +68,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
     def test_auto_scene_blocks_sensitive_metadata(self):
         with (
             patch("bot.scene_runtime.OWNER_ID", "123"),
-            patch("bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock) as mock_metadata,
+            patch(
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
+            ) as mock_metadata,
         ):
             mock_metadata.return_value = {"title": "analise nsfw de trailer"}
             msg = MagicMock()
@@ -81,7 +87,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
         with (
             patch("bot.scene_runtime.OWNER_ID", "123"),
             patch("bot.scene_runtime.AUTO_SCENE_REQUIRE_METADATA", True),
-            patch("bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock) as mock_metadata,
+            patch(
+                "bot.scene_runtime.resolve_scene_metadata", new_callable=AsyncMock
+            ) as mock_metadata,
         ):
             mock_metadata.return_value = None
             msg = MagicMock()
@@ -127,7 +135,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
         writer = DummyIrcWriter()
         bot.writer = writer
 
-        line = "@display-name=Alice;user-id=33;mod=0 :alice!alice@alice PRIVMSG #canal_b :byte status"
+        line = (
+            "@display-name=Alice;user-id=33;mod=0 :alice!alice@alice PRIVMSG #canal_b :byte status"
+        )
         self.loop.run_until_complete(bot._handle_privmsg(line))
 
         payload = "".join(writer.lines)
@@ -161,7 +171,9 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             self.loop.run_until_complete(bot._handle_membership_event(join_confirmation_line))
             self.assertIn("canal_b", bot.channel_logins)
 
-            owner_list = "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte canais"
+            owner_list = (
+                "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte canais"
+            )
             self.loop.run_until_complete(bot._handle_privmsg(owner_list))
 
             owner_part = "@display-name=Juan;user-id=42;mod=0 :juan!juan@juan PRIVMSG #canal_a :byte part canal_b"

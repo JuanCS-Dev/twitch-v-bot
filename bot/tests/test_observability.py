@@ -15,10 +15,18 @@ class TestObservabilityState(unittest.TestCase):
             get_uptime_minutes=lambda: 9,
         )
 
-        state.record_chat_message(author_name="alice", source="irc", text="byte status", timestamp=base)
-        state.record_chat_message(author_name="bob", source="irc", text="!scene movie matrix", timestamp=base + 20)
-        state.record_chat_message(author_name="bob", source="irc", text="watch https://example.com", timestamp=base + 40)
-        state.record_byte_trigger(prompt="status", source="irc", author_name="alice", timestamp=base + 1)
+        state.record_chat_message(
+            author_name="alice", source="irc", text="byte status", timestamp=base
+        )
+        state.record_chat_message(
+            author_name="bob", source="irc", text="!scene movie matrix", timestamp=base + 20
+        )
+        state.record_chat_message(
+            author_name="bob", source="irc", text="watch https://example.com", timestamp=base + 40
+        )
+        state.record_byte_trigger(
+            prompt="status", source="irc", author_name="alice", timestamp=base + 1
+        )
         state.record_reply(text="Byte v1.4 | Uptime: 9min", timestamp=base + 2)
         state.record_byte_interaction(
             route="llm_default",
@@ -69,7 +77,9 @@ class TestObservabilityState(unittest.TestCase):
         self.assertEqual(analytics["source_counts_60m"]["irc"], 3)
         self.assertEqual(analytics["byte_triggers_10m"], 1)
         self.assertEqual(leaderboards["top_chatters_60m"][0], {"author": "bob", "messages": 2})
-        self.assertEqual(leaderboards["top_trigger_users_60m"][0], {"author": "alice", "triggers": 1})
+        self.assertEqual(
+            leaderboards["top_trigger_users_60m"][0], {"author": "alice", "triggers": 1}
+        )
         self.assertEqual(snapshot["context"]["active_contexts"], 1)
         self.assertEqual(snapshot["context"]["items"]["movie"], "Duna Parte 2")
         self.assertEqual(snapshot["routes"][0]["route"], "llm_default")
@@ -125,7 +135,9 @@ class TestObservabilityState(unittest.TestCase):
             timestamp=base + 5,
         )
         state.record_quality_gate(outcome="retry", reason="resposta_generica", timestamp=base + 6)
-        state.record_quality_gate(outcome="fallback", reason="tema_atual_sem_ancora_temporal", timestamp=base + 7)
+        state.record_quality_gate(
+            outcome="fallback", reason="tema_atual_sem_ancora_temporal", timestamp=base + 7
+        )
 
         snapshot = state.snapshot(
             bot_brand="Byte",

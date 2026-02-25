@@ -1,7 +1,7 @@
 # Relatório de Validação - Byte Co-Streamer Roadmap (v2)
 
-**Data**: 22/02/2026  
-**Validador**: opencode (análise estática + testes)  
+**Data**: 22/02/2026
+**Validador**: opencode (análise estática + testes)
 **Escopo**: Fases 0-5 do roadmap implementadas
 
 ---
@@ -96,7 +96,7 @@ A implementação das Fases 0-5 está **majoritariamente completa** (~85%), com 
 ## Gaps Identificados (RESOLVIDOS)
 
 ### 1. Validação de Token Específica para Clips (Fase 0) - ✅ RESOLVIDO
-**Severidade**: Alta  
+**Severidade**: Alta
 **Descrição**: Não havia validação de scope `clips:edit` no startup/loop 1h conforme roadmap item 207-208.
 
 **Correção aplicada**:
@@ -107,7 +107,7 @@ A implementação das Fases 0-5 está **majoritariamente completa** (~85%), com 
 ---
 
 ### 2. Testes VOD Desatualizados (Fase 4) - ✅ RESOLVIDO
-**Severidade**: Média  
+**Severidade**: Média
 **Descrição**: `suite_clips_vod.py` não passou `editor_id` como argumento keyword-only.
 
 **Correção aplicada**: Testes atualizados e passando (7/7).
@@ -115,7 +115,7 @@ A implementação das Fases 0-5 está **majoritariamente completa** (~85%), com 
 ---
 
 ### 3. Capabilities de Clipping não expostas (Fase 0)
-**Severidade**: Baixa  
+**Severidade**: Baixa
 **Descrição**: `build_capabilities()` em `control_plane.py:116-150` não expõe capacidades de clips.
 
 **Recomendação**: Adicionar ao retorno de `build_capabilities()`:
@@ -130,7 +130,7 @@ A implementação das Fases 0-5 está **majoritariamente completa** (~85%), com 
 ---
 
 ### 4. Observabilidade de Auth Clips
-**Severidade**: Média  
+**Severidade**: Média
 **Descrição**: Métricas `clips_token_valid` e `clips_scope_ok` não existem.
 
 **Recomendação**: Adicionar em `observability.py` ou similar após validação de token.

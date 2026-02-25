@@ -32,5 +32,6 @@ __pycache__/
 
 # Local environment files (keep template tracked)
 .env
-.env.*
+.env.local
+.env.test
 !.env.example

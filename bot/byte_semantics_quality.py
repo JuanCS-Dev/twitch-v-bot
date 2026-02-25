@@ -60,7 +60,9 @@ def build_direct_answer_instruction(prompt: str) -> str:
     if not is_question and not starts_like_question:
         return ""
 
-    instructions = ["Formato de resposta obrigatorio: responda a pergunta principal na primeira linha, sem introducao."]
+    instructions = [
+        "Formato de resposta obrigatorio: responda a pergunta principal na primeira linha, sem introducao."
+    ]
     if normalized.startswith(EXISTENCE_QUESTION_TERMS):
         instructions.append("Se for pergunta de existencia, comece com 'Sim,' ou 'Nao,'.")
     if any(term in normalized for term in RECOMMENDATION_HINT_TERMS):
@@ -116,7 +118,11 @@ def _count_focus_overlap(focus_terms: list[str], answer_tokens: set[str]) -> int
         focus_prefix = focus_term[:5]
         if len(focus_prefix) < 4:
             continue
-        if any(token.startswith(focus_prefix) or focus_term.startswith(token[:5]) for token in answer_tokens if len(token) >= 4):
+        if any(
+            token.startswith(focus_prefix) or focus_term.startswith(token[:5])
+            for token in answer_tokens
+            if len(token) >= 4
+        ):
             overlap += 1
     return overlap
 
@@ -125,7 +131,9 @@ def build_quality_prompt_script(prompt: str, server_time_instruction: str | None
     clean_prompt = (prompt or "").strip()
     is_current = is_current_events_prompt(clean_prompt)
     is_high_risk_current = is_high_risk_current_events_prompt(clean_prompt)
-    active_server_time_instruction = server_time_instruction or build_server_time_anchor_instruction()
+    active_server_time_instruction = (
+        server_time_instruction or build_server_time_anchor_instruction()
+    )
     lines = [
         "Script de qualidade obrigatorio:\n"
         "1) Responda a pergunta principal na primeira linha, sem introducao.\n"
@@ -136,22 +144,36 @@ def build_quality_prompt_script(prompt: str, server_time_instruction: str | None
     ]
     if is_current:
         lines.append(f"6) {active_server_time_instruction}")
-        lines.append("7) Para tema atual, separe explicitamente o que esta confirmado agora e o que ainda e rumor.")
+        lines.append(
+            "7) Para tema atual, separe explicitamente o que esta confirmado agora e o que ainda e rumor."
+        )
         if is_high_risk_current:
-            lines.append("8) Para noticia/anuncio atual, inclua as linhas finais: 'Confianca: alta|media|baixa' e 'Fonte: ...'.")
-            lines.append(f"9) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
+            lines.append(
+                "8) Para noticia/anuncio atual, inclua as linhas finais: 'Confianca: alta|media|baixa' e 'Fonte: ...'."
+            )
+            lines.append(
+                f"9) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'"
+            )
         else:
-            lines.append(f"8) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'")
+            lines.append(
+                f"8) Se faltar confirmacao robusta, use exatamente: '{QUALITY_SAFE_FALLBACK}'"
+            )
     else:
         lines.append("6) Mantenha foco total no objeto perguntado.")
         lines.append("7) Evite qualquer afirmacao absoluta sem base verificavel.")
-    lines.append("10) Nao termine com pergunta aberta, exceto se faltar dado essencial para responder.")
+    lines.append(
+        "10) Nao termine com pergunta aberta, exceto se faltar dado essencial para responder."
+    )
     return "\n".join(lines)
 
 
 def is_low_quality_answer(prompt: str, answer: str) -> tuple[bool, str]:
     clean_prompt = " ".join((prompt or "").split()).strip()
-    answer_lines = [line.strip() for line in (answer or "").replace("\r\n", "\n").replace("\r", "\n").split("\n") if line.strip()]
+    answer_lines = [
+        line.strip()
+        for line in (answer or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        if line.strip()
+    ]
     if not answer_lines:
         return True, "resposta_vazia"
     clean_answer = "\n".join(answer_lines)
@@ -174,7 +196,9 @@ def is_low_quality_answer(prompt: str, answer: str) -> tuple[bool, str]:
     overlap_count = _count_focus_overlap(focus_terms, answer_tokens)
     first_line = answer_lines[0].strip().lower()
 
-    starts_too_generic = lowered_answer.startswith(("depende", "em geral", "de forma geral", "geralmente", "na maioria dos casos"))
+    starts_too_generic = lowered_answer.startswith(
+        ("depende", "em geral", "de forma geral", "geralmente", "na maioria dos casos")
+    )
     prompt_is_complex = len(clean_prompt) >= 40
     answer_is_short = len(clean_answer) < 70
     follow_up_prompt = is_follow_up_prompt(clean_prompt)
@@ -182,27 +206,53 @@ def is_low_quality_answer(prompt: str, answer: str) -> tuple[bool, str]:
     current_events_high_risk = is_high_risk_current_events_prompt(clean_prompt)
     existence_question = normalized_prompt.startswith(EXISTENCE_QUESTION_TERMS)
 
-    if "conexao com o modelo instavel" in lowered_answer or "conexão com o modelo instável" in lowered_answer:
+    if (
+        "conexao com o modelo instavel" in lowered_answer
+        or "conexão com o modelo instável" in lowered_answer
+    ):
         return True, "modelo_indisponivel"
     if generic_hits >= 2 and overlap_count <= 1:
         return True, "resposta_generica"
     if starts_too_generic and overlap_count <= 1:
         return True, "abertura_generica"
-    if existence_question and not first_line.startswith(("sim", "nao", "não", "existe", "tem", "ha ", "há ")):
+    if existence_question and not first_line.startswith(
+        ("sim", "nao", "não", "existe", "tem", "ha ", "há ")
+    ):
         return True, "resposta_existencia_sem_posicao"
     if prompt_is_complex and answer_is_short and overlap_count <= 1:
         return True, "resposta_curta_sem_substancia"
     if len(focus_terms) >= 3 and overlap_count == 0 and (generic_hits > 0 or answer_is_short):
         return True, "off_topic"
-    if current_events_prompt and not follow_up_prompt and len(clean_prompt) >= 18 and not has_temporal_anchor and not has_uncertainty:
+    if (
+        current_events_prompt
+        and not follow_up_prompt
+        and len(clean_prompt) >= 18
+        and not has_temporal_anchor
+        and not has_uncertainty
+    ):
         return True, "tema_atual_sem_ancora_temporal"
-    if current_events_high_risk and has_uncertainty and not is_canonical_high_risk_fallback(clean_answer):
+    if (
+        current_events_high_risk
+        and has_uncertainty
+        and not is_canonical_high_risk_fallback(clean_answer)
+    ):
         return True, "incerteza_fora_fallback_canonico"
     if current_events_high_risk and not follow_up_prompt and not has_confidence_label:
         return True, "tema_atual_sem_confianca_explicita"
-    if current_events_high_risk and not follow_up_prompt and not has_uncertainty and not has_source_anchor and len(clean_answer) >= 120:
+    if (
+        current_events_high_risk
+        and not follow_up_prompt
+        and not has_uncertainty
+        and not has_source_anchor
+        and len(clean_answer) >= 120
+    ):
         return True, "tema_atual_sem_base_verificavel"
-    if current_events_prompt and has_uncertainty and "link/fonte" not in lowered_answer and "fonte" not in lowered_answer:
+    if (
+        current_events_prompt
+        and has_uncertainty
+        and "link/fonte" not in lowered_answer
+        and "fonte" not in lowered_answer
+    ):
         return True, "incerteza_sem_pedido_de_fonte"
     if lowered_compact_answer.endswith("?") and not has_uncertainty and not follow_up_prompt:
         return True, "termina_com_pergunta_aberta"
@@ -211,12 +261,18 @@ def is_low_quality_answer(prompt: str, answer: str) -> tuple[bool, str]:
     return False, ""
 
 
-def build_quality_rewrite_prompt(prompt: str, draft_answer: str, reason: str, server_time_instruction: str | None = None) -> str:
+def build_quality_rewrite_prompt(
+    prompt: str, draft_answer: str, reason: str, server_time_instruction: str | None = None
+) -> str:
     clean_prompt = (prompt or "").strip()
     clean_draft = (draft_answer or "").strip()
     safe_reason = (reason or "qualidade_insuficiente").strip()
-    active_server_time_instruction = server_time_instruction or build_server_time_anchor_instruction()
-    reason_fix = REWRITE_REASON_GUIDANCE.get(safe_reason, "Ajuste a resposta para ficar objetiva, verificavel e aderente a pergunta.")
+    active_server_time_instruction = (
+        server_time_instruction or build_server_time_anchor_instruction()
+    )
+    reason_fix = REWRITE_REASON_GUIDANCE.get(
+        safe_reason, "Ajuste a resposta para ficar objetiva, verificavel e aderente a pergunta."
+    )
     return (
         f"Pergunta original: {clean_prompt}\n"
         f"Rascunho anterior reprovado ({safe_reason}): {clean_draft}\n"
@@ -241,8 +297,14 @@ def build_llm_enhanced_prompt(prompt: str, server_time_instruction: str | None =
         return ""
 
     serious_mode = is_serious_technical_prompt(clean_prompt)
-    active_server_time_instruction = server_time_instruction or build_server_time_anchor_instruction()
-    enriched_prompt = build_verifiable_prompt(clean_prompt, concise_mode=not serious_mode, server_time_instruction=active_server_time_instruction)
+    active_server_time_instruction = (
+        server_time_instruction or build_server_time_anchor_instruction()
+    )
+    enriched_prompt = build_verifiable_prompt(
+        clean_prompt,
+        concise_mode=not serious_mode,
+        server_time_instruction=active_server_time_instruction,
+    )
     extra_instructions: list[str] = []
     if active_server_time_instruction not in enriched_prompt:
         extra_instructions.append(active_server_time_instruction)
@@ -275,7 +337,9 @@ def build_llm_enhanced_prompt(prompt: str, server_time_instruction: str | None =
         if adaptive_instruction:
             extra_instructions.append(adaptive_instruction)
 
-    quality_script = build_quality_prompt_script(clean_prompt, server_time_instruction=active_server_time_instruction)
+    quality_script = build_quality_prompt_script(
+        clean_prompt, server_time_instruction=active_server_time_instruction
+    )
     if quality_script:
         extra_instructions.append(quality_script)
 

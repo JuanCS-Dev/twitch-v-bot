@@ -1,7 +1,7 @@
 import asyncio
 import ssl
 import time
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from bot.irc_protocol import IRC_WELCOME_PATTERN
 from bot.logic import BOT_BRAND
@@ -25,6 +25,7 @@ class IrcConnectionMixin:
     _pending_part_events: dict[str, asyncio.Event]
 
     if TYPE_CHECKING:
+
         async def _handle_membership_event(self, line: str) -> None: ...
         async def _handle_notice_line(self, line: str) -> None: ...
         async def _handle_privmsg(self, line: str) -> None: ...
@@ -34,7 +35,7 @@ class IrcConnectionMixin:
     async def _send_raw(self, line: str) -> None:
         if self.writer is None:
             raise RuntimeError("Conexao IRC nao inicializada.")
-        self.writer.write(f"{line}\r\n".encode("utf-8"))
+        self.writer.write(f"{line}\r\n".encode())
         await self.writer.drain()
 
     async def _await_login_confirmation(self, timeout_seconds: float = 15.0) -> None:
@@ -122,9 +123,7 @@ class IrcConnectionMixin:
                 reconnect_delay_seconds = 2 if recovered else 20
             except Exception as error:
                 logger.warning("Conexao IRC instavel: %s", error)
-                observability.record_error(
-                    category="irc_connection", details=str(error)
-                )
+                observability.record_error(category="irc_connection", details=str(error))
                 reconnect_delay_seconds = 5
             finally:
                 self._line_reader_running = False

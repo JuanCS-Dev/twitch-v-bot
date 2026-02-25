@@ -91,13 +91,17 @@ def runtime_base_snapshot(
     return {
         "enabled": bool(config.get("autonomy_enabled", False)),
         "loop_running": bool(runtime.get("loop_running", False)),
-        "last_heartbeat_at": utc_iso(float(runtime.get("last_heartbeat_at", 0.0)))
-        if float(runtime.get("last_heartbeat_at", 0.0)) > 0
-        else "",
+        "last_heartbeat_at": (
+            utc_iso(float(runtime.get("last_heartbeat_at", 0.0)))
+            if float(runtime.get("last_heartbeat_at", 0.0)) > 0
+            else ""
+        ),
         "last_heartbeat_epoch": float(runtime.get("last_heartbeat_at", 0.0)),
-        "last_tick_at": utc_iso(float(runtime.get("last_tick_at", 0.0)))
-        if float(runtime.get("last_tick_at", 0.0)) > 0
-        else "",
+        "last_tick_at": (
+            utc_iso(float(runtime.get("last_tick_at", 0.0)))
+            if float(runtime.get("last_tick_at", 0.0)) > 0
+            else ""
+        ),
         "last_tick_epoch": float(runtime.get("last_tick_at", 0.0)),
         "last_tick_reason": str(runtime.get("last_tick_reason", "")),
         "last_goal_id": str(runtime.get("last_goal_id", "")),
@@ -116,4 +120,3 @@ def runtime_base_snapshot(
             "cooldown_seconds": int(config.get("min_cooldown_seconds", 0)),
         },
     }
-

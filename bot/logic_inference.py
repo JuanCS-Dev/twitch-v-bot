@@ -161,7 +161,7 @@ async def agent_inference(
 
     messages = [
         {"role": "system", "content": system_instr},
-        {"role": "user", "content": user_prompt}
+        {"role": "user", "content": user_prompt},
     ]
 
     for attempt in range(MODEL_RATE_LIMIT_MAX_RETRIES + 1):
@@ -179,8 +179,9 @@ async def agent_inference(
 
             input_tokens, output_tokens = _extract_usage(response)
             if input_tokens > 0 or output_tokens > 0:
-                cost = (input_tokens / 1_000_000.0) * MODEL_INPUT_COST_PER_1M_USD + \
-                       (output_tokens / 1_000_000.0) * MODEL_OUTPUT_COST_PER_1M_USD
+                cost = (input_tokens / 1_000_000.0) * MODEL_INPUT_COST_PER_1M_USD + (
+                    output_tokens / 1_000_000.0
+                ) * MODEL_OUTPUT_COST_PER_1M_USD
 
                 observability.record_token_usage(
                     input_tokens=input_tokens,
@@ -194,7 +195,9 @@ async def agent_inference(
 
             reply_text = response.choices[0].message.content
             if reply_text:
-                final_reply = enforce_reply_limits(reply_text, max_lines=max_lines, max_length=max_length)
+                final_reply = enforce_reply_limits(
+                    reply_text, max_lines=max_lines, max_length=max_length
+                )
                 if return_metadata:
                     return final_reply, grounding_metadata
                 return final_reply
@@ -211,7 +214,12 @@ async def agent_inference(
 
             if is_rate_limited_inference_error(error) and attempt < MODEL_RATE_LIMIT_MAX_RETRIES:
                 backoff_seconds = MODEL_RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
-                logger.warning("Inference rate-limited. Retrying in %.2fs (%d/%d).", backoff_seconds, attempt + 1, MODEL_RATE_LIMIT_MAX_RETRIES + 1)
+                logger.warning(
+                    "Inference rate-limited. Retrying in %.2fs (%d/%d).",
+                    backoff_seconds,
+                    attempt + 1,
+                    MODEL_RATE_LIMIT_MAX_RETRIES + 1,
+                )
                 await asyncio.sleep(backoff_seconds)
                 continue
 

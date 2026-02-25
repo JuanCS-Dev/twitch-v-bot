@@ -43,9 +43,7 @@ TWITCH_BOT_LOGIN = env_text("TWITCH_BOT_LOGIN").lower()
 TWITCH_USER_TOKEN = env_text("TWITCH_USER_TOKEN").removeprefix("oauth:")
 TWITCH_REFRESH_TOKEN = env_text("TWITCH_REFRESH_TOKEN")
 TWITCH_CLIENT_SECRET_INLINE = env_text("TWITCH_CLIENT_SECRET")
-TWITCH_CLIENT_SECRET_NAME = env_text(
-    "TWITCH_CLIENT_SECRET_SECRET_NAME", "twitch-client-secret"
-)
+TWITCH_CLIENT_SECRET_NAME = env_text("TWITCH_CLIENT_SECRET_SECRET_NAME", "twitch-client-secret")
 
 TWITCH_IRC_HOST = env_text("TWITCH_IRC_HOST", "irc.chat.twitch.tv") or "irc.chat.twitch.tv"
 TWITCH_IRC_PORT = int(env_text("TWITCH_IRC_PORT", "6697"))
@@ -54,9 +52,7 @@ TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS = float(
     env_text("TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", "12.0")
 )
 
-TWITCH_TOKEN_REFRESH_MARGIN_SECONDS = int(
-    env_text("TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", "300")
-)
+TWITCH_TOKEN_REFRESH_MARGIN_SECONDS = int(env_text("TWITCH_TOKEN_REFRESH_MARGIN_SECONDS", "300"))
 TWITCH_TOKEN_VALIDATE_TIMEOUT_SECONDS = float(
     env_text("TWITCH_TOKEN_VALIDATE_TIMEOUT_SECONDS", "5.0")
 )
@@ -66,9 +62,14 @@ TWITCH_TOKEN_REFRESH_TIMEOUT_SECONDS = float(
 
 BYTE_DASHBOARD_ADMIN_TOKEN = env_text("BYTE_DASHBOARD_ADMIN_TOKEN")
 if BYTE_DASHBOARD_ADMIN_TOKEN:
-    logger.info("Configuracao: Dashboard Admin Token ativo (comprimento: %d)", len(BYTE_DASHBOARD_ADMIN_TOKEN))
+    logger.info(
+        "Configuracao: Dashboard Admin Token ativo (comprimento: %d)",
+        len(BYTE_DASHBOARD_ADMIN_TOKEN),
+    )
 else:
-    logger.warning("Configuracao: Dashboard Admin Token NAO definido. Dashboard operando sem seguranca!")
+    logger.warning(
+        "Configuracao: Dashboard Admin Token NAO definido. Dashboard operando sem seguranca!"
+    )
 
 METADATA_CACHE_TTL_SECONDS = int(env_text("AUTO_SCENE_CACHE_TTL_SECONDS", "900"))
 METADATA_TIMEOUT_SECONDS = float(env_text("AUTO_SCENE_METADATA_TIMEOUT_SECONDS", "3.0"))
@@ -91,10 +92,7 @@ NEBIUS_MODEL_VISION = env_text("NEBIUS_MODEL_VISION", "moonshotai/Kimi-K2.5")
 NEBIUS_MODEL = env_text("NEBIUS_MODEL") or NEBIUS_MODEL_DEFAULT
 
 # Cliente Nebius (OpenAI-compatible)
-client = OpenAI(
-    api_key=NEBIUS_API_KEY,
-    base_url=NEBIUS_BASE_URL
-)
+client = OpenAI(api_key=NEBIUS_API_KEY, base_url=NEBIUS_BASE_URL)
 
 BYTE_VERSION = "1.4"
 BYTE_HELP_MESSAGE = byte_semantics.BYTE_HELP_MESSAGE

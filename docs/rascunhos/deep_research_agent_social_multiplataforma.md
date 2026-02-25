@@ -1,6 +1,6 @@
 # Deep Research: Agent Social Multiplataforma Autonomo (Reddit, X, Facebook, Instagram)
 
-Data: 2026-02-21  
+Data: 2026-02-21
 Status: rascunho para implementacao
 
 ## 1) Objetivo e resultado esperado
@@ -260,16 +260,16 @@ Governanca:
 
 ## 10) Riscos principais e mitigacoes
 
-Risco: bloqueio/suspensao por comportamento interpretado como spam.  
+Risco: bloqueio/suspensao por comportamento interpretado como spam.
 Mitigacao: throttling forte, diversidade de conteudo, limites por topico/tempo, human review em risco medio/alto.
 
-Risco: divergencia entre docs e comportamento real da API.  
+Risco: divergencia entre docs e comportamento real da API.
 Mitigacao: smoke tests diarios por endpoint critico + canary account por plataforma.
 
-Risco: custo inesperado (especialmente leitura/eventos no X).  
+Risco: custo inesperado (especialmente leitura/eventos no X).
 Mitigacao: budget guard diario/mensal + desligamento automatico de features custosas.
 
-Risco: perda de eventos webhook.  
+Risco: perda de eventos webhook.
 Mitigacao: ack rapido + persistencia imediata + replay queue + monitoramento de lag.
 
 ## 11) Decisoes de produto recomendadas agora

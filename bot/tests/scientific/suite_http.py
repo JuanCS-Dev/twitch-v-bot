@@ -36,9 +36,7 @@ class ScientificHttpTestsMixin(ScientificTestCase):
         }
         mock_handler = MagicMock()
         mock_handler.path = "/api/observability"
-        mock_handler._build_observability_payload = MagicMock(
-            return_value=observability_payload
-        )
+        mock_handler._build_observability_payload = MagicMock(return_value=observability_payload)
         mock_handler._send_json = MagicMock()
 
         HealthHandler.do_GET(mock_handler)
@@ -113,8 +111,9 @@ class ScientificHttpTestsMixin(ScientificTestCase):
         mock_handler._read_json_payload = MagicMock(return_value={"command": "list"})
         mock_handler._send_json = MagicMock()
 
-        with patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"), patch(
-            "bot.dashboard_server.TWITCH_CHAT_MODE", "irc"
+        with (
+            patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"),
+            patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc"),
         ):
             HealthHandler.do_POST(mock_handler)
 
@@ -149,18 +148,15 @@ class ScientificHttpTestsMixin(ScientificTestCase):
                 )
                 mock_handler._dashboard_authorized = MagicMock(return_value=True)
                 mock_handler._handle_channel_control = (
-                    lambda payload: HealthHandler._handle_channel_control(
-                        mock_handler, payload
-                    )
+                    lambda payload: HealthHandler._handle_channel_control(mock_handler, payload)
                 )
-                mock_handler._read_json_payload = MagicMock(
-                    return_value={"command": "list"}
-                )
+                mock_handler._read_json_payload = MagicMock(return_value={"command": "list"})
                 mock_handler._send_json = MagicMock()
 
-                with patch(
-                    "bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"
-                ), patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc"):
+                with (
+                    patch("bot.dashboard_server.BYTE_DASHBOARD_ADMIN_TOKEN", "secret-token"),
+                    patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc"),
+                ):
                     HealthHandler.do_POST(mock_handler)
 
                 mock_handler._send_json.assert_called_with(

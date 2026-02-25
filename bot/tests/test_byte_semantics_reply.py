@@ -1,6 +1,8 @@
 import unittest
+
 import bot.byte_semantics_reply as reply_logic
 from bot.byte_semantics_constants import MULTIPART_SEPARATOR
+
 
 class TestByteSemanticsReply(unittest.TestCase):
     def test_split_text_for_chat_short(self):
@@ -18,7 +20,10 @@ class TestByteSemanticsReply(unittest.TestCase):
 
     def test_extract_movie_title_advanced(self):
         # Test the regex fallback for "ficha tecnica"
-        self.assertEqual(reply_logic.extract_movie_title("Qual a ficha tecnica do filme Pulp Fiction?"), "Pulp Fiction")
+        self.assertEqual(
+            reply_logic.extract_movie_title("Qual a ficha tecnica do filme Pulp Fiction?"),
+            "Pulp Fiction",
+        )
         self.assertEqual(reply_logic.extract_movie_title("Ficha tecnica de Matrix"), "Matrix")
         # Unicode
         self.assertEqual(reply_logic.extract_movie_title("Ficha técnica de Bacurau"), "Bacurau")

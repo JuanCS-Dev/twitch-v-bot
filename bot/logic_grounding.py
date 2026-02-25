@@ -1,4 +1,5 @@
-from typing import Any, Mapping, TypedDict
+from collections.abc import Mapping
+from typing import Any, TypedDict
 
 from bot.logic_constants import MAX_GROUNDING_QUERIES, MAX_GROUNDING_URLS
 
@@ -66,9 +67,13 @@ def extract_grounding_metadata(response: Any, use_grounding: bool) -> GroundingM
                 _append_unique_text(source_urls, uri, max_items=MAX_GROUNDING_URLS)
 
         citation_metadata = _read_field(candidate, "citation_metadata")
-        citations = _read_field(citation_metadata, "citations", []) if citation_metadata is not None else []
+        citations = (
+            _read_field(citation_metadata, "citations", []) if citation_metadata is not None else []
+        )
         for citation in citations or []:
-            _append_unique_text(source_urls, _read_field(citation, "uri", ""), max_items=MAX_GROUNDING_URLS)
+            _append_unique_text(
+                source_urls, _read_field(citation, "uri", ""), max_items=MAX_GROUNDING_URLS
+            )
 
     metadata["web_search_queries"] = web_search_queries
     metadata["source_urls"] = source_urls

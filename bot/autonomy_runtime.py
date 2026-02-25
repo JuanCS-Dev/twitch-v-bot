@@ -1,12 +1,13 @@
 import asyncio
 import threading
+from collections.abc import Awaitable, Callable
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Any, Awaitable, Callable
+from typing import Any
 
+from bot.autonomy_logic import process_autonomy_goal
 from bot.control_plane import control_plane
 from bot.observability import observability
 from bot.runtime_config import logger
-from bot.autonomy_logic import process_autonomy_goal
 
 AutoChatDispatcher = Callable[[str], Awaitable[None]]
 
@@ -98,7 +99,7 @@ class AutonomyRuntime:
 
             due_goals = control_plane.consume_due_goals(force=force)
             processed: list[dict[str, Any]] = []
-            
+
             dispatcher = self._get_auto_chat_dispatcher()
             for goal in due_goals:
                 processed.append(await process_autonomy_goal(goal, dispatcher))

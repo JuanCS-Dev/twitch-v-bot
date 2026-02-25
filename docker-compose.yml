@@ -1,0 +1,185 @@
+version: "3.8"
+
+services:
+  # =============================================================================
+  # TWITCH V-BOT - Main Application
+  # =============================================================================
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: twitch-v-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./bot:/app/bot:ro
+      - ./dashboard:/app/dashboard:ro
+    networks:
+      - twitch-network
+    depends_on:
+      - redis
+      - supabase
+    healthcheck:
+      test: ["CMD", "python", "-c", "import bot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # REDIS - Cache and Pub/Sub
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: twitch-v-bot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - twitch-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # =============================================================================
+  # SUPABASE - Local Database (optional)
+  # =============================================================================
+  supabase:
+    image: supabase/postgres:15.1.0.147
+    container_name: twitch-v-bot-supabase
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+      - "54321:54321"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+    volumes:
+      - supabase-data:/var/lib/postgresql/data
+    networks:
+      - twitch-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # =============================================================================
+  # DASHBOARD - Web Interface
+  # =============================================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: twitch-v-bot-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./bot:/app/bot:ro
+      - ./dashboard:/app/dashboard:ro
+    networks:
+      - twitch-network
+    depends_on:
+      - redis
+      - supabase
+
+  # =============================================================================
+  # PGADMIN - Database Management (optional)
+  # =============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: twitch-v-bot-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@localhost
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - twitch-network
+    depends_on:
+      - supabase
+
+  # =============================================================================
+  # REDIS-CLI - Redis CLI for debugging
+  # =============================================================================
+  redis-cli:
+    image: redis:7-alpine
+    container_name: twitch-v-bot-redis-cli
+    profiles:
+      - debug
+    command: redis-cli -h redis
+    networks:
+      - twitch-network
+    depends_on:
+      - redis
+
+  # =============================================================================
+  # TEST RUNNER - Run tests in Docker
+  # =============================================================================
+  test:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: twitch-v-bot-test
+    profiles:
+      - debug
+    env_file:
+      - .env.test
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./bot:/app/bot
+      - ./dashboard:/app/dashboard
+      - ./coverage:/app/coverage
+    networks:
+      - twitch-network
+    command: pytest bot/tests/ -v --cov=bot/ --cov-report=html --cov-report=term-missing
+    depends_on:
+      - redis
+      - supabase
+
+networks:
+  twitch-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  supabase-data:
+  pgadmin-data:
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# Development:
+#   docker-compose up -d
+#
+# Run tests:
+#   docker-compose --profile test up test
+#
+# Redis CLI:
+#   docker-compose --profile debug up redis-cli
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop:
+#   docker-compose down
+#
+# Stop with volumes:
+#   docker-compose down -v

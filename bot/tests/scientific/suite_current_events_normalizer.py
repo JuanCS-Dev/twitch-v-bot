@@ -58,9 +58,7 @@ class ScientificCurrentEventsNormalizerTestsMixin(ScientificTestCase):
 
         self.assertTrue(normalized.startswith(QUALITY_SAFE_FALLBACK))
         self.assertIn("Confianca: baixa", normalized)
-        self.assertIn(
-            "Fonte: aguardando 1 link/fonte do chat para confirmar.", normalized
-        )
+        self.assertIn("Fonte: aguardando 1 link/fonte do chat para confirmar.", normalized)
         self.assertNotIn("suposta atualizacao", normalized.lower())
 
     def test_current_events_normalizer_clamps_confidence_and_source_contract(self):
@@ -100,9 +98,7 @@ class ScientificCurrentEventsNormalizerTestsMixin(ScientificTestCase):
         )
 
         self.assertIn("Confianca: media", normalized)
-        self.assertIn(
-            "Fonte: DuckDuckGo query: macaquinho push japao hoje.", normalized
-        )
+        self.assertIn("Fonte: DuckDuckGo query: macaquinho push japao hoje.", normalized)
 
     def test_current_events_normalizer_forces_safe_fallback_without_grounding_signal(self):
         prompt = "qual a situacao atual do macaquinho push no japao hoje?"
@@ -124,6 +120,4 @@ class ScientificCurrentEventsNormalizerTestsMixin(ScientificTestCase):
 
         self.assertTrue(normalized.startswith(QUALITY_SAFE_FALLBACK))
         self.assertIn("Confianca: baixa", normalized)
-        self.assertIn(
-            "Fonte: aguardando 1 link/fonte do chat para confirmar.", normalized
-        )
+        self.assertIn("Fonte: aguardando 1 link/fonte do chat para confirmar.", normalized)

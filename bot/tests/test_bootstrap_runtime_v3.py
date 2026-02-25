@@ -1,7 +1,9 @@
-import unittest
 import os
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import patch
+
 import bot.bootstrap_runtime as bootstrap
+
 
 class TestBootstrapRuntimeV3(unittest.TestCase):
     def test_get_secret_fail(self):

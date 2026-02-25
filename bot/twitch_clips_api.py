@@ -53,9 +53,10 @@ def _handle_http_error(error: HTTPError) -> None:
             reset_at = float(reset_val)
         except ValueError:
             import time
+
             reset_at = time.time() + 10.0
         raise TwitchClipRateLimitError("Rate limit excedido (429).", reset_at)
-    
+
     body = ""
     try:
         body = error.read().decode("utf-8")
@@ -250,7 +251,9 @@ def _create_clip_from_vod_sync(
     try:
         with urlopen(request, timeout=10.0) as response:
             if response.status != 202:
-                raise TwitchClipError(f"Status inesperado no create_clip_from_vod: {response.status}")
+                raise TwitchClipError(
+                    f"Status inesperado no create_clip_from_vod: {response.status}"
+                )
             payload = _parse_response(response)
             data = payload.get("data", [])
             if not data:
@@ -292,13 +295,14 @@ def _get_clip_download_url_sync(
     except HTTPError as error:
         # 429 especifico para downloads
         if error.code == 429:
-             reset_val = error.headers.get("Ratelimit-Reset", "")
-             try:
-                 reset_at = float(reset_val)
-             except ValueError:
-                 import time
-                 reset_at = time.time() + 60.0
-             raise TwitchClipRateLimitError("Rate limit de download excedido (100/min).", reset_at)
+            reset_val = error.headers.get("Ratelimit-Reset", "")
+            try:
+                reset_at = float(reset_val)
+            except ValueError:
+                import time
+
+                reset_at = time.time() + 60.0
+            raise TwitchClipRateLimitError("Rate limit de download excedido (100/min).", reset_at)
         if error.code == 404:
             return None
         _handle_http_error(error)

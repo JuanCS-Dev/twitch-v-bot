@@ -15,7 +15,7 @@
 3.  **DSN vs Args**: Mudamos para o modo de argumentos explícitos (`psycopg2.connect(user=..., password=...)`) para evitar erros de encoding de string.
 
 ### O culpado provável:
-- A senha `VP8olefId8akNqf8` está sendo rejeitada pelo servidor Postgres do Supabase. 
+- A senha `VP8olefId8akNqf8` está sendo rejeitada pelo servidor Postgres do Supabase.
 - **Suspeita**: O usuário `postgres` no pooler de sessão (5432) pode exigir o sufixo do projeto (ex: `postgres.utnmldsouwprgstzvszj`) na senha ou no usuário de forma que o nosso `strip()` ou parsing não está capturando perfeitamente.
 - **Ação Recomendada**: Resetar a "Database Password" diretamente no painel do Supabase e atualizar o segredo `SUPABASE_DB_URL` no Hugging Face com o formato DSN absoluto fornecido pelo botão "Connect" do Supabase.
 

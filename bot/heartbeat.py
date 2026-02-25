@@ -21,10 +21,9 @@ def _heartbeat_loop(stop_event: threading.Event | None = None) -> None:
     while stop_event is None or not stop_event.is_set():
         if stop_event is None:
             time.sleep(HEARTBEAT_INTERVAL_SECONDS)
-        else:
-            # For tests, don't wait 3 minutes
-            if stop_event.wait(0.1):
-                break
+        # For tests, don't wait 3 minutes
+        elif stop_event.wait(0.1):
+            break
 
         try:
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)

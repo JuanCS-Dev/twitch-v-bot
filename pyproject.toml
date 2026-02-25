@@ -1,0 +1,176 @@
+[project]
+name = "twitch-v-bot"
+version = "1.0.0"
+description = "Twitch V-Bot - AI-powered Twitch bot with autonomous capabilities"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # pyflakes
+  "I",     # isort
+  "UP",    # pyupgrade
+  "B",     # flake8-bugbear
+  "C4",    # flake8-comprehensions
+  "PIE",   # flake8-pie
+  "RUF",   # ruff-specific rules
+]
+ignore = [
+  "E501",    # line too long (handled by formatter)
+  "COM812",  # trailing comma missing (conflicts with formatter)
+  "ISC001",  # implicit string concatenation (conflicts with formatter)
+  "PT001",   # pytest incorrect fixture
+  "PLR0913", # too many arguments
+  "PLR2004", # magic value comparison
+  "B028",    # no explicit stacklevel argument
+  "C901",    # too complex
+  "TRY003",  # raise Exception
+  "BLE001",  # do not catch bare Exception
+  "B901",    # return yield in function
+  "N802",    # function name should be lowercase
+  "N803",    # argument name should be lowercase
+  "N806",    # variable in function should be lowercase
+  "C901",    # too complex
+  "PLR0912", # too many branches
+  "PLR0915", # too many statements
+  "PLR2004", # magic value comparison
+  "RET504",  # unnecessary assignment
+  "RET505",  # unnecessary return None
+  "SIM108",  # use ternary operator
+  "PLR2004", # magic value comparison
+  "PLR0913", # too many arguments
+  "PLR0912", # too many branches
+  "B904",    # raise from inside except
+  "F841",    # unused variable
+  "F401",    # unused import
+  "F811",    # redefinition of unused
+  "E402",    # module level import not at top of file
+  "E722",    # do not use bare 'except'
+  "RUF006",  # asyncio.create_task without storing reference
+  "RUF003",  # ambiguous character
+  "RUF001",  # unused noqa
+  "RUF002",  # ambiguous dash in docstring
+  "B017",    # blind exception
+  "B023",    # loop variable binding
+  "UP038",   # use isinstance for union types
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = [
+  "S101",    # assert (used in tests)
+  "PLR2004", # magic value comparison
+  "PT",      # pytest rules
+]
+"bot/tests/*" = ["S101", "PT"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bot"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.ruff_cache
+  | __pycache__
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_calls = false
+ignore_missing_imports = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+show_error_context = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "bot.tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = """
+  --strict-markers
+  --strict-config
+  --cov=bot/
+  --cov-report=term-missing
+  --cov-report=html
+  --cov-fail-under=80
+  -ra
+  -v
+"""
+testpaths = ["bot/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["bot"]
+omit = [
+  "*/tests/*",
+  "*/test_*.py",
+  "*_test.py",
+  "*/__pycache__/*",
+  "*/.venv/*",
+  "*/venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@abstractmethod",
+]
+show_missing = true
+skip_empty = true
+
+[tool.coverage.html]
+directory = "coverage_html"
+
+[tool.pre-commit]
+[tool.commitlint]

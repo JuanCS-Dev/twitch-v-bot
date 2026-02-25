@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from urllib.parse import urlparse
+from unittest.mock import MagicMock, patch
+
 import bot.dashboard_server_routes_post as routes_post
+
 
 class TestDashboardRoutesPost(unittest.TestCase):
     def setUp(self):
@@ -17,7 +18,7 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.handler.path = "/api/channel-control"
         self.handler._read_json_payload.return_value = {"command": "list"}
         self.handler._handle_channel_control.return_value = ({"ok": True}, 200)
-        
+
         routes_post.handle_post(self.handler)
         self.handler._send_json.assert_called_with({"ok": True}, status_code=200)
 
@@ -26,7 +27,7 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.handler.path = "/api/autonomy/tick"
         self.handler._read_json_payload.return_value = {"force": True}
         mock_runtime.run_manual_tick.return_value = {"ok": True}
-        
+
         routes_post.handle_post(self.handler)
         self.handler._send_json.assert_called_with({"ok": True}, status_code=200)
 
@@ -35,7 +36,7 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.handler.path = "/api/action-queue/123/decision"
         self.handler._read_json_payload.return_value = {"decision": "allow"}
         mock_cp.decide_action.return_value = {"id": "123", "status": "allowed"}
-        
+
         routes_post.handle_post(self.handler)
         self.handler._send_json.assert_called()
         args = self.handler._send_json.call_args[0]
@@ -48,16 +49,20 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.handler.headers = {"Content-Type": "image/jpeg", "Content-Length": "10"}
         self.handler.rfile.read.return_value = b"fakeimage"
         mock_vision.ingest_frame.return_value = {"ok": True}
-        
+
         routes_post.handle_post(self.handler)
         self.handler._send_json.assert_called_with({"ok": True}, status_code=200)
 
     def test_handle_vision_ingest_invalid_type(self):
         self.handler.path = "/api/vision/ingest"
         self.handler.headers = {"Content-Type": "text/plain"}
-        
+
         routes_post.handle_post(self.handler)
         self.handler._send_json.assert_called_with(
-            {"ok": False, "error": "invalid_content_type", "message": "Use image/jpeg, image/png or image/webp."},
-            status_code=400
+            {
+                "ok": False,
+                "error": "invalid_content_type",
+                "message": "Use image/jpeg, image/png or image/webp.",
+            },
+            status_code=400,
         )

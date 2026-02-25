@@ -7,9 +7,9 @@ Filosofia: o usuario é um macaco com um teclado. Ele vai enviar:
 - Requests concorrentes, burst, duplicados
 - Emotes inexistentes, comandos invalidos, encoding quebrado
 """
+
 import threading
 import time
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot.tests.scientific_shared import ScientificTestCase
@@ -195,7 +195,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         rt = VisionRuntime()
         # Not a valid image, but should not crash the runtime
-        result = rt.ingest_frame(b"\xDE\xAD\xBE\xEF" * 100, mime_type="image/jpeg")
+        result = rt.ingest_frame(b"\xde\xad\xbe\xef" * 100, mime_type="image/jpeg")
         # Should either succeed (LLM handles it) or fail gracefully
         self.assertIn("ok", result)
 
@@ -219,7 +219,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
         from bot.vision_runtime import VisionRuntime
 
         rt = VisionRuntime()
-        result = rt.ingest_frame(b"\xff\xd8", mime_type='<script>alert(1)</script>')
+        result = rt.ingest_frame(b"\xff\xd8", mime_type="<script>alert(1)</script>")
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "unsupported_mime_type")
 
@@ -254,9 +254,9 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         # "resumo" is inside the XSS string — pattern correctly detects keyword
         # XSS sanitization is the frontend's job, not the NLP trigger
-        self.assertTrue(is_recap_prompt('<script>resumo</script>'))
+        self.assertTrue(is_recap_prompt("<script>resumo</script>"))
         # But pure tags without keyword should NOT match
-        self.assertFalse(is_recap_prompt('<script>alert(1)</script>'))
+        self.assertFalse(is_recap_prompt("<script>alert(1)</script>"))
 
     def test_macaco_recap_pattern_empty(self) -> None:
         from bot.recap_engine import is_recap_prompt
@@ -306,7 +306,9 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
             "status": "approved",
             "payload": None,  # Macaco sent None payload
         }
-        with patch("bot.control_plane.control_plane.list_actions", return_value={"items": [bad_item]}):
+        with patch(
+            "bot.control_plane.control_plane.list_actions", return_value={"items": [bad_item]}
+        ):
             # Should not crash
             self.loop.run_until_complete(rt._sync_from_queue())
 
@@ -320,7 +322,9 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
             "status": "approved",
             "payload": {"broadcaster_id": "999", "mode": "live"},
         }
-        with patch("bot.control_plane.control_plane.list_actions", return_value={"items": [item, item]}):
+        with patch(
+            "bot.control_plane.control_plane.list_actions", return_value={"items": [item, item]}
+        ):
             self.loop.run_until_complete(rt._sync_from_queue())
         # Should deduplicate
         jobs = rt.get_jobs()
@@ -387,9 +391,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
     # ---------------------------------------------------------------
 
     @patch("bot.recap_engine.agent_inference")
-    def test_e2e_recap_with_sentiment_context(
-        self, mock_inference: AsyncMock
-    ) -> None:
+    def test_e2e_recap_with_sentiment_context(self, mock_inference: AsyncMock) -> None:
         from bot.recap_engine import generate_recap
         from bot.sentiment_engine import sentiment_engine
 
@@ -446,9 +448,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
         )
         self.assertEqual(result["outcome"], "queued")
         mock_cp.enqueue_action.assert_called_once()
-        mock_hud.push_message.assert_called_once_with(
-            "Sugestão de teste E2E", source="autonomy"
-        )
+        mock_hud.push_message.assert_called_once_with("Sugestão de teste E2E", source="autonomy")
 
     def test_e2e_sentiment_score_emote_keyword_combined(self) -> None:
         from bot.sentiment_engine import _score_message

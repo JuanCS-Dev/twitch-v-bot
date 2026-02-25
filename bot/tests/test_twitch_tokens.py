@@ -1,8 +1,7 @@
-import unittest
-import json
-import asyncio
 import time
-from unittest.mock import patch, MagicMock, AsyncMock
+import unittest
+from unittest.mock import MagicMock, patch
+
 import bot.twitch_tokens as tokens
 
 
@@ -294,9 +293,7 @@ class TestTwitchTokenManager(unittest.IsolatedAsyncioTestCase):
 
     @patch.object(tokens.TwitchTokenManager, "_validate_token_sync")
     @patch.object(tokens.TwitchTokenManager, "force_refresh")
-    async def test_ensure_token_refresh_can_refresh_no_expiry(
-        self, mock_refresh, mock_validate
-    ):
+    async def test_ensure_token_refresh_can_refresh_no_expiry(self, mock_refresh, mock_validate):
         tm = tokens.TwitchTokenManager(
             access_token="t", refresh_token="r", client_id="c", client_secret="s"
         )
@@ -380,9 +377,7 @@ class TestTwitchTokenManager(unittest.IsolatedAsyncioTestCase):
         mock_val.return_value = {"scopes": ["clips:edit"]}
 
         await tm.validate_clips_auth()
-        mock_obs.update_clips_auth_status.assert_called_once_with(
-            token_valid=True, scope_ok=True
-        )
+        mock_obs.update_clips_auth_status.assert_called_once_with(token_valid=True, scope_ok=True)
 
     def test_is_irc_auth_failure_line(self):
         self.assertTrue(tokens.is_irc_auth_failure_line("Login authentication failed"))

@@ -1,0 +1,64 @@
+# Pre-commit hooks for Python code quality
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # =============================================================================
+  # FORMATTING - Enforce consistent code style (Black)
+  # =============================================================================
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: [--config=pyproject.toml]
+
+  # =============================================================================
+  # LINTING - Ruff (fastest Python linter)
+  # =============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # =============================================================================
+  # SECURITY - Scan for vulnerabilities (Ruff)
+  # Note: SEC rules don't exist in Ruff - security checks are in B (bugbear)
+  # =============================================================================
+  # Security-related B rules are already included in the main ruff hook above
+
+  # =============================================================================
+  # TYPE CHECKING - MyPy (optional, can be slow)
+  # =============================================================================
+  # Uncomment if you want mypy to run on pre-commit
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.14.1
+  #   hooks:
+  #     - id: mypy
+  #       args: [--config-file=pyproject.toml, --no-error-summary]
+  #       files: ^bot/
+  #       additional_dependencies:
+  #         - types-all
+  #         - types-requests
+
+  # =============================================================================
+  # GENERAL - Ensure clean files
+  # =============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+
+default_stages: [pre-commit]
+
+fail_fast: false

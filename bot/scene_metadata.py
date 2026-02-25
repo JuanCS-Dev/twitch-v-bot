@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 import time
-from typing import Callable
+from collections.abc import Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote_plus, urlparse, urlunparse
 from urllib.request import Request, urlopen
@@ -29,7 +29,12 @@ class SceneMetadataService:
             "onlyfans.com",
             "redtube.com",
         }
-        self.youtube_hosts = youtube_hosts or {"youtube.com", "m.youtube.com", "youtu.be", "music.youtube.com"}
+        self.youtube_hosts = youtube_hosts or {
+            "youtube.com",
+            "m.youtube.com",
+            "youtu.be",
+            "music.youtube.com",
+        }
         self.x_hosts = x_hosts or {"x.com", "twitter.com", "mobile.twitter.com"}
         self.unsafe_terms = unsafe_terms or {
             "nude",
@@ -48,8 +53,7 @@ class SceneMetadataService:
         }
         self.url_regex = re.compile(r"https?://[^\s]+", re.IGNORECASE)
         self.unsafe_term_patterns = [
-            re.compile(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])")
-            for term in self.unsafe_terms
+            re.compile(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])") for term in self.unsafe_terms
         ]
         self.metadata_cache: dict[str, tuple[float, dict]] = {}
 
@@ -193,7 +197,9 @@ class SceneMetadataService:
     ) -> str:
         safe_author = normalize_text_for_scene(author_name, max_len=60) or "autor"
         safe_title = normalize_text_for_scene(str((metadata or {}).get("title", "")))
-        safe_post_author = normalize_text_for_scene(str((metadata or {}).get("author_name", "")), max_len=60)
+        safe_post_author = normalize_text_for_scene(
+            str((metadata or {}).get("author_name", "")), max_len=60
+        )
 
         if content_type == "youtube":
             if safe_title:

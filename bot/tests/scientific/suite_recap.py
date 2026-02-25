@@ -52,7 +52,9 @@ class ScientificRecapTestsMixin(ScientificTestCase):
     def test_recap_generate_success(self, mock_inference: AsyncMock) -> None:
         from bot.recap_engine import generate_recap
 
-        mock_inference.return_value = "O streamer esta jogando Valorant, chat animado com jogadas do ace."
+        mock_inference.return_value = (
+            "O streamer esta jogando Valorant, chat animado com jogadas do ace."
+        )
         result = self.loop.run_until_complete(generate_recap())
         self.assertIn("Valorant", result)
         mock_inference.assert_called_once()

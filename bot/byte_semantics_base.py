@@ -9,8 +9,8 @@ from bot.byte_semantics_constants import (
     FOLLOW_UP_HINT_TERMS,
     HIGH_RISK_CURRENT_EVENTS_TERMS,
     MAX_CHAT_MESSAGE_LENGTH,
-    MULTIPART_SEPARATOR,
     MOVIE_FACT_SHEET_PATTERN,
+    MULTIPART_SEPARATOR,
     RELEVANCE_HINT_TERMS,
     SERIOUS_TECH_TERMS,
 )
@@ -110,7 +110,9 @@ def is_serious_technical_prompt(prompt: str) -> bool:
     )
     if not has_technical_signal:
         return False
-    has_relevance_signal = any(term in normalized for term in RELEVANCE_HINT_TERMS) or is_current_events_prompt(normalized)
+    has_relevance_signal = any(
+        term in normalized for term in RELEVANCE_HINT_TERMS
+    ) or is_current_events_prompt(normalized)
     return has_relevance_signal
 
 

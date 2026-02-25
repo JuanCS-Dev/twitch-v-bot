@@ -63,14 +63,25 @@ def prune_locked(state: Any, now: float) -> None:
         state._chat_events.popleft()
 
     trigger_cutoff = now - BYTE_TRIGGER_EVENTS_RETENTION_SECONDS
-    while state._byte_trigger_events and float(state._byte_trigger_events[0].get("ts", 0.0)) < trigger_cutoff:
+    while (
+        state._byte_trigger_events
+        and float(state._byte_trigger_events[0].get("ts", 0.0)) < trigger_cutoff
+    ):
         state._byte_trigger_events.popleft()
-    while state._interaction_events and float(state._interaction_events[0].get("ts", 0.0)) < trigger_cutoff:
+    while (
+        state._interaction_events
+        and float(state._interaction_events[0].get("ts", 0.0)) < trigger_cutoff
+    ):
         state._interaction_events.popleft()
     while state._quality_events and float(state._quality_events[0].get("ts", 0.0)) < trigger_cutoff:
         state._quality_events.popleft()
-    while state._token_usage_events and float(state._token_usage_events[0].get("ts", 0.0)) < trigger_cutoff:
+    while (
+        state._token_usage_events
+        and float(state._token_usage_events[0].get("ts", 0.0)) < trigger_cutoff
+    ):
         state._token_usage_events.popleft()
-    while state._autonomy_goal_events and float(state._autonomy_goal_events[0].get("ts", 0.0)) < trigger_cutoff:
+    while (
+        state._autonomy_goal_events
+        and float(state._autonomy_goal_events[0].get("ts", 0.0)) < trigger_cutoff
+    ):
         state._autonomy_goal_events.popleft()
-

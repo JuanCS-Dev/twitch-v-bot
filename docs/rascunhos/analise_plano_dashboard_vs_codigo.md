@@ -1,7 +1,7 @@
 # Relatório de Análise: Plano de Melhoria Dashboard vs Código Agent
 
-**Data:** 2026-02-21  
-**Analista:** opencode  
+**Data:** 2026-02-21
+**Analista:** opencode
 **Arquivos analisados:**
 - `bot/channel_control.py` (159 linhas)
 - `bot/observability_state.py` (274 linhas)

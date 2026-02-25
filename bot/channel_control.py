@@ -4,9 +4,9 @@ import binascii
 import hmac
 import inspect
 import threading
+from collections.abc import Coroutine
 from concurrent.futures import TimeoutError as FutureTimeoutError
-from typing import Any, Coroutine, cast
-
+from typing import Any, cast
 
 CHANNEL_CONTROL_TIMEOUT_SECONDS = 15.0
 SUPPORTED_ACTIONS = {"list", "join", "part"}
@@ -25,9 +25,9 @@ def extract_admin_token(headers: Any) -> str:
         if not encoded_credentials:
             return ""
         try:
-            decoded_credentials = base64.b64decode(
-                encoded_credentials, validate=True
-            ).decode("utf-8")
+            decoded_credentials = base64.b64decode(encoded_credentials, validate=True).decode(
+                "utf-8"
+            )
         except (binascii.Error, UnicodeDecodeError):
             return ""
 
@@ -60,11 +60,11 @@ def parse_terminal_command(command_text: str) -> tuple[str, str]:
 
     for prefix in ("join ", "entrar ", "add "):
         if lowered.startswith(prefix):
-            return ("join", normalized[len(prefix):].strip())
+            return ("join", normalized[len(prefix) :].strip())
 
     for prefix in ("part ", "leave ", "sair ", "remove "):
         if lowered.startswith(prefix):
-            return ("part", normalized[len(prefix):].strip())
+            return ("part", normalized[len(prefix) :].strip())
 
     raise ValueError("Unsupported command. Use: list | join <channel> | part <channel>.")
 
@@ -129,8 +129,12 @@ class IrcChannelControlBridge:
                     "message": f"Action '{normalized_action}' requires a channel login.",
                 }
 
-            method_name = "admin_join_channel" if normalized_action == "join" else "admin_part_channel"
-            success, message, channels = self._submit(self._safe_call(method_name, normalized_channel))
+            method_name = (
+                "admin_join_channel" if normalized_action == "join" else "admin_part_channel"
+            )
+            success, message, channels = self._submit(
+                self._safe_call(method_name, normalized_channel)
+            )
             return {
                 "ok": bool(success),
                 "action": normalized_action,

@@ -52,13 +52,17 @@ class ControlPlaneState:
     def register_dispatch_failure(self, reason: str, timestamp: float | None = None) -> None:
         self._config_runtime.register_dispatch_failure(reason=reason, timestamp=timestamp)
 
-    def can_send_auto_chat(self, timestamp: float | None = None) -> tuple[bool, str, dict[str, int]]:
+    def can_send_auto_chat(
+        self, timestamp: float | None = None
+    ) -> tuple[bool, str, dict[str, int]]:
         return self._config_runtime.can_send_auto_chat(timestamp=timestamp)
 
     def register_auto_chat_sent(self, timestamp: float | None = None) -> None:
         self._config_runtime.register_auto_chat_sent(timestamp=timestamp)
 
-    def consume_due_goals(self, *, force: bool = False, timestamp: float | None = None) -> list[dict[str, Any]]:
+    def consume_due_goals(
+        self, *, force: bool = False, timestamp: float | None = None
+    ) -> list[dict[str, Any]]:
         return self._config_runtime.consume_due_goals(force=force, timestamp=timestamp)
 
     def enqueue_action(
@@ -170,11 +174,10 @@ control_plane = ControlPlaneState()
 __all__ = [
     "RISK_AUTO_CHAT",
     "RISK_CLIP_CANDIDATE",
-    "RISK_SUGGEST_STREAMER",
     "RISK_MODERATION_ACTION",
-    "SUPPORTED_RISK_LEVELS",
+    "RISK_SUGGEST_STREAMER",
     "SUPPORTED_DECISIONS",
+    "SUPPORTED_RISK_LEVELS",
     "ControlPlaneState",
     "control_plane",
 ]
-

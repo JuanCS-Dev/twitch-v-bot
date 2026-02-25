@@ -1,8 +1,8 @@
-import unittest
-import json
 import asyncio
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
+
 import bot.twitch_clips_api as clips_api
 
 
@@ -215,9 +215,7 @@ class TestTwitchClipsApi(unittest.IsolatedAsyncioTestCase):
 
     @patch("bot.twitch_clips_api.urlopen")
     async def test_get_clip_download_url_429(self, mock_urlopen):
-        mock_urlopen.side_effect = HTTPError(
-            "u", 429, "Limit", {"Ratelimit-Reset": "123"}, None
-        )
+        mock_urlopen.side_effect = HTTPError("u", 429, "Limit", {"Ratelimit-Reset": "123"}, None)
 
         with self.assertRaises(clips_api.TwitchClipRateLimitError):
             await clips_api.get_clip_download_url(
@@ -238,9 +236,7 @@ class TestTwitchClipsApi(unittest.IsolatedAsyncioTestCase):
     async def test_get_clip_download_url_success(self, mock_urlopen):
         mock_resp = MagicMock()
         mock_resp.status = 200
-        mock_resp.read.return_value = (
-            b'{"data": [{"landscape_download_url": "https://dl.url"}]}'
-        )
+        mock_resp.read.return_value = b'{"data": [{"landscape_download_url": "https://dl.url"}]}'
         mock_urlopen.return_value.__enter__.return_value = mock_resp
 
         result = await clips_api.get_clip_download_url(

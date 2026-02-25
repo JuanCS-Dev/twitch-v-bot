@@ -9,14 +9,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from bot.byte_semantics import normalize_current_events_reply_contract
 from bot.logic import MAX_REPLY_LINES
 from bot.main import (
-    AgentComponent,
-    ByteBot,
-    HealthHandler,
-    IrcByteBot,
     MAX_CHAT_MESSAGE_LENGTH,
     QUALITY_SAFE_FALLBACK,
     SERIOUS_REPLY_MAX_LENGTH,
     SERIOUS_REPLY_MAX_LINES,
+    AgentComponent,
+    ByteBot,
+    HealthHandler,
+    IrcByteBot,
     TwitchTokenManager,
     auto_update_scene_from_message,
     build_direct_answer_instruction,

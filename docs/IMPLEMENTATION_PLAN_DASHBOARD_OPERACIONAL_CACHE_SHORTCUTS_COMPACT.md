@@ -1,7 +1,7 @@
 # Plano Executavel - Dashboard Operacional (Cache + Shortcuts + Compact Mode)
 
-Data: 2026-02-21  
-Status: pronto para execucao  
+Data: 2026-02-21
+Status: pronto para execucao
 Escopo: melhorias de velocidade operacional sem alterar contratos principais do agente.
 
 Links rapidos:
@@ -18,8 +18,8 @@ Links rapidos:
 
 ## 2) Escopo fechado (3 features)
 
-F1. Cache seletivo de assets estaticos com `ETag` + `Cache-Control`.  
-F2. Atalhos de teclado operacionais (`r` refresh, `g` run tick).  
+F1. Cache seletivo de assets estaticos com `ETag` + `Cache-Control`.
+F2. Atalhos de teclado operacionais (`r` refresh, `g` run tick).
 F3. Modo compacto para monitoramento continuo.
 
 ## 3) Baseline AS-IS (confirmado no codigo)
@@ -31,12 +31,12 @@ F3. Modo compacto para monitoramento continuo.
 
 ## 4) Requisitos obrigatorios
 
-R1. API e HTML continuam sem cache (`no-store`).  
-R2. Apenas CSS/JS/static recebem cache curto com revalidacao por `ETag`.  
-R3. `r` dispara refresh operacional sem quebrar foco de campos de input.  
-R4. `g` dispara `POST /api/autonomy/tick` com feedback visual.  
-R5. Compact mode preserva controles criticos no topo e oculta blocos densos.  
-R6. Estado do compact mode persiste em `localStorage`.  
+R1. API e HTML continuam sem cache (`no-store`).
+R2. Apenas CSS/JS/static recebem cache curto com revalidacao por `ETag`.
+R3. `r` dispara refresh operacional sem quebrar foco de campos de input.
+R4. `g` dispara `POST /api/autonomy/tick` com feedback visual.
+R5. Compact mode preserva controles criticos no topo e oculta blocos densos.
+R6. Estado do compact mode persiste em `localStorage`.
 R7. Nenhum arquivo novo/alterado passa de 300 linhas.
 
 ## 5) Contrato tecnico alvo

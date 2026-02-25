@@ -1,7 +1,8 @@
 import logging
-import threading
-from typing import Any, List, Optional
 import os
+import threading
+from typing import Any
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -9,14 +10,17 @@ logger = logging.getLogger("byte.clips.store")
 
 COLLECTION_NAME = "clip_jobs"
 
+
 class SupabaseJobStore:
     def __init__(self) -> None:
         self._db_url = os.environ.get("SUPABASE_AUTH_URL") or os.environ.get("SUPABASE_DB_URL")
         self._lock = threading.Lock()
         self._initialized = False
-        
+
         if not self._db_url:
-            logger.warning("Variável de banco de dados (SUPABASE_AUTH_URL/SUPABASE_DB_URL) nao definida. SupabaseJobStore operando em modo offline.")
+            logger.warning(
+                "Variável de banco de dados (SUPABASE_AUTH_URL/SUPABASE_DB_URL) nao definida. SupabaseJobStore operando em modo offline."
+            )
 
     def _get_connection(self):
         if not self._db_url:
@@ -25,6 +29,7 @@ class SupabaseJobStore:
             # Tentar extrair componentes para conexao robusta sem DSN string
             if self._db_url.startswith("postgresql://") or self._db_url.startswith("postgres://"):
                 import urllib.parse
+
                 parsed = urllib.parse.urlparse(self._db_url)
                 conn = psycopg2.connect(
                     user=urllib.parse.unquote(parsed.username or ""),
@@ -33,11 +38,11 @@ class SupabaseJobStore:
                     port=parsed.port or 5432,
                     database=parsed.path.lstrip("/"),
                     sslmode="require",
-                    connect_timeout=10
+                    connect_timeout=10,
                 )
             else:
                 conn = psycopg2.connect(self._db_url)
-            
+
             if not self._initialized:
                 self._ensure_table(conn)
             return conn
@@ -52,7 +57,8 @@ class SupabaseJobStore:
                 if self._initialized:
                     return
                 with conn.cursor() as cur:
-                    cur.execute(f"""
+                    cur.execute(
+                        f"""
                         CREATE TABLE IF NOT EXISTS {COLLECTION_NAME} (
                             job_id TEXT PRIMARY KEY,
                             status TEXT NOT NULL,
@@ -61,7 +67,8 @@ class SupabaseJobStore:
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                         );
-                    """)
+                    """
+                    )
                     conn.commit()
                 self._initialized = True
         except Exception as e:
@@ -75,13 +82,16 @@ class SupabaseJobStore:
         job_id = job.get("job_id")
         status = job.get("status", "unknown")
         download_url = job.get("download_url")
-        
+
         # O resto do job vira metadados JSON
-        job_metadata = {k: v for k, v in job.items() if k not in ["job_id", "status", "download_url"]}
+        job_metadata = {
+            k: v for k, v in job.items() if k not in ["job_id", "status", "download_url"]
+        }
 
         try:
             with conn.cursor() as cur:
-                cur.execute(f"""
+                cur.execute(
+                    f"""
                     INSERT INTO {COLLECTION_NAME} (job_id, status, download_url, metadata, updated_at)
                     VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
                     ON CONFLICT (job_id) DO UPDATE SET
@@ -89,14 +99,16 @@ class SupabaseJobStore:
                         download_url = EXCLUDED.download_url,
                         metadata = EXCLUDED.metadata,
                         updated_at = CURRENT_TIMESTAMP;
-                """, (job_id, status, download_url, psycopg2.extras.Json(job_metadata)))
+                """,
+                    (job_id, status, download_url, psycopg2.extras.Json(job_metadata)),
+                )
                 conn.commit()
         except Exception as e:
             logger.error("Erro ao salvar job %s no Supabase: %s", job_id, e)
         finally:
             conn.close()
 
-    def load_active_jobs(self) -> List[dict[str, Any]]:
+    def load_active_jobs(self) -> list[dict[str, Any]]:
         conn = self._get_connection()
         if not conn:
             return []
@@ -104,12 +116,15 @@ class SupabaseJobStore:
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 active_statuses = ["queued", "creating", "polling"]
-                cur.execute(f"""
-                    SELECT * FROM {COLLECTION_NAME} 
-                    WHERE status IN %s 
+                cur.execute(
+                    f"""
+                    SELECT * FROM {COLLECTION_NAME}
+                    WHERE status IN %s
                     OR (status = 'ready' AND download_url IS NULL)
-                """, (tuple(active_statuses),))
-                
+                """,
+                    (tuple(active_statuses),),
+                )
+
                 rows = cur.fetchall()
                 jobs = []
                 for row in rows:
@@ -119,7 +134,7 @@ class SupabaseJobStore:
                         meta = job.pop("metadata")
                         job.update(meta)
                     jobs.append(job)
-                
+
                 logger.info("Carregados %d jobs ativos do Supabase.", len(jobs))
                 return jobs
         except Exception as e:
@@ -128,7 +143,7 @@ class SupabaseJobStore:
         finally:
             conn.close()
 
-    def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
         conn = self._get_connection()
         if not conn:
             return None
@@ -149,5 +164,6 @@ class SupabaseJobStore:
             return None
         finally:
             conn.close()
+
 
 job_store = SupabaseJobStore()

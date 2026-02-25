@@ -1,7 +1,9 @@
-import unittest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+import unittest
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from bot.irc_state import IrcChannelStateMixin
+
 
 class MockBot(IrcChannelStateMixin):
     def __init__(self):
@@ -17,6 +19,7 @@ class MockBot(IrcChannelStateMixin):
 
     async def _send_raw(self, line: str):
         pass
+
 
 class TestIrcStateMassive(unittest.IsolatedAsyncioTestCase):
     async def test_send_reply_normalization_fail(self):
@@ -40,12 +43,10 @@ class TestIrcStateMassive(unittest.IsolatedAsyncioTestCase):
         bot = MockBot()
         event = asyncio.Event()
         bot._pending_join_events["chan"] = event
-        
+
         with patch("bot.irc_state.TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS", 0.01):
             res = await bot._wait_for_channel_confirmation(
-                channel_login="chan",
-                action="JOIN",
-                pending_map=bot._pending_join_events
+                channel_login="chan", action="JOIN", pending_map=bot._pending_join_events
             )
             self.assertFalse(res)
 

@@ -143,7 +143,11 @@ def _handle_vision_ingest(handler: Any) -> None:
     content_type = str(handler.headers.get("Content-Type", "") or "").strip().lower()
     if content_type not in {"image/jpeg", "image/png", "image/webp"}:
         handler._send_json(
-            {"ok": False, "error": "invalid_content_type", "message": "Use image/jpeg, image/png or image/webp."},
+            {
+                "ok": False,
+                "error": "invalid_content_type",
+                "message": "Use image/jpeg, image/png or image/webp.",
+            },
             status_code=400,
         )
         return
@@ -158,5 +162,7 @@ def _handle_vision_ingest(handler: Any) -> None:
 
     frame_bytes = handler.rfile.read(content_length)
     result = vision_runtime.ingest_frame(frame_bytes, mime_type=content_type)
-    status_code = 200 if result.get("ok") else 429 if result.get("reason") == "rate_limited" else 400
+    status_code = (
+        200 if result.get("ok") else 429 if result.get("reason") == "rate_limited" else 400
+    )
     handler._send_json(result, status_code=status_code)

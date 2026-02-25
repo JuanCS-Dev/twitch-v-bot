@@ -1,22 +1,27 @@
-import unittest
-import json
-import os
 import time
-from unittest.mock import patch, MagicMock
-from urllib.error import HTTPError
+import unittest
 from pathlib import Path
-from bot.twitch_tokens import TwitchTokenManager, TwitchAuthError
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
+
 import bot.twitch_clips_api as clips_api
+from bot.twitch_tokens import TwitchAuthError, TwitchTokenManager
+
 
 class TestCoverageFinalPush(unittest.TestCase):
     def test_token_manager_sync_errors_injected(self):
         mock_urlopen = MagicMock()
         mock_err_500 = HTTPError("u", 500, "Server", {}, MagicMock(read=lambda: b"error"))
         mock_urlopen.side_effect = mock_err_500
-        
-        tm = TwitchTokenManager(access_token="v", client_id="c", client_secret="s", 
-                                refresh_token="r", urlopen_fn=mock_urlopen)
-        
+
+        tm = TwitchTokenManager(
+            access_token="v",
+            client_id="c",
+            client_secret="s",
+            refresh_token="r",
+            urlopen_fn=mock_urlopen,
+        )
+
         with self.assertRaises(TwitchAuthError):
             tm._validate_token_sync()
         with self.assertRaises(TwitchAuthError):
@@ -28,9 +33,14 @@ class TestCoverageFinalPush(unittest.TestCase):
         mock_resp.status = 200
         mock_resp.read.return_value = b"invalid json {"
         mock_urlopen.return_value.__enter__.return_value = mock_resp
-        
-        tm = TwitchTokenManager(access_token="v", client_id="c", client_secret="s", 
-                                refresh_token="r", urlopen_fn=mock_urlopen)
+
+        tm = TwitchTokenManager(
+            access_token="v",
+            client_id="c",
+            client_secret="s",
+            refresh_token="r",
+            urlopen_fn=mock_urlopen,
+        )
         with self.assertRaises(TwitchAuthError) as cm:
             tm._refresh_token_sync()
         self.assertIn("Resposta invalida", str(cm.exception))
@@ -65,11 +75,12 @@ class TestCoverageFinalPush(unittest.TestCase):
 
     def test_dashboard_server_assets_logic(self):
         from bot.dashboard_server import HealthHandler
+
         tmp_dir = Path("/tmp/byte_test_dash_real_final_final")
         tmp_dir.mkdir(parents=True, exist_ok=True)
         test_file = tmp_dir / "test.js"
         test_file.write_text("alert(1)")
-        
+
         with patch("bot.dashboard_server.BaseHTTPRequestHandler.__init__", return_value=None):
             instance = HealthHandler()
             instance._send_text = MagicMock()

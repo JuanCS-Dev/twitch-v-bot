@@ -1,11 +1,12 @@
-import os
 import asyncio
+import os
 from typing import Any, cast
 
 import twitchio  # pyright: ignore[reportMissingImports]
 from twitchio import eventsub  # pyright: ignore[reportMissingImports]
 from twitchio.ext import commands  # pyright: ignore[reportMissingImports]
 
+from bot import byte_semantics
 from bot.access_control import is_owner
 from bot.autonomy_runtime import autonomy_runtime
 from bot.logic import BOT_BRAND, OBSERVABILITY_TYPES, agent_inference, context
@@ -22,7 +23,6 @@ from bot.runtime_config import (
 )
 from bot.scene_runtime import auto_update_scene_from_message
 from bot.status_runtime import build_status_line
-from bot import byte_semantics
 
 
 def _require_env(name: str) -> str:
@@ -96,9 +96,7 @@ class AgentComponent(commands.Component):
         payload = get_ctx_message_text(ctx).removeprefix("!scene").strip()
         if not payload:
             observability_text = context.format_observability()
-            await ctx.reply(
-                format_chat_reply(f"Observabilidade da live: {observability_text}")
-            )
+            await ctx.reply(format_chat_reply(f"Observabilidade da live: {observability_text}"))
             return
 
         author_id = str(getattr(get_ctx_author(ctx), "id", "") or "")
@@ -116,9 +114,7 @@ class AgentComponent(commands.Component):
                 return
             content_type = tokens[1].strip().lower()
             if not context.clear_content(content_type):
-                await ctx.reply(
-                    f"Tipo invalido. Tipos: {context.list_supported_content_types()}"
-                )
+                await ctx.reply(f"Tipo invalido. Tipos: {context.list_supported_content_types()}")
                 return
             label = OBSERVABILITY_TYPES.get(content_type, content_type)
             await ctx.reply(f"Contexto removido: {label}.")
@@ -216,8 +212,7 @@ class ByteBot(commands.Bot):
             updates = await auto_update_scene_from_message(message)
         if updates:
             labels = ", ".join(
-                OBSERVABILITY_TYPES.get(content_type, content_type)
-                for content_type in updates
+                OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
             )
             logger.info("Observabilidade automatica atualizada: %s", labels)
             observability.record_auto_scene_update(update_types=updates)

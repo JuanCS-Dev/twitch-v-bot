@@ -33,9 +33,15 @@ MODEL_NAME = "moonshotai/Kimi-K2.5"
 MODEL_MAX_OUTPUT_TOKENS = 1024
 MODEL_TEMPERATURE = 0.15
 MODEL_INPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_INPUT_COST_PER_1M_USD", "0.10")))
-MODEL_OUTPUT_COST_PER_1M_USD = max(0.0, float(os.environ.get("MODEL_OUTPUT_COST_PER_1M_USD", "0.40")))
+MODEL_OUTPUT_COST_PER_1M_USD = max(
+    0.0, float(os.environ.get("MODEL_OUTPUT_COST_PER_1M_USD", "0.40"))
+)
 MODEL_RATE_LIMIT_MAX_RETRIES = max(0, int(os.environ.get("MODEL_RATE_LIMIT_MAX_RETRIES", "1")))
-MODEL_RATE_LIMIT_BACKOFF_SECONDS = max(0.0, float(os.environ.get("MODEL_RATE_LIMIT_BACKOFF_SECONDS", "0.8")))
-MODEL_INFERENCE_TIMEOUT_SECONDS = max(2.0, float(os.environ.get("MODEL_INFERENCE_TIMEOUT_SECONDS", "12.0")))
+MODEL_RATE_LIMIT_BACKOFF_SECONDS = max(
+    0.0, float(os.environ.get("MODEL_RATE_LIMIT_BACKOFF_SECONDS", "0.8"))
+)
+MODEL_INFERENCE_TIMEOUT_SECONDS = max(
+    2.0, float(os.environ.get("MODEL_INFERENCE_TIMEOUT_SECONDS", "12.0"))
+)
 EMPTY_RESPONSE_FALLBACK = "Nao consegui consolidar a resposta agora. Tente reformular em uma frase."
 UNSTABLE_CONNECTION_FALLBACK = "Conexao com o modelo instavel. Tente novamente em instantes."

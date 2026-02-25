@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 TIMELINE_RETENTION_MINUTES = 180
 TIMELINE_WINDOW_MINUTES = 30
@@ -12,7 +12,11 @@ LEADERBOARD_LIMIT = 8
 
 
 def utc_iso(timestamp: float) -> str:
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return (
+        datetime.fromtimestamp(timestamp, tz=UTC)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
 
 def clip_preview(text: str, max_chars: int = 120) -> str:

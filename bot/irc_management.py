@@ -10,6 +10,7 @@ class IrcChannelManagementMixin:
     joined_channels: set[str]
 
     if TYPE_CHECKING:
+
         async def _send_tracked_channel_reply(self, channel_login: str, text: str) -> None: ...
         async def _join_channel(self, channel_login: str) -> bool: ...
         async def _part_channel(self, channel_login: str) -> bool: ...
@@ -32,10 +33,10 @@ class IrcChannelManagementMixin:
             return ("list", "")
         for prefix in ("join ", "entrar ", "add "):
             if lowered_prompt.startswith(prefix):
-                return ("join", normalized_prompt[len(prefix):].strip())
+                return ("join", normalized_prompt[len(prefix) :].strip())
         for prefix in ("part ", "leave ", "sair ", "remove "):
             if lowered_prompt.startswith(prefix):
-                return ("part", normalized_prompt[len(prefix):].strip())
+                return ("part", normalized_prompt[len(prefix) :].strip())
         return None
 
     async def _handle_channel_management_prompt(
@@ -69,9 +70,7 @@ class IrcChannelManagementMixin:
             can_wait_confirmation = self._can_wait_for_channel_confirmation()
             joined = await self._join_channel(target_channel)
             if joined and can_wait_confirmation:
-                message = (
-                    f"Canal adicionado: #{target_channel}. Byte responde onde for acionado."
-                )
+                message = f"Canal adicionado: #{target_channel}. Byte responde onde for acionado."
             elif joined:
                 message = (
                     f"Solicitacao enviada para entrar em #{target_channel}. "
@@ -118,8 +117,7 @@ class IrcChannelManagementMixin:
             message = f"Canal removido: #{target_channel}."
         elif parted:
             message = (
-                f"Solicitacao enviada para sair de #{target_channel}. "
-                "Aguarde confirmacao do IRC."
+                f"Solicitacao enviada para sair de #{target_channel}. Aguarde confirmacao do IRC."
             )
         else:
             message = f"Nao consegui sair de #{target_channel}."

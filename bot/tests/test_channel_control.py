@@ -1,28 +1,31 @@
-import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
 import base64
-import asyncio
-import threading
-from concurrent.futures import Future
-import bot.channel_control as channel_control
+import unittest
+from unittest.mock import MagicMock, patch
+
+from bot import channel_control
+
 
 class TestChannelControl(unittest.TestCase):
     def test_extract_admin_token(self):
         """Should extract token from various header formats."""
         # Direct header
         self.assertEqual(channel_control.extract_admin_token({"X-Byte-Admin-Token": "t1"}), "t1")
-        
+
         # Bearer token
         self.assertEqual(channel_control.extract_admin_token({"Authorization": "Bearer t2"}), "t2")
-        
+
         # Basic auth (password part)
         auth_val = base64.b64encode(b"admin:t3").decode()
-        self.assertEqual(channel_control.extract_admin_token({"Authorization": f"Basic {auth_val}"}), "t3")
-        
+        self.assertEqual(
+            channel_control.extract_admin_token({"Authorization": f"Basic {auth_val}"}), "t3"
+        )
+
         # Basic auth (single value)
         auth_val = base64.b64encode(b"t4").decode()
-        self.assertEqual(channel_control.extract_admin_token({"Authorization": f"Basic {auth_val}"}), "t4")
-        
+        self.assertEqual(
+            channel_control.extract_admin_token({"Authorization": f"Basic {auth_val}"}), "t4"
+        )
+
         # Empty/Invalid
         self.assertEqual(channel_control.extract_admin_token({}), "")
         self.assertEqual(channel_control.extract_admin_token({"Authorization": "Invalid"}), "")
@@ -41,9 +44,11 @@ class TestChannelControl(unittest.TestCase):
         self.assertEqual(channel_control.parse_terminal_command("list"), ("list", ""))
         self.assertEqual(channel_control.parse_terminal_command("join mychan"), ("join", "mychan"))
         self.assertEqual(channel_control.parse_terminal_command("entrar canal"), ("join", "canal"))
-        self.assertEqual(channel_control.parse_terminal_command("part oldchan"), ("part", "oldchan"))
+        self.assertEqual(
+            channel_control.parse_terminal_command("part oldchan"), ("part", "oldchan")
+        )
         self.assertEqual(channel_control.parse_terminal_command("sair tchau"), ("part", "tchau"))
-        
+
         with self.assertRaises(ValueError):
             channel_control.parse_terminal_command("")
         with self.assertRaises(ValueError):
@@ -63,15 +68,15 @@ class TestChannelControl(unittest.TestCase):
         loop.is_closed.return_value = False
         loop.is_running.return_value = True
         bot = MagicMock()
-        
+
         bridge = channel_control.IrcChannelControlBridge()
         bridge.bind(loop=loop, bot=bot)
-        
+
         # Mock future result
         future = MagicMock()
         future.result.return_value = ["chan1", "chan2"]
         mock_run.return_value = future
-        
+
         result = bridge.execute(action="list")
         self.assertTrue(result["ok"])
         self.assertIn("chan1", result["channels"])
@@ -89,7 +94,7 @@ class TestChannelControl(unittest.TestCase):
         bridge = channel_control.IrcChannelControlBridge()
         # Bind just to pass the runtime check
         bridge.bind(loop=MagicMock(is_closed=False, is_running=True), bot=MagicMock())
-        
+
         result = bridge.execute(action="join", channel_login="")
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"], "missing_channel")
@@ -101,12 +106,13 @@ class TestChannelControl(unittest.TestCase):
         bot = MagicMock()
         bridge = channel_control.IrcChannelControlBridge(timeout_seconds=0.1)
         bridge.bind(loop=loop, bot=bot)
-        
+
         future = MagicMock()
         from concurrent.futures import TimeoutError as FutureTimeoutError
+
         future.result.side_effect = FutureTimeoutError()
         mock_run.return_value = future
-        
+
         result = bridge.execute(action="list")
         self.assertFalse(result["ok"])
         # According to logs, it returns 'runtime_error' instead of 'timeout'.

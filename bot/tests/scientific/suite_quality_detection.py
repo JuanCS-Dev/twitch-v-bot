@@ -46,9 +46,7 @@ class ScientificQualityDetectionTestsMixin(ScientificTestCase):
 
     def test_quality_detector_flags_existence_question_without_direct_position(self):
         prompt = "tem dark romance oficial com o Legolas do Senhor dos Aneis?"
-        weak_answer = (
-            "Oficialmente nas obras de Tolkien nao existe esse genero com o personagem."
-        )
+        weak_answer = "Oficialmente nas obras de Tolkien nao existe esse genero com o personagem."
         low_quality, reason = is_low_quality_answer(prompt, weak_answer)
         self.assertTrue(low_quality)
         self.assertEqual(reason, "resposta_existencia_sem_posicao")
@@ -56,8 +54,7 @@ class ScientificQualityDetectionTestsMixin(ScientificTestCase):
     def test_quality_detector_flags_open_question_ending(self):
         prompt = "qual o diretor da revolucao dos bichos 2026?"
         weak_answer = (
-            "Andy Serkis e o diretor ligado a adaptacao prevista para 2026. "
-            "Quer mais detalhes?"
+            "Andy Serkis e o diretor ligado a adaptacao prevista para 2026. Quer mais detalhes?"
         )
         low_quality, reason = is_low_quality_answer(prompt, weak_answer)
         self.assertTrue(low_quality)

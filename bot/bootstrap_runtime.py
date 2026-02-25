@@ -1,5 +1,5 @@
 import asyncio
-
+import os
 
 from bot.autonomy_runtime import autonomy_runtime
 from bot.clip_jobs_runtime import clip_jobs
@@ -28,8 +28,6 @@ from bot.status_runtime import parse_channel_logins
 from bot.twitch_tokens import TwitchTokenManager, TwitchTokenManagerSettings
 
 
-import os
-
 def get_secret(secret_name: str = "twitch-client-secret") -> str:
     # Ler do ENV usando o nome do secret
     env_key = secret_name.upper().replace("-", "_")
@@ -37,6 +35,7 @@ def get_secret(secret_name: str = "twitch-client-secret") -> str:
     if val:
         return val
     raise RuntimeError(f"Secret {env_key} not in env.")
+
 
 def require_env(name: str) -> str:
     value = (os.environ.get(name) or "").strip()
@@ -138,7 +137,9 @@ def run_irc_mode() -> None:
 
                 config = control_plane.get_config()
                 if config.get("clip_pipeline_enabled") and not has_clips_edit:
-                    logger.warning("Pipeline de clips habilitado mas scope 'clips:edit' ausente no token.")
+                    logger.warning(
+                        "Pipeline de clips habilitado mas scope 'clips:edit' ausente no token."
+                    )
 
             except Exception as error:
                 logger.error("Erro ao validar auth de clips: %s", error)
@@ -159,11 +160,11 @@ def run_irc_mode() -> None:
             mode="irc",
             auto_chat_dispatcher=send_autonomy_chat,
         )
-        
+
         # Clip Jobs Runtime
         clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
         clip_jobs.start(running_loop)
-        
+
         # Start background task
         asyncio.create_task(verify_clips_auth_loop())
 

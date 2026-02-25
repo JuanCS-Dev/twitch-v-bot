@@ -1,11 +1,13 @@
 import unittest
+
 from bot.byte_semantics_current_events import (
+    _build_grounding_source_line,
     _extract_grounding_source_urls,
     _fit_high_risk_current_events_reply,
-    normalize_current_events_reply_contract,
     build_current_events_safe_fallback_reply,
-    _build_grounding_source_line
+    normalize_current_events_reply_contract,
 )
+
 
 class TestCurrentEventsV2(unittest.TestCase):
     def test_extract_grounding_source_urls_types(self):
@@ -35,6 +37,7 @@ class TestCurrentEventsV2(unittest.TestCase):
         answer = "Ainda é incerto quem venceu a eleição hoje."
         res = normalize_current_events_reply_contract(prompt, answer)
         from bot.byte_semantics_constants import QUALITY_SAFE_FALLBACK
+
         self.assertIn(QUALITY_SAFE_FALLBACK, res)
 
     def test_normalize_contract_high_risk_no_grounding(self):
@@ -42,8 +45,10 @@ class TestCurrentEventsV2(unittest.TestCase):
         answer = "Candidato X venceu."
         res = normalize_current_events_reply_contract(prompt, answer, grounding_metadata={})
         from bot.byte_semantics_constants import QUALITY_SAFE_FALLBACK
+
         self.assertIn(QUALITY_SAFE_FALLBACK, res)
 
     def test_build_safe_fallback_low_risk(self):
         from bot.byte_semantics_constants import QUALITY_SAFE_FALLBACK
+
         self.assertEqual(build_current_events_safe_fallback_reply("oi"), QUALITY_SAFE_FALLBACK)

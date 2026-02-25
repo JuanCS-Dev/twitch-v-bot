@@ -24,14 +24,12 @@ class ScientificIrcControlTestsMixin(ScientificTestCase):
         bot.reader = asyncio.StreamReader()
         bot._line_reader_running = True
 
-        success, message, channels = self.loop.run_until_complete(
-            bot.admin_join_channel("canal_b")
-        )
+        success, message, channels = self.loop.run_until_complete(bot.admin_join_channel("canal_b"))
 
         self.assertTrue(success)
         self.assertEqual(message, "Joined #canal_b.")
         self.assertIn("canal_b", channels)
-        
+
         # Verify it went to the writer
         self.loop.run_until_complete(asyncio.sleep(0.01))
         self.assertTrue(any("JOIN #canal_b" in line for line in writer.lines))
@@ -50,14 +48,12 @@ class ScientificIrcControlTestsMixin(ScientificTestCase):
         bot.reader = asyncio.StreamReader()
         bot._line_reader_running = True
 
-        success, message, channels = self.loop.run_until_complete(
-            bot.admin_part_channel("canal_b")
-        )
+        success, message, channels = self.loop.run_until_complete(bot.admin_part_channel("canal_b"))
 
         self.assertTrue(success)
         self.assertEqual(message, "Left #canal_b.")
         self.assertNotIn("canal_b", channels)
-        
+
         # Verify it went to the writer
         self.loop.run_until_complete(asyncio.sleep(0.01))
         self.assertTrue(any("PART #canal_b" in line for line in writer.lines))
