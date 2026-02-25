@@ -72,18 +72,21 @@
        cria colunas de no mínimo 240px que expandem (1fr) */
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--spacing-4);
+    align-items: start; /* Impede cards de esticarem verticalmente sem necessidade */
 }
 
 .grid-two {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
     gap: var(--spacing-5);
+    align-items: start;
 }
 
 .grid-hero {
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--spacing-5);
+    align-items: start;
 }
 
 @media (min-width: 1080px) {
@@ -93,6 +96,10 @@
     }
 }
 
+/* Fix para manter os gaps do layout nos containers div vazios onde os partials sao injetados */
+.layout > div {
+    display: contents;
+}
 /* Footer Técnico */
 .footer {
     display: flex;

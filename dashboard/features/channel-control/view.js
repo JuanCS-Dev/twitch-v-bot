@@ -139,9 +139,7 @@ export function renderConnectedChannels(els, channels, partActionCallback) {
         if (joinAllowed) {
             const partBtn = document.createElement("button");
             partBtn.textContent = "Sair";
-            partBtn.className = "btn btn-danger";
-            partBtn.style.padding = "0.1rem 0.4rem";
-            partBtn.style.fontSize = "0.65rem";
+            partBtn.className = "btn btn-danger btn-sm";
             partBtn.title = `Desconectar de #${channel}`;
             partBtn.addEventListener("click", () => {
                 partActionCallback(channel);

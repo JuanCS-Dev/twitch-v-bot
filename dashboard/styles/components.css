@@ -119,6 +119,13 @@
     min-height: 44px;
 }
 
+.btn-sm {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    min-height: 32px; /* Reduzido para encaixar bem dentro de chips/lists */
+    border-radius: var(--radius-sm);
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
