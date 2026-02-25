@@ -54,17 +54,30 @@ class TestDashboardRoutesV3:
         handler._send_dashboard_asset.assert_called_with("index.html", "text/html; charset=utf-8")
 
         handler.reset_mock()
+        assert _dashboard_asset_route(handler, "/dashboard/hud") is True
+        handler._send_dashboard_asset.assert_called_with("hud.html", "text/html; charset=utf-8")
+
+        handler.reset_mock()
         assert _dashboard_asset_route(handler, "/dashboard/app.js") is True
         handler._send_dashboard_asset.assert_called_with(
             "app.js", "application/javascript; charset=utf-8"
         )
 
         handler.reset_mock()
-        assert _dashboard_asset_route(handler, "/dashboard/style.css") is True
-        handler._send_dashboard_asset.assert_called_with("style.css", "text/css; charset=utf-8")
-
-        handler.reset_mock()
         assert _dashboard_asset_route(handler, "/api/something") is False
+
+    @patch("bot.dashboard_server_routes.observability")
+    @patch("bot.dashboard_server_routes.control_plane")
+    def test_build_observability_payload(self, mock_cp, mock_obs):
+        from bot.dashboard_server_routes import build_observability_payload
+
+        mock_obs.snapshot.return_value = {"agent_outcomes": {}}
+        mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {"ignored": 5}}
+        mock_cp.build_capabilities.return_value = {"cap": 1}
+
+        res = build_observability_payload()
+        assert res["ok"] is True
+        assert res["agent_outcomes"]["ignored_total_60m"] == 5
 
     @patch("bot.dashboard_server_routes.control_plane")
     def test_handle_get_api_control_plane(self, mock_cp):
@@ -270,3 +283,20 @@ class TestDashboardRoutesV3:
         handler._send_json.assert_called_once()
         assert handler._send_json.call_args[0][0]["error"] == "empty_body"
         assert handler._send_json.call_args[1]["status_code"] == 400
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_action_decision_invalid_payload(self, mock_cp):
+        handler = MagicMock()
+        handler._dashboard_authorized.return_value = True
+        handler._read_json_payload.side_effect = ValueError("invalid json")
+        _handle_action_decision(handler, "/api/action-queue/act123/decision")
+        handler._send_json.assert_called_with(
+            {"ok": False, "error": "invalid_request", "message": "invalid json"}, status_code=400
+        )
+
+    @patch("bot.dashboard_server_routes_post.autonomy_runtime")
+    def test_handle_autonomy_tick_unauthorized(self, mock_auto):
+        handler = MagicMock()
+        handler._dashboard_authorized.return_value = False
+        _handle_autonomy_tick(handler)
+        handler._send_forbidden.assert_called_once()

@@ -5,9 +5,10 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Any
 
 from bot.autonomy_logic import process_autonomy_goal
-from bot.control_plane import control_plane
+from bot.control_plane import RISK_AUTO_CHAT, RISK_SUGGEST_STREAMER, control_plane
 from bot.observability import observability
 from bot.runtime_config import logger
+from bot.sentiment_engine import sentiment_engine
 
 AutoChatDispatcher = Callable[[str], Awaitable[None]]
 
@@ -98,6 +99,28 @@ class AutonomyRuntime:
             control_plane.register_tick(reason=reason)
 
             due_goals = control_plane.consume_due_goals(force=force)
+
+            # Dynamic sentiment triggers (Phase 8)
+            if not force:
+                if sentiment_engine.should_trigger_anti_boredom():
+                    due_goals.append(
+                        {
+                            "id": "dynamic-anti-boredom",
+                            "name": "Gatilho Anti-Tédio",
+                            "risk": RISK_AUTO_CHAT,
+                            "prompt": "O chat está pouco engajado ou 'morno'. Puxe um assunto interessante ou faça uma pergunta instigante para os viewers.",
+                        }
+                    )
+                if sentiment_engine.should_trigger_anti_confusion():
+                    due_goals.append(
+                        {
+                            "id": "dynamic-anti-confusion",
+                            "name": "Gatilho Anti-Confusão",
+                            "risk": RISK_SUGGEST_STREAMER,
+                            "prompt": "O chat parece confuso com o que está acontecendo. Sugira ao streamer explicar melhor a situação atual ou o objetivo do jogo.",
+                        }
+                    )
+
             processed: list[dict[str, Any]] = []
 
             dispatcher = self._get_auto_chat_dispatcher()

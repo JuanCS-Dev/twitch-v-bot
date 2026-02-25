@@ -86,6 +86,19 @@ class TestBootstrapRuntimeV4:
             run_irc_mode()
             mock_run.assert_called_once()
 
+    @patch("bot.bootstrap_runtime.IrcByteBot")
+    @patch("bot.bootstrap_runtime.build_irc_token_manager")
+    @patch("bot.bootstrap_runtime.resolve_irc_channel_logins")
+    def test_run_irc_mode_exception(self, mock_resolve, mock_build, mock_bot_cls):
+        mock_resolve.return_value = ["test"]
+        mock_build.return_value = MagicMock()
+        mock_bot_cls.side_effect = Exception("init failed")
+
+        # Should catch and log, not crash
+        with patch("bot.bootstrap_runtime.logger.error") as mock_log:
+            run_irc_mode()
+            mock_log.assert_called()
+
     @patch("bot.bootstrap_runtime.ByteBot")
     def test_run_eventsub_mode(self, mock_bot_cls):
         with patch.dict(

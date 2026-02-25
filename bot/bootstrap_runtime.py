@@ -113,69 +113,73 @@ def build_irc_token_manager() -> TwitchTokenManager:
 
 
 def run_irc_mode() -> None:
-    token_manager = build_irc_token_manager()
-    channel_logins = resolve_irc_channel_logins()
-    bot = IrcByteBot(
-        host=TWITCH_IRC_HOST,
-        port=TWITCH_IRC_PORT,
-        use_tls=TWITCH_IRC_TLS,
-        bot_login=TWITCH_BOT_LOGIN or require_env("TWITCH_BOT_LOGIN"),
-        channel_logins=channel_logins,
-        token_manager=token_manager,
-    )
-
-    async def run_with_channel_control() -> None:
-        running_loop = asyncio.get_running_loop()
-        irc_channel_control.bind(loop=running_loop, bot=bot)
-
-        async def _check_clips_auth() -> None:
-            # Avoid circular import
-            from bot.control_plane import control_plane
-
-            try:
-                token_valid, has_clips_edit = await token_manager.validate_clips_auth()
-
-                config = control_plane.get_config()
-                if config.get("clip_pipeline_enabled") and not has_clips_edit:
-                    logger.warning(
-                        "Pipeline de clips habilitado mas scope 'clips:edit' ausente no token."
-                    )
-
-            except Exception as error:
-                logger.error("Erro ao validar auth de clips: %s", error)
-                observability.record_error(category="clips_auth", details=str(error))
-
-        async def verify_clips_auth_loop() -> None:
-            # Initial check
-            await asyncio.sleep(5)  # Wait for boot
-            while True:
-                await _check_clips_auth()
-                await asyncio.sleep(3600)
-
-        async def send_autonomy_chat(text: str) -> None:
-            await bot.send_reply(text)
-
-        autonomy_runtime.bind(
-            loop=running_loop,
-            mode="irc",
-            auto_chat_dispatcher=send_autonomy_chat,
+    try:
+        token_manager = build_irc_token_manager()
+        channel_logins = resolve_irc_channel_logins()
+        bot = IrcByteBot(
+            host=TWITCH_IRC_HOST,
+            port=TWITCH_IRC_PORT,
+            use_tls=TWITCH_IRC_TLS,
+            bot_login=TWITCH_BOT_LOGIN or require_env("TWITCH_BOT_LOGIN"),
+            channel_logins=channel_logins,
+            token_manager=token_manager,
         )
 
-        # Clip Jobs Runtime
-        clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
-        clip_jobs.start(running_loop)
+        async def run_with_channel_control() -> None:
+            running_loop = asyncio.get_running_loop()
+            irc_channel_control.bind(loop=running_loop, bot=bot)
 
-        # Start background task
-        asyncio.create_task(verify_clips_auth_loop())
+            async def _check_clips_auth() -> None:
+                # Avoid circular import
+                from bot.control_plane import control_plane
 
-        try:
-            await bot.run_forever()
-        finally:
-            clip_jobs.stop()
-            autonomy_runtime.unbind()
-            irc_channel_control.unbind()
+                try:
+                    token_valid, has_clips_edit = await token_manager.validate_clips_auth()
 
-    asyncio.run(run_with_channel_control())
+                    config = control_plane.get_config()
+                    if config.get("clip_pipeline_enabled") and not has_clips_edit:
+                        logger.warning(
+                            "Pipeline de clips habilitado mas scope 'clips:edit' ausente no token."
+                        )
+
+                except Exception as error:
+                    logger.error("Erro ao validar auth de clips: %s", error)
+                    observability.record_error(category="clips_auth", details=str(error))
+
+            async def verify_clips_auth_loop() -> None:
+                # Initial check
+                await asyncio.sleep(5)  # Wait for boot
+                while True:
+                    await _check_clips_auth()
+                    await asyncio.sleep(3600)
+
+            async def send_autonomy_chat(text: str) -> None:
+                await bot.send_reply(text)
+
+            autonomy_runtime.bind(
+                loop=running_loop,
+                mode="irc",
+                auto_chat_dispatcher=send_autonomy_chat,
+            )
+
+            # Clip Jobs Runtime
+            clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
+            clip_jobs.start(running_loop)
+
+            # Start background task
+            asyncio.create_task(verify_clips_auth_loop())
+
+            try:
+                await bot.run_forever()
+            finally:
+                clip_jobs.stop()
+                autonomy_runtime.unbind()
+                irc_channel_control.unbind()
+
+        asyncio.run(run_with_channel_control())
+    except Exception as error:
+        logger.error("Erro fatal no modo IRC: %s", error)
+        observability.record_error(category="bootstrap_irc", details=str(error))
 
 
 def run_eventsub_mode() -> None:

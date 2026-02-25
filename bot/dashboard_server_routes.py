@@ -46,6 +46,9 @@ def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
         return True
+    if route in {"/dashboard/hud", "/dashboard/hud/"}:
+        handler._send_dashboard_asset("hud.html", "text/html; charset=utf-8")
+        return True
     if route.startswith("/dashboard/"):
         relative_path = route[len("/dashboard/") :]
         guessed_content_type, _ = mimetypes.guess_type(relative_path)

@@ -1,4 +1,5 @@
 import json
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -94,3 +95,19 @@ class TestDashboardServerExtra(unittest.TestCase):
         self.handler.request_version = "HTTP/1.1"
         self.handler.do_OPTIONS()
         self.handler.wfile.write.assert_called()
+
+    def test_rate_limit_rejection(self):
+        HealthHandler._rate_limit_state = {"127.0.0.1": [time.time()] * 100}
+        self.handler.client_address = ("127.0.0.1", 12345)
+        assert self.handler._check_rate_limit() is False
+
+        self.handler.do_GET()
+        self.handler._send_text.assert_called_with("Too Many Requests", status_code=429)
+
+    def test_rate_limit_cleanup(self):
+        # Fill state with many IPs
+        HealthHandler._rate_limit_state = {f"ip{i}": [1.0] for i in range(1001)}
+        self.handler.client_address = ("127.0.0.1", 12345)
+        # Trigger check_rate_limit which should clear state
+        assert self.handler._check_rate_limit() is True
+        assert len(HealthHandler._rate_limit_state) == 1  # only current IP
