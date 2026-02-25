@@ -84,7 +84,7 @@ O dashboard atual sofre de "Data Dump" (exposição massiva de variáveis úteis
 *   **Fase 2: Refinamento dos Cards e Componentes (✅ CONCLUÍDO)**
     *   Refatorar `.card`, `.panel` e `.btn` em `components.css`. Aplicar a fórmula de nested radius e as multi-sombras.
     *   Adicionar as microanimações `@starting-style` nas listas dinâmicas e o `cubic-bezier` global.
-*   **Fase 4: Upgrades de UX (Charts e Toggles)**
+*   **Fase 4: Upgrades de UX (Charts e Toggles) (✅ CONCLUÍDO)**
     *   Substituir KVs por SVGs dinâmicos e refinar os inputs do Control Plane.
 
 ---

@@ -99,6 +99,7 @@ function buildActionItem(item, onDecision) {
 
 export function getActionQueueElements() {
     return {
+        panel: document.getElementById("aqPanel"),
         statusFilter: document.getElementById("aqStatusFilter"),
         limitInput: document.getElementById("aqLimitInput"),
         refreshBtn: document.getElementById("aqRefreshBtn"),
@@ -152,6 +153,14 @@ export function renderActionQueuePayload(payload, els, onDecision) {
     setText(els?.rejectedCount, formatNumber(summary.rejected));
     setText(els?.ignoredCount, formatNumber(summary.ignored));
     setText(els?.totalCount, formatNumber(summary.total));
+
+    if (els?.panel) {
+        if (summary.pending > 0) {
+            els.panel.classList.add("attention-required");
+        } else {
+            els.panel.classList.remove("attention-required");
+        }
+    }
 
     if (!els?.list) return;
     els.list.innerHTML = "";

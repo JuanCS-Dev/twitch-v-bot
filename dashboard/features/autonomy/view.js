@@ -75,6 +75,27 @@ export function renderAutonomyRuntime(runtimePayload, els) {
         formatBudget(budget.messages_daily || 0, budget.limit_daily || 0)
     );
 
+    // Update Donut Chart
+    const donutRing = document.getElementById("budgetDonutRing");
+    const pctText = document.getElementById("autBudgetPctText");
+    if (donutRing && pctText) {
+        const current = budget.messages_60m || 0;
+        const limit = budget.limit_60m || 1; // prevent div by zero
+        let ratio = current / limit;
+        if (ratio > 1) ratio = 1;
+        const pct = Math.round(ratio * 100);
+
+        // 283 is the stroke-dasharray (2 * pi * r, where r=45)
+        const offset = 283 - (283 * ratio);
+        donutRing.style.strokeDashoffset = offset;
+        pctText.textContent = `${pct}%`;
+
+        // Color coding
+        if (pct >= 90) donutRing.style.stroke = "var(--status-error)";
+        else if (pct >= 70) donutRing.style.stroke = "var(--status-warn)";
+        else donutRing.style.stroke = "var(--status-ok)";
+    }
+
     setText(els?.queuePending, formatNumber(queue.pending));
     setText(els?.queueApproved, formatNumber(queue.approved));
     setText(els?.queueRejected, formatNumber(queue.rejected));

@@ -86,6 +86,7 @@ export function getObservabilityElements() {
         intSentimentCount: document.getElementById("intSentimentCount"),
         intSentimentPositive: document.getElementById("intSentimentPositive"),
         intSentimentNegative: document.getElementById("intSentimentNegative"),
+        sentimentProgressBar: document.getElementById("sentimentProgressBar"),
     };
 }
 
@@ -302,6 +303,15 @@ export function renderObservabilitySnapshot(data, els) {
     setText(els.intSentimentCount, formatNumber(sentiment.count));
     setText(els.intSentimentPositive, formatNumber(sentiment.positive));
     setText(els.intSentimentNegative, formatNumber(sentiment.negative));
+
+    if (els.sentimentProgressBar) {
+        const totalSentiments = (sentiment.positive || 0) + (sentiment.negative || 0);
+        let ratio = 50; // default 50%
+        if (totalSentiments > 0) {
+            ratio = Math.round(((sentiment.positive || 0) / totalSentiments) * 100);
+        }
+        els.sentimentProgressBar.style.width = `${ratio}%`;
+    }
 
     const snapshotTime = typeof safeData.timestamp === "string" ? new Date(safeData.timestamp) : null;
     if (snapshotTime && !Number.isNaN(snapshotTime.getTime())) {
