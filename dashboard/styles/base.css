@@ -10,6 +10,8 @@ body {
     min-height: 100%;
     margin: 0;
     padding: 0;
+    /* Fonte e cor fluida base */
+    font-size: 16px;
 }
 
 body {
@@ -21,25 +23,25 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+/* Tipografia Fluida e Hierárquica */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-display);
+    font-weight: 700;
     margin: 0 0 var(--spacing-4) 0;
-    line-height: 1.2;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
 }
 
-p,
-ul,
-ol,
-dl {
+h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); }
+h2 { font-size: clamp(1.25rem, 2.5vw, 1.75rem); }
+h3 { font-size: clamp(1.125rem, 2vw, 1.25rem); }
+
+p, ul, ol, dl {
     margin: 0 0 var(--spacing-4) 0;
+    font-size: clamp(0.875rem, 1.5vw, 1rem);
 }
 
-ul,
-ol {
+ul, ol {
     padding-left: var(--spacing-5);
 }
 
@@ -50,17 +52,26 @@ a {
 }
 
 a:hover,
-a:focus {
+a:focus-visible {
     color: var(--color-accent-soft);
     text-decoration: underline;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Foco tático (Acessibilidade) */
+:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
 }
 
 ::-moz-selection {
-    background: var(--color-accent);
+    background: var(--color-accent-a10);
     color: #fff;
 }
 
 ::selection {
-    background: var(--color-accent);
+    background: var(--color-accent-soft);
     color: #fff;
 }

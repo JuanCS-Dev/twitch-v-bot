@@ -1,64 +1,71 @@
 /* tokens.css */
-:root {
-  /* Cores de Marca */
-  --color-accent: #9147FF;
-  --color-accent-soft: #BF94FF;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap');
 
-  /* Tema Dark (padrão) */
+:root {
+  /* Cores de Marca - Cyber Tactical */
+  --color-accent: #00F0FF; /* Neon Cyan */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  --color-accent-a10: color-mix(in srgb, var(--color-accent) 15%, transparent);
+
+  --color-secondary: #B026FF; /* Electric Purple */
+  --color-secondary-a10: color-mix(in srgb, var(--color-secondary) 15%, transparent);
+
+  /* Tema Deep Space */
   color-scheme: dark;
-  --bg-base: #0E0E10;
-  --bg-surface: #18181B;
-  --bg-elevated: #2B2B38;
-  --text-primary: #EFEFF1;
-  --text-muted: #ADADB8;
-  --border-default: #3A3A45;
+  --bg-base: #09090B;
+  --bg-surface: #121216;
+  --bg-elevated: #1C1C22;
+  --text-primary: #F8F8F8;
+  --text-muted: #A1A1AA;
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
 
   /* Semânticas de Estado */
-  --status-ok: #4EE1A8;
-  --status-warn: #FFD26D;
-  --status-error: #FF6F8F;
-  --status-pending: #49E3FF;
+  --status-ok: #39FF14;
+  --status-warn: #FFD700;
+  --status-error: #FF003C;
+  --status-pending: #00F0FF;
 
-  /* Tipografia */
-  --font-family-sans: "Roobert", "IBM Plex Sans", "Segoe UI", sans-serif;
-  --font-family-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  /* Tipografia - Hierarquia Elite */
+  --font-family-display: "Space Grotesk", "Outfit", sans-serif;
+  --font-family-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Escala de Espaçamento */
+  /* Escala de Espaçamento Absoluta (Base 4px/8px) */
   --spacing-1: 0.25rem; /* 4px */
   --spacing-2: 0.5rem;  /* 8px */
   --spacing-3: 0.75rem; /* 12px */
   --spacing-4: 1rem;    /* 16px */
   --spacing-5: 1.5rem;  /* 24px */
   --spacing-6: 2rem;    /* 32px */
+  --spacing-7: 3rem;    /* 48px */
+  --spacing-8: 4rem;    /* 64px */
 
-  /* Raio de bordo (Border Radius) */
-  --radius-sm: 0.33rem;
-  --radius-md: 0.48rem;
-  --radius-lg: 0.8rem;
+  /* Raio de bordo (Border Radius) - Nested Radius Formula Ready */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-pill: 9999px;
 
-  /* Microanimações / Transições (suaves, sem re-render) */
-  --transition-fast: 0.1s ease-out;
-  --transition-med: 0.2s ease;
+  /* Z-Index Semântico */
+  --z-base: 0;
+  --z-header: 100;
+  --z-overlay: 200;
+  --z-modal: 300;
 
-  /* Sombras (focando leveza e contraste) */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-accent: 0 0 12px rgba(145, 71, 255, 0.3);
+  /* Coreografia de Motion (Física de Molas) */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-med: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-elastic: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Sombras Táticas de Profundidade */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 0 16px var(--color-accent-a10), 0 0 4px var(--color-accent-soft);
 }
 
-/* Tema Light - Usado através da classe `.theme-light` no body ou html
-   ou atrelado a prefers-color-scheme no futuro. Foco em produto legível. */
 .theme-light {
+  /* Fallback não implementado ativamente no Command Center */
   color-scheme: light;
-  --bg-base: #FAFAFA;
-  --bg-surface: #F5F4F8;
-  --bg-elevated: #FFFFFF;
-  --text-primary: #0E0E10;
-  --text-muted: #53535F;
-  --border-default: #D9D8DD;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-accent: 0 0 12px rgba(145, 71, 255, 0.2);
 }
