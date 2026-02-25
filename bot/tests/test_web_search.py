@@ -30,7 +30,13 @@ class TestFormatSearchContext(unittest.TestCase):
         self.assertEqual(format_search_context([]), "")
 
     def test_single_result(self) -> None:
-        results = [WebSearchResult(title="News", snippet="Big event happened.", url="https://news.com/article")]
+        results = [
+            WebSearchResult(
+                title="News",
+                snippet="Big event happened.",
+                url="https://news.com/article",
+            )
+        ]
         formatted = format_search_context(results)
         self.assertIn("[CONTEXTO WEB ATUALIZADO", formatted)
         self.assertIn("Big event happened.", formatted)
@@ -61,7 +67,9 @@ class TestSearchWeb(unittest.TestCase):
     @patch("bot.web_search._ddg_search_sync")
     def test_successful_search(self, mock_ddg: MagicMock) -> None:
         mock_ddg.return_value = [
-            WebSearchResult(title="Result", snippet="Info found.", url="https://site.com"),
+            WebSearchResult(
+                title="Result", snippet="Info found.", url="https://site.com"
+            ),
         ]
         results = asyncio.run(search_web("test query"))
         self.assertEqual(len(results), 1)
@@ -103,13 +111,86 @@ class TestDdgSearchSync(unittest.TestCase):
         self.assertEqual(results[1].url, "https://two.com")
 
     @patch("duckduckgo_search.DDGS")
+    def test_sync_search_news_returns_results(self, mock_ddgs_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+        mock_instance.__exit__ = MagicMock(return_value=False)
+        mock_instance.news.return_value = [
+            {"title": "News Result", "body": "News snippet", "url": "https://news.com"},
+        ]
+        mock_ddgs_cls.return_value = mock_instance
+
+        results = _ddg_search_sync("query", 3)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].title, "News Result")
+        mock_instance.news.assert_called_once()
+
+    @patch("duckduckgo_search.DDGS")
+    def test_sync_search_news_skips_empty_snippet(
+        self, mock_ddgs_cls: MagicMock
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+        mock_instance.__exit__ = MagicMock(return_value=False)
+        mock_instance.news.return_value = [
+            {"title": "No Body", "body": "", "url": "https://empty.com"},
+            {
+                "title": "Has Body",
+                "body": "Content here.",
+                "url": "https://content.com",
+            },
+        ]
+        mock_ddgs_cls.return_value = mock_instance
+
+        results = _ddg_search_sync("query", 3)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].snippet, "Content here.")
+
+    @patch("duckduckgo_search.DDGS")
+    def test_sync_search_news_exception_fallback(
+        self, mock_ddgs_cls: MagicMock
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+        mock_instance.__exit__ = MagicMock(return_value=False)
+        mock_instance.news.side_effect = Exception("News API failed")
+        mock_instance.text.return_value = [
+            {
+                "title": "Fallback",
+                "body": "Fallback snippet",
+                "href": "https://fallback.com",
+            },
+        ]
+        mock_ddgs_cls.return_value = mock_instance
+
+        results = _ddg_search_sync("query", 3)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].title, "Fallback")
+
+    @patch("duckduckgo_search.DDGS")
+    def test_sync_search_text_exception(self, mock_ddgs_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+        mock_instance.__exit__ = MagicMock(return_value=False)
+        mock_instance.news.return_value = []
+        mock_instance.text.side_effect = Exception("Text API failed")
+        mock_ddgs_cls.return_value = mock_instance
+
+        results = _ddg_search_sync("query", 3)
+        self.assertEqual(len(results), 0)
+
+    @patch("duckduckgo_search.DDGS")
     def test_sync_search_skips_empty_snippets(self, mock_ddgs_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_instance.__enter__ = MagicMock(return_value=mock_instance)
         mock_instance.__exit__ = MagicMock(return_value=False)
         mock_instance.text.return_value = [
             {"title": "No Body", "body": "", "href": "https://empty.com"},
-            {"title": "Has Body", "body": "Content here.", "href": "https://content.com"},
+            {
+                "title": "Has Body",
+                "body": "Content here.",
+                "href": "https://content.com",
+            },
         ]
         mock_ddgs_cls.return_value = mock_instance
 

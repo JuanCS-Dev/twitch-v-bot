@@ -15,11 +15,17 @@ logger = logging.getLogger("ByteBot")
 HEARTBEAT_INTERVAL_SECONDS = 180  # 3 minutes
 
 
-def _heartbeat_loop() -> None:
+def _heartbeat_loop(stop_event: threading.Event | None = None) -> None:
     """Background loop that pings localhost health endpoint."""
     port = int(os.environ.get("PORT", "7860"))
-    while True:
-        time.sleep(HEARTBEAT_INTERVAL_SECONDS)
+    while stop_event is None or not stop_event.is_set():
+        if stop_event is None:
+            time.sleep(HEARTBEAT_INTERVAL_SECONDS)
+        else:
+            # For tests, don't wait 3 minutes
+            if stop_event.wait(0.1):
+                break
+
         try:
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
             conn.request("GET", "/health")
@@ -31,9 +37,15 @@ def _heartbeat_loop() -> None:
             logger.debug("Heartbeat ping failed (server may be starting)")
 
 
-def start_heartbeat() -> threading.Thread:
-    """Start the heartbeat daemon thread. Returns the thread for reference."""
-    thread = threading.Thread(target=_heartbeat_loop, name="heartbeat", daemon=True)
+def start_heartbeat() -> tuple[threading.Thread, threading.Event]:
+    """Start the heartbeat daemon thread. Returns (thread, stop_event)."""
+    stop_event = threading.Event()
+    thread = threading.Thread(
+        target=_heartbeat_loop,
+        args=(stop_event,),
+        name="heartbeat",
+        daemon=True,
+    )
     thread.start()
     logger.info("Heartbeat started (every %ds)", HEARTBEAT_INTERVAL_SECONDS)
-    return thread
+    return thread, stop_event

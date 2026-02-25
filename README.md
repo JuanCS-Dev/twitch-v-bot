@@ -1,11 +1,9 @@
 ---
-title: Twitch Byte Bot
+title: Byte Bot
+sdk: docker
 emoji: 🤖
 colorFrom: purple
 colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
 ---
 
 # Byte - Twitch AI Chat Agent 2026
