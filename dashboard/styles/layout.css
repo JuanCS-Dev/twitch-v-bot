@@ -4,25 +4,27 @@
 .layout {
     width: min(1480px, 100%);
     margin: 0 auto;
-    padding: var(--spacing-4) var(--spacing-5) var(--spacing-6);
+    padding: var(--spacing-4) var(--spacing-5) var(--spacing-8);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-4);
+    gap: var(--spacing-5); /* Espaçamento mais folgado entre sections */
 }
 
-/* Header Utilitário */
+/* Header Utilitário Glassmorphism */
 .topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: var(--spacing-4);
-    padding: var(--spacing-3) var(--spacing-5);
-    background-color: var(--bg-elevated);
+    padding: var(--spacing-4) var(--spacing-5);
+    background-color: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-default);
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: var(--z-header);
 }
 
 .brand-head {
@@ -33,23 +35,25 @@
 
 .brand-kicker {
     color: var(--color-accent);
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
+    font-size: clamp(0.7rem, 1vw, 0.75rem);
+    letter-spacing: 0.15em;
     text-transform: uppercase;
     font-weight: 700;
+    font-family: var(--font-family-mono);
     margin-bottom: var(--spacing-1);
+    text-shadow: 0 0 8px var(--color-accent-a10);
 }
 
 .topbar h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: clamp(1.1rem, 2vw, 1.25rem);
+    font-weight: 700;
     margin: 0;
     color: var(--text-primary);
 }
 
 .topbar p {
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: clamp(0.8rem, 1.5vw, 0.85rem);
     margin-top: var(--spacing-1);
     margin-bottom: 0;
 }
@@ -61,61 +65,65 @@
     flex-wrap: wrap;
 }
 
-/* Grids e seções */
+/* Grids Resilientes e Fluidos */
 .grid-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-3);
+    /* Adaptação fluida sem media query estrita:
+       cria colunas de no mínimo 240px que expandem (1fr) */
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--spacing-4);
 }
 
 .grid-two {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-4);
-}
-
-@media (min-width: 1080px) {
-    .grid-two {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+    gap: var(--spacing-5);
 }
 
 .grid-hero {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--spacing-4);
+    gap: var(--spacing-5);
 }
 
 @media (min-width: 1080px) {
     .grid-hero {
-        /* O painel principal de canais ocupa mais espaço */
+        /* Painel principal domina, widgets auxiliares contraídos */
         grid-template-columns: 7fr 5fr;
     }
 }
 
-/* Footer (Technico) */
+/* Footer Técnico */
 .footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-4) var(--spacing-5);
+    padding: var(--spacing-5) var(--spacing-6);
     border-top: 1px solid var(--border-default);
     color: var(--text-muted);
     font-size: 0.8rem;
+    font-family: var(--font-family-mono);
     background-color: var(--bg-surface);
     flex-wrap: wrap;
     gap: var(--spacing-3);
 }
 
-/* Responsividade de Header/Footer no Mobile */
+/* Responsividade Adaptativa (Mobile) */
 @media (max-width: 600px) {
     .topbar {
         flex-direction: column;
         align-items: flex-start;
+        padding: var(--spacing-3) var(--spacing-4);
     }
 
     .topbar-right {
         width: 100%;
         justify-content: flex-start;
+        padding-top: var(--spacing-2);
+        border-top: 1px dashed var(--border-default);
+    }
+
+    .layout {
+        padding: var(--spacing-3) var(--spacing-3) var(--spacing-6);
     }
 }

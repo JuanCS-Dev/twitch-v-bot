@@ -81,9 +81,8 @@ O dashboard atual sofre de "Data Dump" (exposição massiva de variáveis úteis
 *   **Fase 1: Fundação Tipográfica e Simetria (✅ CONCLUÍDO)**
     *   Atualizar `tokens.css` com as novas cores, sistema de fontes (Space Grotesk + JetBrains) e forçar a escala de 8px global.
     *   Atualizar `base.css` com tipografia fluida e reset.
-*   **Fase 2: Refinamento dos Cards e Componentes**
+*   **Fase 2: Refinamento dos Cards e Componentes (✅ CONCLUÍDO)**
     *   Refatorar `.card`, `.panel` e `.btn` em `components.css`. Aplicar a fórmula de nested radius e as multi-sombras.
-*   **Fase 3: Coreografia de Motion**
     *   Adicionar as microanimações `@starting-style` nas listas dinâmicas e o `cubic-bezier` global.
 *   **Fase 4: Upgrades de UX (Charts e Toggles)**
     *   Substituir KVs por SVGs dinâmicos e refinar os inputs do Control Plane.
