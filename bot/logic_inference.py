@@ -190,29 +190,27 @@ async def _execute_inference_with_retry(
     messages: list[dict[str, str]],
 ) -> Any:
     """Execute inference with retry logic for rate limits and timeouts."""
-    last_error: Exception | None = None
 
-    for attempt in range(MODEL_RATE_LIMIT_MAX_RETRIES + 1):
-        try:
-            response = await _execute_inference(client, model, messages)
-            _record_token_usage(response)
-            return response
-        except Exception as e:
-            last_error = e
+    def on_retry_check(e: Exception) -> bool:
+        if _is_retryable_inference_error(e):
+            _on_retry_log(e, getattr(e, "_retry_attempt", 1))
+            return True
+        return False
 
-            if not _is_retryable_inference_error(e):
-                raise
+    async def _execute_and_record(*args: Any, **kwargs: Any) -> Any:
+        response = await _execute_inference(*args, **kwargs)
+        _record_token_usage(response)
+        return response
 
-            if attempt >= MODEL_RATE_LIMIT_MAX_RETRIES:
-                break
-
-            delay = MODEL_RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
-            _on_retry_log(e, attempt + 1)
-            await asyncio.sleep(delay)
-
-    if last_error:
-        raise last_error
-    raise RuntimeError("Unexpected error in inference retry loop")
+    return await retry_async(
+        _execute_and_record,
+        client,
+        model,
+        messages,
+        max_retries=MODEL_RATE_LIMIT_MAX_RETRIES,
+        backoff_base=MODEL_RATE_LIMIT_BACKOFF_SECONDS,
+        retryable_predicate=on_retry_check,
+    )
 
 
 def _process_response(

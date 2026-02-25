@@ -1,7 +1,8 @@
 import json
 import os
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any
+from typing import Any, ClassVar
 
 from bot.channel_control import is_dashboard_admin_authorized, parse_terminal_command
 from bot.dashboard_server_routes import (
@@ -22,6 +23,27 @@ from bot.runtime_config import (
 class HealthHandler(BaseHTTPRequestHandler):
     MAX_CONTROL_BODY_BYTES = 4096
     CHANNEL_CONTROL_IRC_ONLY_ACTIONS = CHANNEL_CONTROL_IRC_ONLY_ACTIONS
+    _rate_limit_state: ClassVar[dict[str, list[float]]] = {}
+    _rate_limit_max_requests = 100
+    _rate_limit_window_seconds = 60
+
+    def _check_rate_limit(self) -> bool:
+        ip = self.client_address[0]
+        now = time.time()
+
+        # Cleanup old entries periodically (every 100 requests roughly)
+        if len(self._rate_limit_state) > 1000:
+            self._rate_limit_state.clear()
+
+        history = self._rate_limit_state.get(ip, [])
+        history = [ts for ts in history if now - ts < self._rate_limit_window_seconds]
+
+        if len(history) >= self._rate_limit_max_requests:
+            return False
+
+        history.append(now)
+        self._rate_limit_state[ip] = history
+        return True
 
     def _send_cors_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -109,6 +131,9 @@ class HealthHandler(BaseHTTPRequestHandler):
         return payload
 
     def _send_dashboard_asset(self, relative_path: str, content_type: str) -> bool:
+        if ".." in relative_path or relative_path.startswith("/"):
+            self._send_text("Invalid path", status_code=400)
+            return True
         target_path = (DASHBOARD_DIR / relative_path).resolve()
         if DASHBOARD_DIR not in target_path.parents:
             self._send_text("Not Found", status_code=404)
@@ -173,12 +198,21 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
+        if not self._check_rate_limit():
+            self._send_text("Too Many Requests", status_code=429)
+            return
         handle_get(self)
 
     def do_PUT(self) -> None:
+        if not self._check_rate_limit():
+            self._send_text("Too Many Requests", status_code=429)
+            return
         handle_put(self)
 
     def do_POST(self) -> None:
+        if not self._check_rate_limit():
+            self._send_text("Too Many Requests", status_code=429)
+            return
         handle_post(self)
 
     def log_message(self, format: str, *args: object) -> None:

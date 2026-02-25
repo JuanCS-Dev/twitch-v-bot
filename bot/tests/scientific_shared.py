@@ -6,41 +6,40 @@ import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from bot.byte_semantics import normalize_current_events_reply_contract
-from bot.logic import MAX_REPLY_LINES
-from bot.main import (
-    MAX_CHAT_MESSAGE_LENGTH,
-    QUALITY_SAFE_FALLBACK,
-    SERIOUS_REPLY_MAX_LENGTH,
-    SERIOUS_REPLY_MAX_LINES,
-    AgentComponent,
-    ByteBot,
-    HealthHandler,
-    IrcByteBot,
-    TwitchTokenManager,
-    auto_update_scene_from_message,
+from bot.bootstrap_runtime import build_irc_token_manager, get_secret, resolve_irc_channel_logins
+from bot.byte_semantics import (
     build_direct_answer_instruction,
-    build_intro_reply,
-    build_irc_token_manager,
     build_llm_enhanced_prompt,
-    build_quality_rewrite_prompt,
-    build_status_line,
-    build_verifiable_prompt,
-    context,
-    extract_movie_title,
     extract_multi_reply_parts,
-    get_secret,
+    normalize_current_events_reply_contract,
+    parse_byte_prompt,
+)
+from bot.dashboard_server import HealthHandler
+from bot.eventsub_runtime import AgentComponent, ByteBot
+from bot.irc_protocol import is_irc_notice_delivery_block
+from bot.irc_runtime import IrcByteBot
+from bot.logic import MAX_REPLY_LINES, context
+from bot.prompt_runtime import (
+    build_intro_reply,
+    build_quality_rewrite_prompt,
+    build_verifiable_prompt,
+    extract_movie_title,
     handle_byte_prompt_text,
     is_current_events_prompt,
     is_follow_up_prompt,
     is_intro_prompt,
-    is_irc_auth_failure_line,
-    is_irc_notice_delivery_block,
     is_low_quality_answer,
     is_serious_technical_prompt,
-    parse_byte_prompt,
-    resolve_irc_channel_logins,
 )
+from bot.runtime_config import (
+    MAX_CHAT_MESSAGE_LENGTH,
+    QUALITY_SAFE_FALLBACK,
+    SERIOUS_REPLY_MAX_LENGTH,
+    SERIOUS_REPLY_MAX_LINES,
+)
+from bot.scene_runtime import auto_update_scene_from_message
+from bot.status_runtime import build_status_line
+from bot.twitch_tokens import TwitchTokenManager, is_irc_auth_failure_line
 
 
 class DummyHTTPResponse:

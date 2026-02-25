@@ -89,4 +89,4 @@ class TestCoverageFinalPush(unittest.TestCase):
                 instance._send_dashboard_asset("test.js", "application/javascript")
                 instance._send_bytes.assert_called()
                 instance._send_dashboard_asset("../secret.txt", "text/plain")
-                instance._send_text.assert_called_with("Not Found", status_code=404)
+                instance._send_text.assert_called_with("Invalid path", status_code=400)
