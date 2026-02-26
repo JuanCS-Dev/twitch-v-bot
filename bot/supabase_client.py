@@ -43,27 +43,17 @@ def _get_client() -> Any:
     return _client
 
 
+from bot.persistence_layer import persistence
+
+
 def is_enabled() -> bool:
     """Check if Supabase is configured and connected."""
-    _get_client()
-    return _enabled
+    return persistence.is_enabled
 
 
 def log_message(author_name: str, message: str, channel: str = "", source: str = "irc") -> None:
     """Log a chat message to Supabase (fire-and-forget)."""
-    if not is_enabled():
-        return
-    try:
-        _get_client().table("chat_messages").insert(
-            {
-                "author_name": author_name,
-                "message": message[:2000],
-                "channel": channel,
-                "source": source,
-            }
-        ).execute()
-    except Exception as error:
-        logger.debug("Supabase log_message error: %s", error)
+    persistence.log_message_sync(author_name, message, channel, source)
 
 
 def log_reply(
@@ -75,34 +65,21 @@ def log_reply(
     latency_ms: int = 0,
 ) -> None:
     """Log a bot reply to Supabase (fire-and-forget)."""
-    if not is_enabled():
-        return
-    try:
-        _get_client().table("bot_replies").insert(
-            {
-                "prompt": prompt[:2000],
-                "reply": reply[:2000],
-                "author_name": author_name,
-                "model": model,
-                "grounded": grounded,
-                "latency_ms": latency_ms,
-            }
-        ).execute()
-    except Exception as error:
-        logger.debug("Supabase log_reply error: %s", error)
+    persistence.log_reply_sync(prompt, reply, author_name, model, grounded, latency_ms)
 
 
 def log_event(category: str, details: str = "", metadata: dict[str, Any] | None = None) -> None:
     """Log an observability event to Supabase (fire-and-forget)."""
-    if not is_enabled():
+    # PersistenceLayer ainda não tem log_event_sync, vamos mapear para o client interno
+    if not persistence.is_enabled or not persistence._client:
         return
     try:
-        _get_client().table("observability_events").insert(
+        persistence._client.table("observability_events").insert(
             {
                 "category": category,
                 "details": details[:2000],
                 "metadata": metadata or {},
             }
         ).execute()
-    except Exception as error:
-        logger.debug("Supabase log_event error: %s", error)
+    except Exception:
+        pass

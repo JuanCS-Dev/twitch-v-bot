@@ -44,7 +44,16 @@ def require_env(name: str) -> str:
     return value
 
 
-def resolve_irc_channel_logins() -> list[str]:
+async def resolve_irc_channel_logins() -> list[str]:
+    """Resolve a lista de canais para entrar (Supabase com Fallback para ENV)."""
+    from bot.persistence_layer import persistence
+
+    # Tentativa 1: Supabase (PersistenceLayer)
+    db_channels = await persistence.get_active_channels()
+    if db_channels:
+        return db_channels
+
+    # Tentativa 2: Variáveis de Ambiente (Legado/Fallback)
     explicit_channels = parse_channel_logins(TWITCH_CHANNEL_LOGINS_RAW)
     if explicit_channels:
         return explicit_channels
@@ -115,17 +124,20 @@ def build_irc_token_manager() -> TwitchTokenManager:
 def run_irc_mode() -> None:
     try:
         token_manager = build_irc_token_manager()
-        channel_logins = resolve_irc_channel_logins()
-        bot = IrcByteBot(
-            host=TWITCH_IRC_HOST,
-            port=TWITCH_IRC_PORT,
-            use_tls=TWITCH_IRC_TLS,
-            bot_login=TWITCH_BOT_LOGIN or require_env("TWITCH_BOT_LOGIN"),
-            channel_logins=channel_logins,
-            token_manager=token_manager,
-        )
 
         async def run_with_channel_control() -> None:
+            # Sincroniza canais permitidos (Supabase ou ENV)
+            channel_logins = await resolve_irc_channel_logins()
+
+            bot = IrcByteBot(
+                host=TWITCH_IRC_HOST,
+                port=TWITCH_IRC_PORT,
+                use_tls=TWITCH_IRC_TLS,
+                bot_login=TWITCH_BOT_LOGIN or require_env("TWITCH_BOT_LOGIN"),
+                channel_logins=channel_logins,
+                token_manager=token_manager,
+            )
+
             running_loop = asyncio.get_running_loop()
             irc_channel_control.bind(loop=running_loop, bot=bot)
 
