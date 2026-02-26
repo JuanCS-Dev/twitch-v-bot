@@ -23,8 +23,8 @@ class IrcChannelStateMixin:
 
         async def _send_raw(self, line: str) -> None: ...
 
-    def build_status_line(self) -> str:
-        return build_status_line(channel_logins=self.channel_logins)
+    async def build_status_line(self) -> str:
+        return await build_status_line(channel_logins=self.channel_logins)
 
     @property
     def channel_action_timeout_seconds(self) -> float:
@@ -52,7 +52,9 @@ class IrcChannelStateMixin:
         safe_text = self._prepare_reply_text(text)
         if not safe_text:
             return
-        context_manager.get().remember_bot_reply(safe_text)
+
+        ctx = await context_manager.get(target_channel)
+        ctx.remember_bot_reply(safe_text)
         observability.record_reply(text=safe_text)
         await self._send_raw(f"PRIVMSG #{target_channel} :{safe_text}")
 
@@ -97,7 +99,7 @@ class IrcChannelStateMixin:
             self.primary_channel_login = self.channel_logins[0] if self.channel_logins else ""
             changed = True
         elif not self.primary_channel_login and self.channel_logins:
-            self.primary_channel_login = self.channel_logins[0]
+            self.primary_channel_login = self.channel_logins[0] if self.channel_logins else ""
             changed = True
         return changed
 

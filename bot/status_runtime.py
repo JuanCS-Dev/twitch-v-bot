@@ -42,19 +42,18 @@ def format_status_channels(channel_logins: list[str] | None = None, max_items: i
     )
 
 
-def build_status_line(channel_logins: list[str] | None = None) -> str:
+async def build_status_line(channel_logins: list[str] | None = None) -> str:
+    ctx = await context_manager.get()
     snapshot = observability.snapshot(
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,
         bot_mode=TWITCH_CHAT_MODE,
-        stream_context=context_manager.get(),
+        stream_context=ctx,
     )
     metrics = snapshot.get("metrics", {})
     chatters = snapshot.get("chatters", {})
     chat_analytics = snapshot.get("chat_analytics", {})
-    uptime = int(
-        snapshot.get("bot", {}).get("uptime_minutes", context_manager.get().get_uptime_minutes())
-    )
+    uptime = int(snapshot.get("bot", {}).get("uptime_minutes", ctx.get_uptime_minutes()))
     chat_10m = int(chat_analytics.get("messages_10m", 0))
     active_10m = int(chatters.get("active_10m", 0))
     triggers_10m = int(chat_analytics.get("byte_triggers_10m", 0))

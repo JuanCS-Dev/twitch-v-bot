@@ -13,7 +13,17 @@ from bot.runtime_config import (
 
 
 def main() -> None:
+    import asyncio
+
     from bot.heartbeat import start_heartbeat
+    from bot.logic import context_manager
+
+    # Injeta o loop principal para persistência cross-thread (Dashboard)
+    try:
+        loop = asyncio.get_event_loop()
+        context_manager.set_main_loop(loop)
+    except RuntimeError:
+        pass
 
     start_heartbeat()
     threading.Thread(target=run_server, daemon=True).start()

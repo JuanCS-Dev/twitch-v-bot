@@ -63,8 +63,8 @@ def unwrap_inference_result(result: Any) -> tuple[str, dict | None]:
     return unwrap_inference_result_impl(result)
 
 
-def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
-    effective_ctx = ctx or context_manager.get()
+async def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
+    effective_ctx = ctx or await context_manager.get()
     return BytePromptRuntime(
         agent_inference=agent_inference,
         client=client,
@@ -105,12 +105,12 @@ async def handle_movie_fact_sheet_prompt(
     reply_fn,
     channel_id: str | None = None,
 ) -> None:
-    ctx = context_manager.get(channel_id)
+    ctx = await context_manager.get(channel_id)
     await handle_movie_fact_sheet_prompt_impl(
         prompt,
         author_name,
         reply_fn,
-        runtime=build_prompt_runtime(ctx),
+        runtime=await build_prompt_runtime(ctx),
     )
 
 
@@ -121,7 +121,7 @@ async def handle_byte_prompt_text(
     status_line_factory=None,
     channel_id: str | None = None,
 ) -> None:
-    ctx = context_manager.get(channel_id)
+    ctx = await context_manager.get(channel_id)
     # Recap detection — short-circuit to recap engine
     from bot.recap_engine import generate_recap, is_recap_prompt
 
@@ -159,6 +159,6 @@ async def handle_byte_prompt_text(
         prompt,
         author_name,
         reply_fn,
-        runtime=build_prompt_runtime(ctx),
+        runtime=await build_prompt_runtime(ctx),
         status_line_factory=effective_status_factory,
     )

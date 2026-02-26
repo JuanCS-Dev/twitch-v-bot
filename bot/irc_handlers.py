@@ -120,12 +120,18 @@ class IrcLineHandlersMixin:
         message = IrcMessageAdapter(text, author)
         byte_prompt = parse_byte_prompt(text)
 
-        # Recupera contexto isolado por canal
-        ctx = context_manager.get(channel)
+        # Recupera contexto isolado por canal (Async Lazy Load)
+        ctx = await context_manager.get(channel)
 
         if not text.startswith("!") or byte_prompt is not None:
             if ENABLE_LIVE_CONTEXT_LEARNING:
                 ctx.remember_user_message(author.name, text)
+
+                # Persistência de Histórico (Fase 3)
+                from bot.persistence_layer import persistence
+
+                asyncio.create_task(persistence.append_history(channel, author.name, text))
+
             observability.record_chat_message(author_name=author.name, source="irc", text=text)
             sentiment_engine.ingest_message(channel, text)
 

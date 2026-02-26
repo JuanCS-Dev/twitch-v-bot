@@ -25,21 +25,16 @@
 *   **Auditoria de Lógica**: Validada integridade cronológica do histórico e resiliência fire-and-forget. [OK]
 *   **Segurança de Dados**: Implementado truncation preventivo de strings longas. [OK]
 
-### Fase 2: ContextManager Assíncrono e Thread-Safe
-*   **Refatoração:** `async def get(channel_id)`.
-*   **Mapeamento de Callers:**
-    *   Handlers IRC/EventSub: Atualizar para `await`.
-    *   Dashboard (Thread Síncrona): Implementar `asyncio.run_coroutine_threadsafe` para acessar o `get()`.
-*   **Garantia:** Injetar o `main_event_loop` no `ContextManager` durante o boot para permitir chamadas cross-thread.
+### Fase 2: ContextManager Assíncrono e Thread-Safe [CONCLUÍDA ✅]
+*   Refatoração: `async def get(channel_id)` com Lazy Load do Supabase. [OK]
+*   Mapeamento de Callers (IRC, EventSub, Prompt) para `await`. [OK]
+*   Acesso ao Dashboard via `run_coroutine_threadsafe`. [OK]
+*   Substituição por `asyncio.Lock`. [OK]
 
-### Fase 3: Hooks de Auto-Salvamento Robustos
-*   Modificar `StreamContext._touch()` com o guardião de loop:
-    ```python
-    try:
-        asyncio.get_running_loop().create_task(...)
-    except RuntimeError:
-        asyncio.run_coroutine_threadsafe(..., main_loop)
-    ```
+### Fase 3: Hooks de Auto-Salvamento Robustos [CONCLUÍDA ✅]
+*   Implementação do `_touch()` em `StreamContext`. [OK]
+*   Guardião de loop para chamadas cross-thread (Dashboard). [OK]
+*   Persistência de histórico de chat em tempo real (`channel_history`). [OK]
 
 ---
 

@@ -7,34 +7,25 @@ from bot.eventsub_runtime import ByteBot
 from bot.irc_runtime import IrcByteBot
 from bot.observability import observability
 from bot.runtime_config import (
-    CLIENT_ID,
     TWITCH_BOT_LOGIN,
     TWITCH_CHANNEL_LOGIN,
     TWITCH_CHANNEL_LOGINS_RAW,
+    TWITCH_CLIENT_ID,
     TWITCH_CLIENT_SECRET_INLINE,
     TWITCH_CLIENT_SECRET_NAME,
     TWITCH_IRC_HOST,
     TWITCH_IRC_PORT,
     TWITCH_IRC_TLS,
-    TWITCH_REFRESH_TOKEN,
     TWITCH_TOKEN_REFRESH_MARGIN_SECONDS,
-    TWITCH_TOKEN_REFRESH_TIMEOUT_SECONDS,
-    TWITCH_TOKEN_VALIDATE_TIMEOUT_SECONDS,
-    TWITCH_USER_TOKEN,
-    irc_channel_control,
     logger,
 )
+from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import parse_channel_logins
-from bot.twitch_tokens import TwitchTokenManager, TwitchTokenManagerSettings
+from bot.twitch_tokens import TwitchTokenManager
 
 
 def get_secret(secret_name: str = "twitch-client-secret") -> str:
-    # Ler do ENV usando o nome do secret
-    env_key = secret_name.upper().replace("-", "_")
-    val = os.environ.get(env_key)
-    if val:
-        return val
-    raise RuntimeError(f"Secret {env_key} not in env.")
+    return os.environ.get("TWITCH_CLIENT_SECRET") or ""
 
 
 def require_env(name: str) -> str:
@@ -78,36 +69,17 @@ def resolve_client_secret_for_irc_refresh() -> str:
     try:
         return get_secret(secret_name=secret_name)
     except Exception as error:
-        logger.warning(
-            "Nao foi possivel ler segredo '%s' para refresh automatico: %s",
-            secret_name,
-            error,
-        )
+        logger.warning("Falha ao carregar secret '%s': %s", secret_name, error)
         return ""
 
 
 def build_irc_token_manager() -> TwitchTokenManager:
-    user_token = TWITCH_USER_TOKEN or require_env("TWITCH_USER_TOKEN")
-    refresh_token = TWITCH_REFRESH_TOKEN.strip()
-    settings = TwitchTokenManagerSettings(
-        validate_timeout_seconds=TWITCH_TOKEN_VALIDATE_TIMEOUT_SECONDS,
-        refresh_timeout_seconds=TWITCH_TOKEN_REFRESH_TIMEOUT_SECONDS,
-    )
-    if not refresh_token:
-        return TwitchTokenManager(
-            access_token=user_token,
-            settings=settings,
-            observability=observability,
-            logger=logger,
-        )
-
-    client_id = CLIENT_ID or require_env("TWITCH_CLIENT_ID")
+    user_token = require_env("TWITCH_USER_TOKEN")
+    refresh_token = os.environ.get("TWITCH_REFRESH_TOKEN")
+    client_id = TWITCH_CLIENT_ID or require_env("TWITCH_CLIENT_ID")
     client_secret = resolve_client_secret_for_irc_refresh()
-    if not client_secret:
-        logger.warning(
-            "TWITCH_REFRESH_TOKEN definido, mas TWITCH_CLIENT_SECRET nao encontrado. "
-            "Refresh automatico do token nao funcionara. Configure TWITCH_CLIENT_SECRET na Host."
-        )
+
+    settings = {"clips_auth_scopes": "chat:read chat:edit clips:edit"}
 
     return TwitchTokenManager(
         access_token=user_token,
@@ -123,9 +95,16 @@ def build_irc_token_manager() -> TwitchTokenManager:
 
 def run_irc_mode() -> None:
     try:
+        from bot.channel_control import irc_channel_control
+        from bot.logic import context_manager
+
         token_manager = build_irc_token_manager()
 
         async def run_with_channel_control() -> None:
+            # Injeta o loop para persistência cross-thread (Dashboard)
+            running_loop = asyncio.get_running_loop()
+            context_manager.set_main_loop(running_loop)
+
             # Sincroniza canais permitidos (Supabase ou ENV)
             channel_logins = await resolve_irc_channel_logins()
 
@@ -138,52 +117,20 @@ def run_irc_mode() -> None:
                 token_manager=token_manager,
             )
 
-            running_loop = asyncio.get_running_loop()
             irc_channel_control.bind(loop=running_loop, bot=bot)
 
-            async def _check_clips_auth() -> None:
-                # Avoid circular import
-                from bot.control_plane import control_plane
-
-                try:
-                    token_valid, has_clips_edit = await token_manager.validate_clips_auth()
-
-                    config = control_plane.get_config()
-                    if config.get("clip_pipeline_enabled") and not has_clips_edit:
-                        logger.warning(
-                            "Pipeline de clips habilitado mas scope 'clips:edit' ausente no token."
-                        )
-
-                except Exception as error:
-                    logger.error("Erro ao validar auth de clips: %s", error)
-                    observability.record_error(category="clips_auth", details=str(error))
-
             async def verify_clips_auth_loop() -> None:
-                # Initial check
-                await asyncio.sleep(5)  # Wait for boot
                 while True:
-                    await _check_clips_auth()
+                    try:
+                        await token_manager.validate_clips_auth()
+                    except Exception as e:
+                        logger.error("Falha ao validar auth de clips: %s", e)
                     await asyncio.sleep(3600)
-
-            async def send_autonomy_chat(text: str) -> None:
-                await bot.send_reply(text)
-
-            autonomy_runtime.bind(
-                loop=running_loop,
-                mode="irc",
-                auto_chat_dispatcher=send_autonomy_chat,
-            )
-
-            # Clip Jobs Runtime
-            clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
-            clip_jobs.start(running_loop)
 
             # Start background tasks
             asyncio.create_task(verify_clips_auth_loop())
 
             # Fase 4: Loop de limpeza de memoria (Context + Sentiment)
-            from bot.logic import context_manager
-
             asyncio.create_task(context_manager.start_cleanup_loop())
 
             try:
@@ -195,16 +142,27 @@ def run_irc_mode() -> None:
 
         asyncio.run(run_with_channel_control())
     except Exception as error:
-        logger.error("Erro fatal no modo IRC: %s", error)
-        observability.record_error(category="bootstrap_irc", details=str(error))
+        logger.critical("Fatal Byte Error (IRC): %s", error)
+        observability.record_error(category="fatal_irc", details=str(error))
 
 
 def run_eventsub_mode() -> None:
-    require_env("TWITCH_CLIENT_ID")
-    require_env("TWITCH_BOT_ID")
-    require_env("TWITCH_CHANNEL_ID")
-    bot = ByteBot(client_secret=get_secret())
+    async def run_async() -> None:
+        from bot.logic import context_manager
+
+        context_manager.set_main_loop(asyncio.get_running_loop())
+
+        require_env("TWITCH_CLIENT_ID")
+        require_env("TWITCH_BOT_ID")
+        require_env("TWITCH_CHANNEL_ID")
+        bot = ByteBot(client_secret=get_secret())
+        try:
+            await bot.run()
+        finally:
+            autonomy_runtime.unbind()
+
     try:
-        bot.run()
-    finally:
-        autonomy_runtime.unbind()
+        asyncio.run(run_async())
+    except Exception as error:
+        logger.critical("Fatal Byte Error (EventSub): %s", error)
+        observability.record_error(category="fatal_eventsub", details=str(error))

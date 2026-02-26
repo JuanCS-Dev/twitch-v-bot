@@ -64,7 +64,7 @@ class AgentComponent(commands.Component):
             query,
             author_name,
             client,
-            context_manager.get(channel),
+            await context_manager.get(channel),
             enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         )
         await ctx.reply(format_chat_reply(ans))
@@ -75,9 +75,10 @@ class AgentComponent(commands.Component):
         channel = str(getattr(ctx.channel, "name", "default")).lower()
         if is_owner(author_id, OWNER_ID):
             new_vibe = get_ctx_message_text(ctx).removeprefix("!vibe").strip()
-            context_manager.get(channel).stream_vibe = new_vibe or "Conversa"
-            context_manager.get(channel).last_event = "Vibe atualizada"
-            await ctx.reply(f"Vibe atualizada para: {context_manager.get(channel).stream_vibe}")
+            target_ctx = await context_manager.get(channel)
+            target_ctx.stream_vibe = new_vibe or "Conversa"
+            target_ctx.last_event = "Vibe atualizada"
+            await ctx.reply(f"Vibe atualizada para: {target_ctx.stream_vibe}")
 
     @commands.command(name="style")
     async def style(self, ctx: commands.Context) -> None:
@@ -87,22 +88,23 @@ class AgentComponent(commands.Component):
         if not is_owner(author_id, OWNER_ID):
             await ctx.reply("Somente o dono do canal pode ajustar o estilo.")
             return
+
+        target_ctx = await context_manager.get(channel)
         if not style_text:
-            await ctx.reply(
-                format_chat_reply(f"Estilo atual: {context_manager.get(channel).style_profile}")
-            )
+            await ctx.reply(format_chat_reply(f"Estilo atual: {target_ctx.style_profile}"))
             return
 
-        context_manager.get(channel).style_profile = style_text
-        context_manager.get(channel).last_event = "Estilo de conversa atualizado"
+        target_ctx.style_profile = style_text
+        target_ctx.last_event = "Estilo de conversa atualizado"
         await ctx.reply("Estilo de conversa atualizado.")
 
     @commands.command(name="scene")
     async def scene(self, ctx: commands.Context) -> None:
         payload = get_ctx_message_text(ctx).removeprefix("!scene").strip()
         channel = str(getattr(ctx.channel, "name", "default")).lower()
+        target_ctx = await context_manager.get(channel)
         if not payload:
-            observability_text = context_manager.get(channel).format_observability()
+            observability_text = target_ctx.format_observability()
             await ctx.reply(format_chat_reply(f"Observabilidade da live: {observability_text}"))
             return
 
@@ -116,13 +118,13 @@ class AgentComponent(commands.Component):
         if action_or_type == "clear":
             if len(tokens) < 2:
                 await ctx.reply(
-                    f"Uso: !scene clear <tipo>. Tipos: {context_manager.get(channel).list_supported_content_types()}"
+                    f"Uso: !scene clear <tipo>. Tipos: {target_ctx.list_supported_content_types()}"
                 )
                 return
             content_type = tokens[1].strip().lower()
-            if not context_manager.get(channel).clear_content(content_type):
+            if not target_ctx.clear_content(content_type):
                 await ctx.reply(
-                    f"Tipo invalido. Tipos: {context_manager.get(channel).list_supported_content_types()}"
+                    f"Tipo invalido. Tipos: {target_ctx.list_supported_content_types()}"
                 )
                 return
             label = OBSERVABILITY_TYPES.get(content_type, content_type)
@@ -131,15 +133,15 @@ class AgentComponent(commands.Component):
 
         if len(tokens) < 2:
             await ctx.reply(
-                f"Uso: !scene <tipo> <descricao>. Tipos: {context_manager.get(channel).list_supported_content_types()}"
+                f"Uso: !scene <tipo> <descricao>. Tipos: {target_ctx.list_supported_content_types()}"
             )
             return
 
         content_type = action_or_type
         description = tokens[1].strip()
-        if not context_manager.get(channel).update_content(content_type, description):
+        if not target_ctx.update_content(content_type, description):
             await ctx.reply(
-                f"Tipo invalido ou descricao vazia. Tipos: {context_manager.get(channel).list_supported_content_types()}"
+                f"Tipo invalido ou descricao vazia. Tipos: {target_ctx.list_supported_content_types()}"
             )
             return
 
@@ -213,8 +215,15 @@ class ByteBot(commands.Bot):
         author_name = str(getattr(author, "name", "viewer") or "viewer")
         byte_prompt = parse_byte_prompt(raw_text)
         if raw_text and (not raw_text.startswith("!") or byte_prompt is not None):
+            target_ctx = await context_manager.get(channel)
             if ENABLE_LIVE_CONTEXT_LEARNING:
-                context_manager.get(channel).remember_user_message(author_name, raw_text)
+                target_ctx.remember_user_message(author_name, raw_text)
+
+                # Persistência de Histórico (Fase 3)
+                from bot.persistence_layer import persistence
+
+                asyncio.create_task(persistence.append_history(channel, author_name, raw_text))
+
             observability.record_chat_message(
                 author_name=author_name, source="eventsub", text=raw_text
             )
@@ -222,8 +231,9 @@ class ByteBot(commands.Bot):
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
-            updates = await auto_update_scene_from_message(message)
-            context_manager.get(channel).stream_vibe = sentiment_engine.get_vibe(channel)
+            updates = await auto_update_scene_from_message(message, channel_id=channel)
+            target_ctx = await context_manager.get(channel)
+            target_ctx.stream_vibe = sentiment_engine.get_vibe(channel)
         if updates:
             labels = ", ".join(
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates

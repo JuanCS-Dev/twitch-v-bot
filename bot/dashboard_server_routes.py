@@ -1,3 +1,4 @@
+import asyncio
 import mimetypes
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -9,6 +10,7 @@ from bot.logic import BOT_BRAND, context_manager
 from bot.observability import observability
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
 from bot.sentiment_engine import sentiment_engine
+from bot.status_runtime import build_status_line
 from bot.vision_runtime import vision_runtime
 
 CHANNEL_CONTROL_IRC_ONLY_ACTIONS = {"join", "part"}
@@ -19,13 +21,24 @@ def _is_api_route(route: str) -> bool:
     return route.startswith("/api/")
 
 
+def _get_context_sync(channel_id: str | None = None) -> Any:
+    """Helper para obter contexto de forma síncrona via thread-safe main loop."""
+    if not context_manager._main_loop:
+        # Fallback se o loop ainda não foi injetado (muito improvável)
+        return None
+    future = asyncio.run_coroutine_threadsafe(
+        context_manager.get(channel_id), context_manager._main_loop
+    )
+    return future.result(timeout=5.0)
+
+
 def build_observability_payload() -> dict[str, Any]:
-    # Para o dashboard, usamos o contexto padrão (ou poderíamos iterar todos no futuro)
+    ctx = _get_context_sync()
     snapshot = observability.snapshot(
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,
         bot_mode=TWITCH_CHAT_MODE,
-        stream_context=context_manager.get(),
+        stream_context=ctx,
     )
     capabilities = control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE)
     autonomy = control_plane.runtime_snapshot()

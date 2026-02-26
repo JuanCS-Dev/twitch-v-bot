@@ -2,6 +2,7 @@ import asyncio
 import threading
 import time
 from datetime import UTC, datetime
+from typing import Any, Optional
 
 from bot.logic_constants import (
     BOT_BRAND,
@@ -32,6 +33,7 @@ def normalize_memory_excerpt(text: str, max_length: int = MAX_RECENT_CHAT_PREVIE
 
 class StreamContext:
     def __init__(self):
+        self.channel_id = "default"
         self.current_game = "N/A"
         self.stream_vibe = "Conversa"
         self.last_event = "Bot Online"
@@ -54,6 +56,33 @@ class StreamContext:
 
     def _touch(self) -> None:
         self.last_activity = time.time()
+        from bot.logic_context import context_manager
+        from bot.persistence_layer import persistence
+
+        if not persistence.is_enabled:
+            return
+
+        # Snapshot do estado atual para persistência
+        state_snapshot = {
+            "current_game": self.current_game,
+            "stream_vibe": self.stream_vibe,
+            "last_event": self.last_event,
+            "style_profile": self.style_profile,
+            "live_observability": self.live_observability.copy(),
+            "last_byte_reply": self.last_byte_reply,
+        }
+
+        try:
+            # Caso 1: Chamada dentro de um loop de eventos (IRC/EventSub)
+            loop = asyncio.get_running_loop()
+            loop.create_task(persistence.save_channel_state(self.channel_id, state_snapshot))
+        except RuntimeError:
+            # Caso 2: Chamada fora de um loop (Dashboard/Threads síncronas)
+            if context_manager._main_loop and context_manager._main_loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    persistence.save_channel_state(self.channel_id, state_snapshot),
+                    context_manager._main_loop,
+                )
 
     def update_content(self, content_type: str, description: str) -> bool:
         self._touch()
@@ -121,30 +150,70 @@ class StreamContext:
 
 
 class ContextManager:
-    """Gerenciador de contextos isolados por canal com thread-safety e expiração."""
+    """Gerenciador de contextos isolados por canal com thread-safety, expiração e persistência."""
 
     def __init__(self) -> None:
         self._contexts: dict[str, StreamContext] = {}
-        self._lock = threading.Lock()
+        self._lock = asyncio.Lock()
+        self._main_loop: asyncio.AbstractEventLoop | None = None
 
-    def get(self, channel_id: str | None = None) -> StreamContext:
-        """Recupera ou cria um contexto para o canal especificado."""
+    def set_main_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Injeta o loop principal para suportar chamadas via Dashboard (síncrono)."""
+        self._main_loop = loop
+
+    async def get(self, channel_id: str | None = None) -> StreamContext:
+        """
+        Recupera um contexto da RAM ou carrega do Supabase (Lazy Load).
+        Thread-safe via asyncio.Lock.
+        """
+        from bot.persistence_layer import persistence
+
         key = (channel_id or "default").strip().lower()
-        with self._lock:
-            if key not in self._contexts:
-                self._contexts[key] = StreamContext()
-            return self._contexts[key]
+
+        async with self._lock:
+            # 1. Hit: RAM Cache
+            if key in self._contexts:
+                return self._contexts[key]
+
+            # 2. Miss: Tenta carregar do Supabase
+            ctx = StreamContext()
+            ctx.channel_id = key  # Injetamos o ID no objeto para referência
+
+            if persistence.is_enabled:
+                saved_state = await persistence.load_channel_state(key)
+                if saved_state:
+                    ctx.current_game = saved_state.get("current_game", "N/A")
+                    ctx.stream_vibe = saved_state.get("stream_vibe", "Chill")
+                    ctx.last_event = saved_state.get("last_event", "Contexto restaurado")
+                    ctx.style_profile = saved_state.get("style_profile") or ctx.style_profile
+                    ctx.live_observability = saved_state.get(
+                        "observability", ctx.live_observability
+                    )
+                    ctx.last_byte_reply = saved_state.get("last_reply", "")
+
+                # Carrega histórico para reconstruir recent_chat_entries
+                history = await persistence.load_recent_history(key)
+                if history:
+                    ctx.recent_chat_entries = history
+
+            self._contexts[key] = ctx
+            return ctx
 
     def cleanup(self, channel_id: str) -> None:
-        """Remove explicitamente um contexto."""
+        """
+        Remove explicitamente um contexto da RAM.
+        Nota: Não remove do Supabase (Durabilidade).
+        """
         key = channel_id.strip().lower()
-        with self._lock:
-            self._contexts.pop(key, None)
+        # Nota: cleanup em produção é feito via purge_expired
+        # Este método permanece síncrono para compatibilidade de testes curtos
+        # mas em produção contextos são movidos entre RAM e DB.
+        self._contexts.pop(key, None)
 
-    def purge_expired(self, max_age_seconds: float = 7200) -> int:
-        """Remove contextos que não tiveram atividade recente."""
+    async def purge_expired(self, max_age_seconds: float = 7200) -> int:
+        """Remove contextos da RAM que não tiveram atividade recente."""
         now = time.time()
-        with self._lock:
+        async with self._lock:
             expired_keys = [
                 key
                 for key, ctx in self._contexts.items()
