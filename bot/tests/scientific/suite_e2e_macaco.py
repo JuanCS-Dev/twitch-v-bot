@@ -26,7 +26,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        score = engine.ingest_message("PogChamp\x00\x00\x00 haha")
+        score = engine.ingest_message("default", "PogChamp\x00\x00\x00 haha")
         self.assertIsInstance(score, float)
 
     def test_macaco_sentiment_unicode_bomb(self) -> None:
@@ -34,7 +34,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         bomb = "🏴󠁧󠁢󠁳󠁣󠁴󠁿" * 100 + "👨‍👩‍👧‍👦" * 50
-        score = engine.ingest_message(bomb)
+        score = engine.ingest_message("default", bomb)
         self.assertIsInstance(score, float)
 
     def test_macaco_sentiment_xss_attempt(self) -> None:
@@ -42,7 +42,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         xss = '<script>alert("XSS")</script>PogChamp<img src=x onerror=alert(1)>'
-        score = engine.ingest_message(xss)
+        score = engine.ingest_message("default", xss)
         self.assertIsInstance(score, float)
         # XSS strings are not emotes, should not crash
 
@@ -51,7 +51,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         sqli = "'; DROP TABLE users; -- PogChamp"
-        score = engine.ingest_message(sqli)
+        score = engine.ingest_message("default", sqli)
         self.assertIsInstance(score, float)
 
     def test_macaco_sentiment_enormous_message(self) -> None:
@@ -59,14 +59,14 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         huge = "A" * 100_000
-        score = engine.ingest_message(huge)
+        score = engine.ingest_message("default", huge)
         self.assertEqual(score, 0.0)  # No emotes/keywords in gibberish
 
     def test_macaco_sentiment_only_whitespace(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        score = engine.ingest_message("   \t\n\r\n   ")
+        score = engine.ingest_message("default", "   \t\n\r\n   ")
         self.assertEqual(score, 0.0)
 
     def test_macaco_sentiment_rtl_and_mixed_bidi(self) -> None:
@@ -74,7 +74,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         bidi = "\u202ePogChamp\u202c مرحبا PogChamp \u200f"
-        score = engine.ingest_message(bidi)
+        score = engine.ingest_message("default", bidi)
         self.assertIsInstance(score, float)
 
     def test_macaco_sentiment_concurrent_flood(self) -> None:
@@ -86,7 +86,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
         def flood():
             try:
                 for _ in range(500):
-                    engine.ingest_message("LUL KEKW PogChamp")
+                    engine.ingest_message("default", "LUL KEKW PogChamp")
             except Exception as e:
                 errors.append(e)
 
@@ -97,7 +97,7 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
             t.join(timeout=10)
 
         self.assertEqual(errors, [])
-        scores = engine.get_scores(window_seconds=300)
+        scores = engine.get_scores("default", window_seconds=300)
         self.assertGreater(scores["count"], 0)
 
     # ---------------------------------------------------------------
@@ -374,17 +374,17 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         for i in range(SENTIMENT_MAX_EVENTS + 100):
-            engine.ingest_message(f"PogChamp {i}")
+            engine.ingest_message("default", f"PogChamp {i}")
         # deque with maxlen should auto-evict
-        self.assertLessEqual(len(engine._events), SENTIMENT_MAX_EVENTS)
+        self.assertLessEqual(len(engine._channel_events["default"]), SENTIMENT_MAX_EVENTS)
 
     def test_macaco_sentiment_vibe_with_only_neutrals(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
         for _ in range(20):
-            engine.ingest_message("oi tudo bem como vai")
-        self.assertEqual(engine.get_vibe(), "Chill")
+            engine.ingest_message("default", "oi tudo bem como vai")
+        self.assertEqual(engine.get_vibe("default"), "Chill")
 
     # ---------------------------------------------------------------
     # CROSS-SYSTEM INTEGRATION — E2E
@@ -397,10 +397,10 @@ class ScientificMacacoModeTestsMixin(ScientificTestCase):
 
         # Ingest some messages to build vibe
         for _ in range(5):
-            sentiment_engine.ingest_message("HYPERS PogChamp")
+            sentiment_engine.ingest_message("default", "HYPERS PogChamp")
 
         mock_inference.return_value = "Chat ta hyped demais, streamer fazendo plays insanos!"
-        result = self.loop.run_until_complete(generate_recap())
+        result = self.loop.run_until_complete(generate_recap(channel_id="default"))
         self.assertIn("hyped", result.lower())
 
     @patch("bot.vision_runtime.client")

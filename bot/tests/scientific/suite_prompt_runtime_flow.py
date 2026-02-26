@@ -5,7 +5,7 @@ from bot.tests.scientific_shared import (
     AsyncMock,
     ScientificTestCase,
     build_intro_reply,
-    context,
+    context_manager,
     handle_byte_prompt_text,
     is_intro_prompt,
     is_low_quality_answer,
@@ -31,9 +31,11 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
         async def fake_reply(text):
             replies.append(text)
 
-        self.loop.run_until_complete(handle_byte_prompt_text("se apresente", "viewer", fake_reply))
+        self.loop.run_until_complete(
+            handle_byte_prompt_text("se apresente", "viewer", fake_reply, channel_id="default")
+        )
         self.assertTrue(replies)
-        self.assertTrue(context.last_byte_reply)
+        self.assertTrue(context_manager.get("default").last_byte_reply)
         mock_inference.assert_not_called()
 
     @patch("bot.prompt_runtime.agent_inference", new_callable=AsyncMock)
@@ -44,10 +46,12 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
         async def fake_reply(text):
             replies.append(text)
 
-        self.loop.run_until_complete(handle_byte_prompt_text("e agora?", "viewer", fake_reply))
+        self.loop.run_until_complete(
+            handle_byte_prompt_text("e agora?", "viewer", fake_reply, channel_id="default")
+        )
 
         self.assertTrue(replies)
-        self.assertTrue(context.last_byte_reply)
+        self.assertTrue(context_manager.get("default").last_byte_reply)
         llm_prompt = mock_inference.await_args.args[0]
         self.assertIn("Instrucoes de continuidade", llm_prompt)
         self.assertFalse(mock_inference.await_args.kwargs["enable_grounding"])
@@ -64,7 +68,10 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
 
         self.loop.run_until_complete(
             handle_byte_prompt_text(
-                "qual a diferenca entre RAG e fine-tuning?", "viewer", fake_reply
+                "qual a diferenca entre RAG e fine-tuning?",
+                "viewer",
+                fake_reply,
+                channel_id="default",
             )
         )
 
@@ -85,7 +92,9 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
             replies.append(text)
 
         prompt = "como funciona a laminina no tratamento de paraplegia e qual a evidencia atual?"
-        self.loop.run_until_complete(handle_byte_prompt_text(prompt, "viewer", fake_reply))
+        self.loop.run_until_complete(
+            handle_byte_prompt_text(prompt, "viewer", fake_reply, channel_id="default")
+        )
 
         self.assertEqual(len(replies), 1)
         self.assertLessEqual(len(replies[0]), MAX_CHAT_MESSAGE_LENGTH)
@@ -95,7 +104,7 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
         )
         self.assertNotIn("[BYTE_SPLIT]", replies[0])
         self.assertEqual(
-            " ".join(context.last_byte_reply.split()),
+            " ".join(context_manager.get("default").last_byte_reply.split()),
             " ".join(replies[0].split()),
         )
         self.assertTrue(mock_inference.await_args.kwargs["enable_grounding"])
@@ -113,7 +122,10 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
 
         self.loop.run_until_complete(
             handle_byte_prompt_text(
-                "qual o diretor da revolucao dos bichos 2026?", "viewer", fake_reply
+                "qual o diretor da revolucao dos bichos 2026?",
+                "viewer",
+                fake_reply,
+                channel_id="default",
             )
         )
 
@@ -134,7 +146,10 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
 
         self.loop.run_until_complete(
             handle_byte_prompt_text(
-                "qual o diretor da revolucao dos bichos 2026?", "viewer", fake_reply
+                "qual o diretor da revolucao dos bichos 2026?",
+                "viewer",
+                fake_reply,
+                channel_id="default",
             )
         )
 
@@ -156,7 +171,9 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
             replies.append(text)
 
         prompt = "quais noticias desta semana sobre layoffs em empresas de tecnologia?"
-        self.loop.run_until_complete(handle_byte_prompt_text(prompt, "viewer", fake_reply))
+        self.loop.run_until_complete(
+            handle_byte_prompt_text(prompt, "viewer", fake_reply, channel_id="default")
+        )
         self.assertTrue(replies)
         self.assertIn("Confianca:", replies[0])
         self.assertIn("Fonte:", replies[0])
@@ -175,7 +192,9 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
             replies.append(text)
 
         prompt = "quais as noticias mais relevantes de IA nesta semana?"
-        self.loop.run_until_complete(handle_byte_prompt_text(prompt, "viewer", fake_reply))
+        self.loop.run_until_complete(
+            handle_byte_prompt_text(prompt, "viewer", fake_reply, channel_id="default")
+        )
         self.assertTrue(replies)
         self.assertIn(QUALITY_SAFE_FALLBACK, replies[0])
         self.assertIn("Confianca: baixa", replies[0])
@@ -204,7 +223,10 @@ class ScientificPromptRuntimeFlowTestsMixin(ScientificTestCase):
 
         self.loop.run_until_complete(
             handle_byte_prompt_text(
-                "quais as noticias mais relevantes de IA nesta semana?", "viewer", fake_reply
+                "quais as noticias mais relevantes de IA nesta semana?",
+                "viewer",
+                fake_reply,
+                channel_id="default",
             )
         )
 

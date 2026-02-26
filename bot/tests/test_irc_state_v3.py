@@ -48,11 +48,15 @@ class TestIrcStateV3:
     async def test_send_tracked_channel_reply(self):
         state = DummyState()
         with (
-            patch("bot.irc_state.context.remember_bot_reply"),
+            patch("bot.irc_state.context_manager") as mock_cm,
             patch("bot.irc_state.observability.record_reply"),
         ):
+            mock_ctx = MagicMock()
+            mock_cm.get.return_value = mock_ctx
+
             await state._send_tracked_channel_reply("channel1", "tracked")
             state._send_raw_mock.assert_called_with("PRIVMSG #channel1 :tracked")
+            mock_ctx.remember_bot_reply.assert_called_with("tracked")
 
             state._send_raw_mock.reset_mock()
             await state._send_tracked_channel_reply("notjoined", "tracked")

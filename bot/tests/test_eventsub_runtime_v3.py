@@ -20,10 +20,13 @@ class TestEventSubErrorPaths(unittest.IsolatedAsyncioTestCase):
     async def test_scene_clear_invalid_type(self, mock_owner):
         ctx = MagicMock()
         ctx.message.text = "!scene clear invalid_type"
+        ctx.channel.name = "default"
         ctx.reply = AsyncMock()
-        with patch("bot.eventsub_runtime.context") as mock_context:
-            mock_context.clear_content.return_value = False
+        with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+            mock_ctx = MagicMock()
+            mock_cm.get.return_value = mock_ctx
+            mock_ctx.clear_content.return_value = False
             await self.comp.scene._callback(self.comp, ctx)
             ctx.reply.assert_called_with(
-                "Tipo invalido. Tipos: " + str(mock_context.list_supported_content_types())
+                "Tipo invalido. Tipos: " + str(mock_ctx.list_supported_content_types())
             )

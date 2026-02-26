@@ -10,7 +10,7 @@ from bot.tests.scientific_shared import (
     build_llm_enhanced_prompt,
     build_status_line,
     build_verifiable_prompt,
-    context,
+    context_manager,
     extract_movie_title,
     is_current_events_prompt,
     is_follow_up_prompt,
@@ -28,6 +28,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         ctx = MagicMock()
         ctx.message.text = "!ask test"
         ctx.message.author.name = "juan"
+        ctx.channel.name = "default"
         ctx.reply = AsyncMock()
         mock_inf.return_value = "bot-ans"
 
@@ -43,25 +44,30 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             ctx_vibe = MagicMock()
             ctx_vibe.message.author.id = "123"
             ctx_vibe.message.text = "!vibe Chill"
+            ctx_vibe.channel.name = "default"
             ctx_vibe.reply = AsyncMock()
             self.loop.run_until_complete(comp.vibe.callback(comp, ctx_vibe))
-            self.assertEqual(context.stream_vibe, "Chill")
+            self.assertEqual(context_manager.get("default").stream_vibe, "Chill")
             ctx_vibe.reply.assert_called()
 
             ctx_style = MagicMock()
             ctx_style.message.author.id = "123"
             ctx_style.message.text = "!style Tom geral e analitico"
+            ctx_style.channel.name = "default"
             ctx_style.reply = AsyncMock()
             self.loop.run_until_complete(comp.style.callback(comp, ctx_style))
-            self.assertEqual(context.style_profile, "Tom geral e analitico")
+            self.assertEqual(context_manager.get("default").style_profile, "Tom geral e analitico")
             ctx_style.reply.assert_called()
 
             ctx_scene = MagicMock()
             ctx_scene.message.author.id = "123"
             ctx_scene.message.text = "!scene movie Interestelar"
+            ctx_scene.channel.name = "default"
             ctx_scene.reply = AsyncMock()
             self.loop.run_until_complete(comp.scene.callback(comp, ctx_scene))
-            self.assertEqual(context.live_observability["movie"], "Interestelar")
+            self.assertEqual(
+                context_manager.get("default").live_observability["movie"], "Interestelar"
+            )
             ctx_scene.reply.assert_called()
 
     def test_producer_bot_event_logic(self):
@@ -74,6 +80,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         msg.text = "byte ajuda"
         msg.author.name = "juan"
         msg.author.id = "999"
+        msg.channel.name = "default"
         msg.reply = AsyncMock()
 
         self.loop.run_until_complete(ByteBot.event_message(bot_inst, msg))
@@ -82,6 +89,7 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         msg_cmd = MagicMock()
         msg_cmd.echo = False
         msg_cmd.text = "!ask oi"
+        msg_cmd.channel.name = "default"
         self.loop.run_until_complete(ByteBot.event_message(bot_inst, msg_cmd))
         bot_inst.handle_commands.assert_called_with(msg_cmd)
 

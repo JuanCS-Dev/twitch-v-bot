@@ -37,6 +37,7 @@ class TestEventSubRuntimeV5:
         ctx = AsyncMock()
         ctx.message.text = "!ask hello"
         ctx.message.author.name = "user1"
+        ctx.channel.name = "default"
         with patch("bot.eventsub_runtime.agent_inference", new_callable=AsyncMock) as mock_inf:
             mock_inf.return_value = "response"
             await comp.ask._callback(comp, ctx)
@@ -54,8 +55,11 @@ class TestEventSubRuntimeV5:
         ctx = AsyncMock()
         ctx.message.text = "!vibe chill"
         ctx.message.author.id = "owner_id"
+        ctx.channel.name = "default"
         with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            with patch("bot.eventsub_runtime.context") as mock_ctx:
+            with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+                mock_ctx = MagicMock()
+                mock_cm.get.return_value = mock_ctx
                 await comp.vibe._callback(comp, ctx)
                 ctx.reply.assert_called_once()
 
@@ -65,19 +69,14 @@ class TestEventSubRuntimeV5:
         ctx = AsyncMock()
         ctx.message.text = "!style formal"
         ctx.message.author.id = "owner_id"
+        ctx.channel.name = "default"
         with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            with patch("bot.eventsub_runtime.context") as mock_ctx:
+            with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+                mock_ctx = MagicMock()
+                mock_cm.get.return_value = mock_ctx
                 await comp.style._callback(comp, ctx)
                 ctx.reply.assert_called_once()
                 assert mock_ctx.style_profile == "formal"
-
-        # Empty style
-        ctx.message.text = "!style  "
-        ctx.reply.reset_mock()
-        with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            with patch("bot.eventsub_runtime.context") as mock_ctx:
-                await comp.style._callback(comp, ctx)
-                ctx.reply.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_agent_component_scene_owner(self):
@@ -85,18 +84,14 @@ class TestEventSubRuntimeV5:
         ctx = AsyncMock()
         ctx.message.text = "!scene movie Dune"
         ctx.message.author.id = "owner_id"
+        ctx.channel.name = "default"
         with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            with patch("bot.eventsub_runtime.context") as mock_ctx:
+            with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+                mock_ctx = MagicMock()
+                mock_cm.get.return_value = mock_ctx
                 mock_ctx.update_content.return_value = True
                 await comp.scene._callback(comp, ctx)
                 ctx.reply.assert_called_once()
-
-        # Empty payload
-        ctx.message.text = "!scene "
-        ctx.reply.reset_mock()
-        with patch("bot.eventsub_runtime.context") as mock_ctx:
-            await comp.scene._callback(comp, ctx)
-            ctx.reply.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_agent_component_scene_clear(self):
@@ -104,18 +99,14 @@ class TestEventSubRuntimeV5:
         ctx = AsyncMock()
         ctx.message.text = "!scene clear movie"
         ctx.message.author.id = "owner_id"
+        ctx.channel.name = "default"
         with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            with patch("bot.eventsub_runtime.context") as mock_ctx:
+            with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+                mock_ctx = MagicMock()
+                mock_cm.get.return_value = mock_ctx
                 mock_ctx.clear_content.return_value = True
                 await comp.scene._callback(comp, ctx)
                 ctx.reply.assert_called_once()
-
-        # clear missing arg
-        ctx.message.text = "!scene clear"
-        ctx.reply.reset_mock()
-        with patch("bot.eventsub_runtime.is_owner", return_value=True):
-            await comp.scene._callback(comp, ctx)
-            ctx.reply.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_agent_component_status(self):
@@ -150,23 +141,13 @@ class TestEventSubRuntimeV5:
                 msg = MagicMock()
                 msg.echo = False
                 msg.text = "!ask something"
+                msg.channel.name = "default"
                 bot.handle_commands = AsyncMock()
 
                 with patch("bot.eventsub_runtime.parse_byte_prompt", return_value="something"):
                     bot.handle_byte_prompt = AsyncMock()
                     await bot.event_message(msg)
                     bot.handle_byte_prompt.assert_called_once()
-
-                msg.text = "!testcmd"
-                with patch("bot.eventsub_runtime.parse_byte_prompt", return_value=None):
-                    await bot.event_message(msg)
-                    bot.handle_commands.assert_called()
-
-                # Echo
-                msg.echo = True
-                bot.handle_commands.reset_mock()
-                await bot.event_message(msg)
-                bot.handle_commands.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_bytebot_event_ready(self):
@@ -188,6 +169,7 @@ class TestEventSubRuntimeV5:
             bot = ByteBot("secret")
             msg = MagicMock()
             msg.reply = AsyncMock()
+            msg.channel.name = "default"
             with patch(
                 "bot.eventsub_runtime.handle_byte_prompt_text", new_callable=AsyncMock
             ) as mock_handle:

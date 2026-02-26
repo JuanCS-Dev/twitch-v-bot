@@ -18,7 +18,7 @@ from bot.dashboard_server import HealthHandler
 from bot.eventsub_runtime import AgentComponent, ByteBot
 from bot.irc_protocol import is_irc_notice_delivery_block
 from bot.irc_runtime import IrcByteBot
-from bot.logic import context_manager
+from bot.logic import BOT_BRAND, MAX_REPLY_LENGTH, MAX_REPLY_LINES, context_manager
 from bot.prompt_runtime import (
     build_intro_reply,
     build_quality_rewrite_prompt,
@@ -40,6 +40,10 @@ from bot.runtime_config import (
 from bot.scene_runtime import auto_update_scene_from_message
 from bot.status_runtime import build_status_line
 from bot.twitch_tokens import TwitchTokenManager, is_irc_auth_failure_line
+
+# Shim de compatibilidade para suites cientificas legadas
+# Ele sempre retorna o contexto 'default' para testes que nao especificam canal
+context = context_manager.get("default")
 
 
 class DummyHTTPResponse:
@@ -78,16 +82,18 @@ class ScientificTestCase(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        context_manager.get().current_game = "N/A"
-        context_manager.get().stream_vibe = "Conversa"
-        context_manager.get().last_event = "Bot Online"
-        context_manager.get().style_profile = (
-            "Tom generalista, claro e natural em PT-BR, sem giria gamer forcada."
-        )
-        for content_type in context_manager.get().live_observability:
-            context_manager.get().live_observability[content_type] = ""
-        context_manager.get().recent_chat_entries = []
-        context_manager.get().last_byte_reply = ""
+
+        # Reset total do contexto default para cada teste cientifico
+        context_manager.cleanup("default")
+        ctx = context_manager.get("default")
+        ctx.current_game = "N/A"
+        ctx.stream_vibe = "Chill"
+        ctx.last_event = "Bot Online"
+        ctx.style_profile = "Tom generalista, claro e natural em PT-BR, sem giria gamer forcada."
+        for content_type in ctx.live_observability:
+            ctx.live_observability[content_type] = ""
+        ctx.recent_chat_entries = []
+        ctx.last_byte_reply = ""
 
     def tearDown(self):
         self.loop.close()

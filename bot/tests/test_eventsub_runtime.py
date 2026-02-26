@@ -23,18 +23,23 @@ class TestAgentComponent(unittest.IsolatedAsyncioTestCase):
         ctx = MagicMock()
         ctx.message.text = "!ask what time is it?"
         ctx.message.author.name = "juan"
+        ctx.channel.name = "default"
         ctx.reply = AsyncMock()
         await self.comp.ask._callback(self.comp, ctx)
+        mock_infer.assert_called()
         ctx.reply.assert_called()
 
     @patch("bot.eventsub_runtime.is_owner", return_value=True)
     async def test_vibe_command_owner(self, mock_owner):
         ctx = MagicMock()
         ctx.message.text = "!vibe high energy"
+        ctx.channel.name = "default"
         ctx.reply = AsyncMock()
-        with patch("bot.eventsub_runtime.context") as mock_context:
+        with patch("bot.eventsub_runtime.context_manager") as mock_cm:
+            mock_ctx = MagicMock()
+            mock_cm.get.return_value = mock_ctx
             await self.comp.vibe._callback(self.comp, ctx)
-            self.assertEqual(mock_context.stream_vibe, "high energy")
+            self.assertEqual(mock_ctx.stream_vibe, "high energy")
             ctx.reply.assert_called()
 
 

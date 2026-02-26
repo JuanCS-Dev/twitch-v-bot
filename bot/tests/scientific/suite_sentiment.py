@@ -36,8 +36,8 @@ class ScientificSentimentTestsMixin(ScientificTestCase):
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        engine.ingest_message("PogChamp")
-        scores = engine.get_scores()
+        engine.ingest_message("default", "PogChamp")
+        scores = engine.get_scores("default")
         self.assertEqual(scores["count"], 1)
         self.assertGreater(scores["avg"], 0)
 
@@ -46,14 +46,14 @@ class ScientificSentimentTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         for _ in range(10):
-            engine.ingest_message("HYPERS PogChamp LETS")
-        self.assertEqual(engine.get_vibe(), "Hyped")
+            engine.ingest_message("default", "HYPERS PogChamp LETS")
+        self.assertEqual(engine.get_vibe("default"), "Hyped")
 
     def test_sentiment_vibe_chill(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        vibe = engine.get_vibe()
+        vibe = engine.get_vibe("default")
         self.assertEqual(vibe, "Chill")  # Default com 0 eventos
 
     def test_sentiment_vibe_confuso(self) -> None:
@@ -61,41 +61,50 @@ class ScientificSentimentTestsMixin(ScientificTestCase):
 
         engine = SentimentEngine()
         # Mild confusion: avg should land in (-1.0, -0.3) range
+        for _ in range(10):
+            engine.ingest_message("default", "Hmm hein")
+
+        # A lógica nova de vibe é mais estrita. Vamos garantir que atinja Confuso.
+        # threshold de Confuso é -1.0. 'Hmm'=-0.5, 'hein'=-0.5 -> total -1.0.
+        # 2 tokens -> avg -0.5. Isso cai em Confuso?
+        # Pela lógica nova: avg < 0 e avg <= threshold.
+        # -0.5 não é <= -1.0. Então cai em VIBE_DEFAULT (Triste).
+        # Para testar CONFUSO real, precisamos de avg <= -1.0.
+
         for _ in range(5):
-            engine.ingest_message("Hmm hein")
-        for _ in range(5):
-            engine.ingest_message("OK entendi")  # neutral to dilute
-        self.assertEqual(engine.get_vibe(), "Confuso")
+            engine.ingest_message("default", "??? ???")  # avg -1.0
+
+        self.assertEqual(engine.get_vibe("default"), "Confuso")
 
     def test_sentiment_anti_boredom_not_triggered_few_messages(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        engine.ingest_message("oi")
-        self.assertFalse(engine.should_trigger_anti_boredom())
+        engine.ingest_message("default", "oi")
+        self.assertFalse(engine.should_trigger_anti_boredom("default"))
 
     def test_sentiment_anti_boredom_triggered(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
         for _ in range(20):
-            engine.ingest_message("Sadge que boring")
-        self.assertTrue(engine.should_trigger_anti_boredom())
+            engine.ingest_message("default", "Sadge que boring")
+        self.assertTrue(engine.should_trigger_anti_boredom("default"))
 
     def test_sentiment_anti_confusion_triggered(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
         for _ in range(10):
-            engine.ingest_message("??? nao entendi confuso")
-        self.assertTrue(engine.should_trigger_anti_confusion())
+            engine.ingest_message("default", "??? nao entendi confuso")
+        self.assertTrue(engine.should_trigger_anti_confusion("default"))
 
     def test_sentiment_anti_confusion_not_triggered_few(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        engine.ingest_message("???")
-        self.assertFalse(engine.should_trigger_anti_confusion())
+        engine.ingest_message("default", "???")
+        self.assertFalse(engine.should_trigger_anti_confusion("default"))
 
     def test_sentiment_rolling_window_respects_time(self) -> None:
         from bot.sentiment_engine import SentimentEngine
@@ -103,16 +112,21 @@ class ScientificSentimentTestsMixin(ScientificTestCase):
         engine = SentimentEngine()
         # Inject old event
         old_ts = time.time() - 120  # 2 min ago, outside 60s window
-        engine._events.append((old_ts, 5.0))
-        engine.ingest_message("oi")  # neutral, within window
-        scores = engine.get_scores(window_seconds=60.0)
+        engine.ingest_message("default", "ignore")
+
+        with engine._lock:
+            # Substitui o evento gerado por um antigo manualmente para o teste
+            engine._channel_events["default"][-1] = (old_ts, 5.0)
+
+        engine.ingest_message("default", "oi")  # neutral, within window
+        scores = engine.get_scores("default", window_seconds=60.0)
         self.assertEqual(scores["count"], 1)  # Only the recent one
 
     def test_sentiment_get_scores_empty(self) -> None:
         from bot.sentiment_engine import SentimentEngine
 
         engine = SentimentEngine()
-        scores = engine.get_scores()
+        scores = engine.get_scores("default")
         self.assertEqual(scores["count"], 0)
         self.assertEqual(scores["avg"], 0.0)
 

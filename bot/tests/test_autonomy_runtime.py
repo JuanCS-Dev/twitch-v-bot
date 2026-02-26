@@ -13,9 +13,6 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
         with patch.object(runtime, "_ensure_loop_task") as mock_ensure:
             runtime.bind(loop=loop, mode="irc")
             self.assertEqual(runtime._mode, "irc")
-            # bind calls call_soon_threadsafe which calls _ensure_loop_task
-            # Since we are in the same loop, it might not run immediately,
-            # but we check if it was scheduled.
 
         runtime.unbind()
         self.assertIsNone(runtime._loop)
@@ -26,6 +23,7 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
     async def test_run_tick(self, mock_process, mock_cp):
         runtime = autonomy_runtime.AutonomyRuntime()
         mock_cp.consume_due_goals.return_value = ["goal1"]
+        mock_cp.get_config.return_value = {"twitch_channel_login": "default"}
         mock_process.return_value = {"status": "success"}
 
         result = await runtime._run_tick(force=True, reason="test")
@@ -33,7 +31,8 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["due_goals"], 1)
         mock_cp.register_tick.assert_called_with(reason="test")
-        mock_process.assert_called_once_with("goal1", None)
+        # Deve agora incluir o channel_id
+        mock_process.assert_called_once_with("goal1", None, channel_id="default")
 
     @patch("bot.autonomy_runtime.control_plane")
     @patch("bot.autonomy_runtime.asyncio.sleep", new_callable=AsyncMock)
@@ -44,8 +43,7 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
 
         # Mock _run_tick to stop the loop after one call
         with patch.object(runtime, "_run_tick", new_callable=AsyncMock) as mock_tick:
-            # We want to break the while True loop after one iteration
-            # We can do this by unbinding inside the tick
+
             def side_effect(*args, **kwargs):
                 runtime.unbind()
                 return {"ok": True}
@@ -63,6 +61,7 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
     async def test_run_tick_with_sentiment_triggers(self, mock_process, mock_sent, mock_cp):
         runtime = autonomy_runtime.AutonomyRuntime()
         mock_cp.consume_due_goals.return_value = []
+        mock_cp.get_config.return_value = {"twitch_channel_login": "default"}
         mock_sent.should_trigger_anti_boredom.return_value = True
         mock_sent.should_trigger_anti_confusion.return_value = True
         mock_process.return_value = {"status": "success"}
@@ -70,8 +69,11 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
         result = await runtime._run_tick(force=False, reason="test")
 
         self.assertTrue(result["ok"])
-        # Should have 2 dynamic goals even if consume_due_goals returned empty
         self.assertEqual(len(result["processed"]), 2)
+
+        # Verifica chamadas com channel_id
+        mock_sent.should_trigger_anti_boredom.assert_called_with("default")
+        mock_sent.should_trigger_anti_confusion.assert_called_with("default")
 
         # Verify call arguments
         calls = [call[0][0] for call in mock_process.call_args_list]
@@ -84,6 +86,7 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
     async def test_run_tick_skips_sentiment_on_force(self, mock_process, mock_sent, mock_cp):
         runtime = autonomy_runtime.AutonomyRuntime()
         mock_cp.consume_due_goals.return_value = []
+        mock_cp.get_config.return_value = {"twitch_channel_login": "default"}
         mock_sent.should_trigger_anti_boredom.return_value = True
 
         await runtime._run_tick(force=True, reason="test")

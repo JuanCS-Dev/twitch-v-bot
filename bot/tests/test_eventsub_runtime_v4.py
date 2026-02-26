@@ -5,12 +5,14 @@ from bot.eventsub_runtime import ByteBot
 
 
 class MockMessage:
-    def __init__(self, text, author_name="user", echo=False):
+    def __init__(self, text, author_name="user", echo=False, channel_name="default"):
         self.text = text
         self.echo = echo
         self.author = MagicMock()
         self.author.name = author_name
         self.reply = AsyncMock()
+        self.channel = MagicMock()
+        self.channel.name = channel_name
 
 
 class TestEventsubRuntimeV4(unittest.IsolatedAsyncioTestCase):

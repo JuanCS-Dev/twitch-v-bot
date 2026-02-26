@@ -5,7 +5,7 @@ from bot.tests.scientific_shared import (
     MagicMock,
     ScientificTestCase,
     auto_update_scene_from_message,
-    context,
+    context_manager,
     patch,
 )
 
@@ -24,11 +24,13 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.id = "123"
             msg.author.is_mod = False
             msg.author.name = "owner"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertIn("youtube", updates)
             self.assertEqual(
-                context.live_observability["youtube"],
+                context_manager.get("default").live_observability["youtube"],
                 'Video do YouTube: "Review sem spoiler" (compartilhado por owner)',
             )
 
@@ -39,10 +41,12 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.id = "123"
             msg.author.is_mod = False
             msg.author.name = "owner"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertEqual(updates, [])
-            self.assertEqual(context.live_observability["youtube"], "")
+            self.assertEqual(context_manager.get("default").live_observability["youtube"], "")
 
     def test_auto_scene_update_for_x_link(self):
         with (
@@ -57,11 +61,13 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.id = "123"
             msg.author.is_mod = False
             msg.author.name = "owner"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertIn("x", updates)
             self.assertEqual(
-                context.live_observability["x"],
+                context_manager.get("default").live_observability["x"],
                 "Post do X de CinemaCentral (compartilhado por owner)",
             )
 
@@ -78,10 +84,12 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.id = "123"
             msg.author.is_mod = False
             msg.author.name = "owner"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertEqual(updates, [])
-            self.assertEqual(context.live_observability["youtube"], "")
+            self.assertEqual(context_manager.get("default").live_observability["youtube"], "")
 
     def test_auto_scene_requires_metadata(self):
         with (
@@ -97,10 +105,12 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.id = "123"
             msg.author.is_mod = False
             msg.author.name = "owner"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertEqual(updates, [])
-            self.assertEqual(context.live_observability["youtube"], "")
+            self.assertEqual(context_manager.get("default").live_observability["youtube"], "")
 
     def test_auto_scene_ignores_untrusted_user(self):
         with patch("bot.scene_runtime.OWNER_ID", "123"):
@@ -110,17 +120,21 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
             msg.author.is_mod = False
             msg.author.is_moderator = False
             msg.author.name = "viewer"
-            updates = self.loop.run_until_complete(auto_update_scene_from_message(msg))
+            updates = self.loop.run_until_complete(
+                auto_update_scene_from_message(msg, channel_id="default")
+            )
 
             self.assertEqual(updates, [])
-            self.assertEqual(context.live_observability["youtube"], "")
+            self.assertEqual(context_manager.get("default").live_observability["youtube"], "")
 
     @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
     @patch("bot.irc_handlers.handle_byte_prompt_text", new_callable=AsyncMock)
     def test_irc_replies_to_the_source_channel(self, mock_handle_prompt, mock_auto_scene):
         mock_auto_scene.return_value = []
 
-        async def fake_handle(prompt, author_name, reply_fn, status_line_factory=None):
+        async def fake_handle(
+            prompt, author_name, reply_fn, status_line_factory=None, channel_id=None
+        ):
             await reply_fn("ok no canal certo")
 
         mock_handle_prompt.side_effect = fake_handle

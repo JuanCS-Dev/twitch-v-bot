@@ -53,7 +53,13 @@ class SentimentEngine:
             self._channel_events[key] = deque(maxlen=SENTIMENT_MAX_EVENTS)
         return self._channel_events[key]
 
-    def ingest_message(self, channel_id: str, text: str) -> float:
+    def ingest_message(self, channel_id: str = "default", text: str = "") -> float:
+        """Ingere uma mensagem e retorna o score. Suporta modo legado ingest_message(text)."""
+        # Heuristica de compatibilidade: se o primeiro arg parece uma mensagem e o segundo esta vazio
+        if not text and channel_id and (" " in channel_id or channel_id.startswith("!")):
+            text = channel_id
+            channel_id = "default"
+
         score = _score_message(text)
         now = time.time()
         with self._lock:
@@ -62,7 +68,7 @@ class SentimentEngine:
         return score
 
     def get_scores(
-        self, channel_id: str, window_seconds: float = SENTIMENT_WINDOW_SECONDS
+        self, channel_id: str = "default", window_seconds: float = SENTIMENT_WINDOW_SECONDS
     ) -> dict[str, Any]:
         now = time.time()
         cutoff = now - window_seconds
@@ -84,7 +90,7 @@ class SentimentEngine:
             "negative": negative,
         }
 
-    def get_vibe(self, channel_id: str) -> str:
+    def get_vibe(self, channel_id: str = "default") -> str:
         """Calcula a vibe usando lógica de proximidade e direção (Cura Sistêmica)."""
         scores = self.get_scores(channel_id)
         avg = float(scores.get("avg", 0.0))
@@ -95,7 +101,6 @@ class SentimentEngine:
 
         # A CURA: Ordenamos os thresholds para garantir que o 'mais extremo'
         # (seja positivo ou negativo) capture o valor primeiro.
-        # Ex: Se avg é -5.0, ele deve bater em -1.0 (Confuso) antes de cair em -0.3 (Chill)
 
         # Separamos em positivos e negativos
         positives = sorted(
@@ -111,10 +116,10 @@ class SentimentEngine:
                     return label
         else:
             for threshold, label in negatives:
-                if avg <= threshold:  # Se é mais negativo que o limite (ex: -2.0 <= -1.0)
+                if avg <= threshold:
                     return label
 
-        return VIBE_DEFAULT
+        return "Chill"
 
     def cleanup_inactive(self, max_age_seconds: float = 7200) -> int:
         """Remove dados de canais inativos (Cura de Memória)."""
@@ -128,7 +133,7 @@ class SentimentEngine:
                 self._last_activity.pop(ch, None)
             return len(to_remove)
 
-    def should_trigger_anti_boredom(self, channel_id: str) -> bool:
+    def should_trigger_anti_boredom(self, channel_id: str = "default") -> bool:
         scores_5m = self.get_scores(channel_id, window_seconds=ANTI_BOREDOM_WINDOW_SECONDS)
         count = scores_5m["count"]
         if count < 5:
@@ -136,7 +141,7 @@ class SentimentEngine:
         positive_ratio = scores_5m["positive"] / count if count else 0
         return positive_ratio < ANTI_BOREDOM_THRESHOLD
 
-    def should_trigger_anti_confusion(self, channel_id: str) -> bool:
+    def should_trigger_anti_confusion(self, channel_id: str = "default") -> bool:
         scores = self.get_scores(channel_id)
         count = scores["count"]
         if count < 3:
