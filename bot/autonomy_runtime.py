@@ -100,9 +100,12 @@ class AutonomyRuntime:
 
             due_goals = control_plane.consume_due_goals(force=force)
 
+            # Autonomia atualmente foca no canal principal configurado
+            channel_id = control_plane.get_config().get("twitch_channel_login", "default")
+
             # Dynamic sentiment triggers (Phase 8)
             if not force:
-                if sentiment_engine.should_trigger_anti_boredom():
+                if sentiment_engine.should_trigger_anti_boredom(channel_id):
                     due_goals.append(
                         {
                             "id": "dynamic-anti-boredom",
@@ -111,7 +114,7 @@ class AutonomyRuntime:
                             "prompt": "O chat está pouco engajado ou 'morno'. Puxe um assunto interessante ou faça uma pergunta instigante para os viewers.",
                         }
                     )
-                if sentiment_engine.should_trigger_anti_confusion():
+                if sentiment_engine.should_trigger_anti_confusion(channel_id):
                     due_goals.append(
                         {
                             "id": "dynamic-anti-confusion",

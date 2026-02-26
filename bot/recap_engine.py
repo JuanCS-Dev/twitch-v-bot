@@ -36,7 +36,7 @@ def is_recap_prompt(text: str) -> bool:
 async def generate_recap(channel_id: str | None = None) -> str:
     ctx = context_manager.get(channel_id)
     obs_text = ctx.format_observability()
-    vibe = sentiment_engine.get_vibe()
+    vibe = sentiment_engine.get_vibe(channel_id or "default")
     recent = ctx.format_recent_chat(limit=8)
     prompt = RECAP_PROMPT_TEMPLATE.format(
         context=obs_text,

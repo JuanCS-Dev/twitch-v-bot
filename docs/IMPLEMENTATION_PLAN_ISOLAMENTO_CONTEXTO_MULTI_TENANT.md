@@ -45,12 +45,14 @@ A infraestrutura permanece compartilhada (eficiência de recursos), mas os dados
     *   Atualizar `handle_byte_prompt_text` para aceitar um argumento opcional `channel_id` ou `context_obj`. [OK]
     *   Modificar `build_prompt_runtime` para receber o contexto específico. [OK]
 
-### Fase 2: Isolamento de Sentimento
+### Fase 2: Isolamento de Sentimento [CONCLUÍDA ✅]
 1.  **`bot/sentiment_engine.py`**:
-    *   Modificar `_events` para ser um `dict[str, deque]` mapeado por canal.
-    *   Atualizar `ingest_message`, `get_scores` e `get_vibe` para exigir o `channel_id`.
+    *   Modificar `_events` para ser um `dict[str, deque]` mapeado por canal. [OK]
+    *   Atualizar `ingest_message`, `get_scores` e `get_vibe` para exigir o `channel_id`. [OK]
 2.  **`bot/sentiment_constants.py`**:
-    *   Manter constantes, mas validar se os limites fazem sentido por canal.
+    *   Manter constantes, mas validar se os limites fazem sentido por canal. [OK]
+3.  **Integração**:
+    *   Atualização de consumidores (IRC, EventSub, Recap, Autonomy) para passar o `channel_id`. [OK]
 
 ### Fase 3: Integração no Runtime
 1.  **`bot/irc_handlers.py`**:

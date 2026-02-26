@@ -33,24 +33,35 @@ def _score_message(text: str) -> float:
 
 
 class SentimentEngine:
-    """Engine NLP leve para analise de sentimento do chat."""
+    """Engine NLP leve para analise de sentimento do chat isolada por canal."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._events: deque[tuple[float, float]] = deque(maxlen=SENTIMENT_MAX_EVENTS)
+        self._channel_events: dict[str, deque[tuple[float, float]]] = {}
 
-    def ingest_message(self, text: str) -> float:
+    def _get_or_create_events(self, channel_id: str) -> deque[tuple[float, float]]:
+        key = channel_id.strip().lower()
+        if key not in self._channel_events:
+            self._channel_events[key] = deque(maxlen=SENTIMENT_MAX_EVENTS)
+        return self._channel_events[key]
+
+    def ingest_message(self, channel_id: str, text: str) -> float:
         score = _score_message(text)
         now = time.time()
         with self._lock:
-            self._events.append((now, score))
+            events = self._get_or_create_events(channel_id)
+            events.append((now, score))
         return score
 
-    def get_scores(self, window_seconds: float = SENTIMENT_WINDOW_SECONDS) -> dict[str, Any]:
+    def get_scores(
+        self, channel_id: str, window_seconds: float = SENTIMENT_WINDOW_SECONDS
+    ) -> dict[str, Any]:
         now = time.time()
         cutoff = now - window_seconds
         with self._lock:
-            recent = [(ts, s) for ts, s in self._events if ts >= cutoff]
+            events = self._get_or_create_events(channel_id)
+            recent = [(ts, s) for ts, s in events if ts >= cutoff]
+
         if not recent:
             return {"avg": 0.0, "total": 0.0, "count": 0, "positive": 0, "negative": 0}
         total = sum(s for _, s in recent)
@@ -65,8 +76,8 @@ class SentimentEngine:
             "negative": negative,
         }
 
-    def get_vibe(self) -> str:
-        scores = self.get_scores()
+    def get_vibe(self, channel_id: str) -> str:
+        scores = self.get_scores(channel_id)
         avg = float(scores.get("avg", 0.0))
         if scores["count"] == 0:
             return "Chill"
@@ -75,16 +86,16 @@ class SentimentEngine:
                 return label
         return VIBE_DEFAULT
 
-    def should_trigger_anti_boredom(self) -> bool:
-        scores_5m = self.get_scores(window_seconds=ANTI_BOREDOM_WINDOW_SECONDS)
+    def should_trigger_anti_boredom(self, channel_id: str) -> bool:
+        scores_5m = self.get_scores(channel_id, window_seconds=ANTI_BOREDOM_WINDOW_SECONDS)
         count = scores_5m["count"]
         if count < 5:
             return False
         positive_ratio = scores_5m["positive"] / count if count else 0
         return positive_ratio < ANTI_BOREDOM_THRESHOLD
 
-    def should_trigger_anti_confusion(self) -> bool:
-        scores = self.get_scores()
+    def should_trigger_anti_confusion(self, channel_id: str) -> bool:
+        scores = self.get_scores(channel_id)
         count = scores["count"]
         if count < 3:
             return False

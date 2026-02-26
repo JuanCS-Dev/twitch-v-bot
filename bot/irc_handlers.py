@@ -127,12 +127,12 @@ class IrcLineHandlersMixin:
             if ENABLE_LIVE_CONTEXT_LEARNING:
                 ctx.remember_user_message(author.name, text)
             observability.record_chat_message(author_name=author.name, source="irc", text=text)
-            sentiment_engine.ingest_message(text)
+            sentiment_engine.ingest_message(channel, text)
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
             updates = await auto_update_scene_from_message(message)
-            ctx.stream_vibe = sentiment_engine.get_vibe()
+            ctx.stream_vibe = sentiment_engine.get_vibe(channel)
         if updates:
             labels = ", ".join(
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates

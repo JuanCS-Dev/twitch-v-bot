@@ -22,6 +22,7 @@ from bot.runtime_config import (
     logger,
 )
 from bot.scene_runtime import auto_update_scene_from_message
+from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import build_status_line
 
 
@@ -58,11 +59,12 @@ class AgentComponent(commands.Component):
         if not query:
             return
         author_name = str(getattr(get_ctx_author(ctx), "name", "viewer") or "viewer")
+        channel = str(getattr(ctx.channel, "name", "default")).lower()
         ans = await agent_inference(
             query,
             author_name,
             client,
-            context_manager.get(),
+            context_manager.get(channel),
             enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         )
         await ctx.reply(format_chat_reply(ans))
@@ -70,34 +72,37 @@ class AgentComponent(commands.Component):
     @commands.command(name="vibe")
     async def vibe(self, ctx: commands.Context) -> None:
         author_id = str(getattr(get_ctx_author(ctx), "id", "") or "")
+        channel = str(getattr(ctx.channel, "name", "default")).lower()
         if is_owner(author_id, OWNER_ID):
             new_vibe = get_ctx_message_text(ctx).removeprefix("!vibe").strip()
-            context_manager.get().stream_vibe = new_vibe or "Conversa"
-            context_manager.get().last_event = "Vibe atualizada"
-            await ctx.reply(f"Vibe atualizada para: {context_manager.get().stream_vibe}")
+            context_manager.get(channel).stream_vibe = new_vibe or "Conversa"
+            context_manager.get(channel).last_event = "Vibe atualizada"
+            await ctx.reply(f"Vibe atualizada para: {context_manager.get(channel).stream_vibe}")
 
     @commands.command(name="style")
     async def style(self, ctx: commands.Context) -> None:
         style_text = get_ctx_message_text(ctx).removeprefix("!style").strip()
         author_id = str(getattr(get_ctx_author(ctx), "id", "") or "")
+        channel = str(getattr(ctx.channel, "name", "default")).lower()
         if not is_owner(author_id, OWNER_ID):
             await ctx.reply("Somente o dono do canal pode ajustar o estilo.")
             return
         if not style_text:
             await ctx.reply(
-                format_chat_reply(f"Estilo atual: {context_manager.get().style_profile}")
+                format_chat_reply(f"Estilo atual: {context_manager.get(channel).style_profile}")
             )
             return
 
-        context_manager.get().style_profile = style_text
-        context_manager.get().last_event = "Estilo de conversa atualizado"
+        context_manager.get(channel).style_profile = style_text
+        context_manager.get(channel).last_event = "Estilo de conversa atualizado"
         await ctx.reply("Estilo de conversa atualizado.")
 
     @commands.command(name="scene")
     async def scene(self, ctx: commands.Context) -> None:
         payload = get_ctx_message_text(ctx).removeprefix("!scene").strip()
+        channel = str(getattr(ctx.channel, "name", "default")).lower()
         if not payload:
-            observability_text = context_manager.get().format_observability()
+            observability_text = context_manager.get(channel).format_observability()
             await ctx.reply(format_chat_reply(f"Observabilidade da live: {observability_text}"))
             return
 
@@ -111,13 +116,13 @@ class AgentComponent(commands.Component):
         if action_or_type == "clear":
             if len(tokens) < 2:
                 await ctx.reply(
-                    f"Uso: !scene clear <tipo>. Tipos: {context_manager.get().list_supported_content_types()}"
+                    f"Uso: !scene clear <tipo>. Tipos: {context_manager.get(channel).list_supported_content_types()}"
                 )
                 return
             content_type = tokens[1].strip().lower()
-            if not context_manager.get().clear_content(content_type):
+            if not context_manager.get(channel).clear_content(content_type):
                 await ctx.reply(
-                    f"Tipo invalido. Tipos: {context_manager.get().list_supported_content_types()}"
+                    f"Tipo invalido. Tipos: {context_manager.get(channel).list_supported_content_types()}"
                 )
                 return
             label = OBSERVABILITY_TYPES.get(content_type, content_type)
@@ -126,15 +131,15 @@ class AgentComponent(commands.Component):
 
         if len(tokens) < 2:
             await ctx.reply(
-                f"Uso: !scene <tipo> <descricao>. Tipos: {context_manager.get().list_supported_content_types()}"
+                f"Uso: !scene <tipo> <descricao>. Tipos: {context_manager.get(channel).list_supported_content_types()}"
             )
             return
 
         content_type = action_or_type
         description = tokens[1].strip()
-        if not context_manager.get().update_content(content_type, description):
+        if not context_manager.get(channel).update_content(content_type, description):
             await ctx.reply(
-                f"Tipo invalido ou descricao vazia. Tipos: {context_manager.get().list_supported_content_types()}"
+                f"Tipo invalido ou descricao vazia. Tipos: {context_manager.get(channel).list_supported_content_types()}"
             )
             return
 
@@ -186,6 +191,7 @@ class ByteBot(commands.Bot):
     async def handle_byte_prompt(self, message: Any, prompt: str) -> None:
         author = getattr(message, "author", None)
         author_name = str(getattr(author, "name", "viewer") or "viewer")
+        channel = str(getattr(message.channel, "name", "default")).lower()
         reply_fn = getattr(message, "reply", None)
         if callable(reply_fn):
             await handle_byte_prompt_text(
@@ -193,6 +199,7 @@ class ByteBot(commands.Bot):
                 author_name,
                 reply_fn,
                 status_line_factory=self.build_status_line,
+                channel_id=channel,
             )
 
     async def event_message(self, payload: twitchio.ChatMessage) -> None:
@@ -201,19 +208,22 @@ class ByteBot(commands.Bot):
             return
 
         raw_text = message.text or ""
+        channel = str(getattr(payload.channel, "name", "default")).lower()
         author = getattr(message, "author", None)
         author_name = str(getattr(author, "name", "viewer") or "viewer")
         byte_prompt = parse_byte_prompt(raw_text)
         if raw_text and (not raw_text.startswith("!") or byte_prompt is not None):
             if ENABLE_LIVE_CONTEXT_LEARNING:
-                context_manager.get().remember_user_message(author_name, raw_text)
+                context_manager.get(channel).remember_user_message(author_name, raw_text)
             observability.record_chat_message(
                 author_name=author_name, source="eventsub", text=raw_text
             )
+            sentiment_engine.ingest_message(channel, raw_text)
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
             updates = await auto_update_scene_from_message(message)
+            context_manager.get(channel).stream_vibe = sentiment_engine.get_vibe(channel)
         if updates:
             labels = ", ".join(
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
