@@ -54,7 +54,7 @@ async def generate_goal_text(prompt: str, risk: str, channel_id: str | None = No
         "Contrato de saida: 1 mensagem, no maximo 4 linhas, alta densidade, sem markdown."
     )
 
-    ctx = await context_manager.get(channel_id)
+    ctx = context_manager.get(channel_id)
     answer = await agent_inference(
         autonomy_prompt,
         "autonomy",
@@ -166,7 +166,7 @@ async def _handle_auto_chat(
         }
 
     control_plane.register_auto_chat_sent()
-    ctx = await context_manager.get(channel_id)
+    ctx = context_manager.get(channel_id)
     ctx.remember_bot_reply(text)
     observability.record_reply(text=text)
     observability.record_autonomy_goal(

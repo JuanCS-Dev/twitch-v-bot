@@ -6,12 +6,12 @@ from bot.logic import context_manager
 from bot.sentiment_engine import sentiment_engine
 
 
-class TestMemoryTTLScientific(unittest.TestCase):
-    def test_context_and_sentiment_purging(self):
+class TestMemoryTTLScientific(unittest.IsolatedAsyncioTestCase):
+    async def test_context_and_sentiment_purging(self):
         """Valida que canais inativos são removidos e ativos permanecem."""
         # Limpa para isolamento
         for ch in context_manager.list_active_channels():
-            context_manager.cleanup(ch)
+            await context_manager.cleanup(ch)
 
         # 1. Setup: Criamos dois canais
         ctx_ativo = context_manager.get("canal_ativo")
@@ -29,16 +29,11 @@ class TestMemoryTTLScientific(unittest.TestCase):
         sentiment_engine._last_activity["canal_ativo"] = time.time()
 
         # 3. Executamos a purga
-        purged_ctx = context_manager.purge_expired(max_age_seconds=7200)
+        purged_ctx = await context_manager.purge_expired(max_age_seconds=7200)
         purged_sent = sentiment_engine.cleanup_inactive(max_age_seconds=7200)
 
         # 4. Asserções
         active_channels = context_manager.list_active_channels()
-        active_sentiments = list(sentiment_engine._channel_events.keys())
-
-        print("\n[SCIENTIFIC] Memory Management Audit")
-        print(f"Purged Contexts: {purged_ctx}")
-        print(f"Active Channels: {active_channels}")
 
         self.assertEqual(purged_ctx, 1)
         self.assertEqual(purged_sent, 1)

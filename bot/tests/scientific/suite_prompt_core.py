@@ -131,7 +131,8 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
         self.assertEqual(build_verifiable_prompt(non_current), non_current)
 
     @patch("bot.status_runtime.observability.snapshot")
-    def test_status_line_exposes_aggregate_metrics_only(self, mock_snapshot):
+    @patch("bot.status_runtime.context_manager")
+    def test_status_line_exposes_aggregate_metrics_only(self, mock_cm, mock_snapshot):
         mock_snapshot.return_value = {
             "bot": {"uptime_minutes": 14},
             "metrics": {"p95_latency_ms": 420.5},
@@ -139,7 +140,11 @@ class ScientificPromptCoreTestsMixin(ScientificTestCase):
             "chat_analytics": {"messages_10m": 38, "byte_triggers_10m": 9},
         }
 
-        status_line = build_status_line(channel_logins=["oisakura", "canal_teste"])
+        import asyncio
+
+        status_line = asyncio.get_event_loop().run_until_complete(
+            build_status_line(channel_logins=["oisakura", "canal_teste"])
+        )
 
         self.assertIn("Canais: oisakura, canal_teste", status_line)
         self.assertIn("Chat 10m: 38 msgs/7 ativos", status_line)

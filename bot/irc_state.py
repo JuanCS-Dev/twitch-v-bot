@@ -53,7 +53,7 @@ class IrcChannelStateMixin:
         if not safe_text:
             return
 
-        ctx = await context_manager.get(target_channel)
+        ctx = context_manager.get(target_channel)
         ctx.remember_bot_reply(safe_text)
         observability.record_reply(text=safe_text)
         await self._send_raw(f"PRIVMSG #{target_channel} :{safe_text}")

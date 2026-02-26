@@ -18,20 +18,16 @@ class MockBot(IrcLineHandlersMixin):
         ch = channel_login or "canal_a"
         self.replies[ch].append(text)
 
-    def build_status_line(self) -> str:
+    async def build_status_line(self) -> str:
         from bot.status_runtime import build_status_line
 
-        # Nota: no código real, build_status_line não recebe canal_id ainda
-        # ele usa o context_manager.get() (default)
-        # Isso é algo que podemos querer ajustar no futuro, mas para este teste
-        # vamos focar no isolamento do StreamContext injetado no IRC Handler.
-        return build_status_line()
+        return await build_status_line()
 
 
 class TestE2EMultiTenantFlow(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         for ch in context_manager.list_active_channels():
-            context_manager.cleanup(ch)
+            await context_manager.cleanup(ch)
         with sentiment_engine._lock:
             sentiment_engine._channel_events.clear()
             sentiment_engine._last_activity.clear()
@@ -56,7 +52,7 @@ class TestE2EMultiTenantFlow(unittest.IsolatedAsyncioTestCase):
             ":u2!u2@tmi.twitch.tv PRIVMSG #canal_b :https://youtube.com/watch?v=movie456"
         )
 
-        # Validação de Contexto direto (já que status line pode ser global no momento)
+        # Validação de Contexto isolado
         ctx_a = context_manager.get("canal_a")
         ctx_b = context_manager.get("canal_b")
 

@@ -43,7 +43,7 @@ def format_status_channels(channel_logins: list[str] | None = None, max_items: i
 
 
 async def build_status_line(channel_logins: list[str] | None = None) -> str:
-    ctx = await context_manager.get()
+    ctx = context_manager.get()
     snapshot = observability.snapshot(
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,

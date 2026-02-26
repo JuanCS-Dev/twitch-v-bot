@@ -36,6 +36,7 @@ logger = logging.getLogger("ByteBot")
 
 # Backward compatibility: re-export from config
 CLIENT_ID = config.TWITCH_CLIENT_ID
+TWITCH_CLIENT_ID = config.TWITCH_CLIENT_ID
 BOT_ID = config.TWITCH_BOT_ID
 EDITOR_ID = config.EDITOR_ID
 OWNER_ID = config.OWNER_ID

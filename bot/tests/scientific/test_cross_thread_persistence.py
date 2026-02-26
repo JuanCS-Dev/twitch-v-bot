@@ -33,9 +33,8 @@ class TestCrossThreadPersistenceScientific(unittest.TestCase):
                 t.start()
 
                 try:
-                    # 1. Cria contexto (Simulando thread do Dashboard)
-                    future = asyncio.run_coroutine_threadsafe(context_manager.get("dash_ch"), loop)
-                    ctx = future.result(timeout=2)
+                    # 1. Cria contexto (Simulando thread do Dashboard) - síncrono
+                    ctx = context_manager.get("dash_ch")
 
                     # 2. Modifica dado (isso chama _touch() internamente)
                     ctx.update_content("game", "Chess")

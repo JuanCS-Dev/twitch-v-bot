@@ -22,14 +22,8 @@ def _is_api_route(route: str) -> bool:
 
 
 def _get_context_sync(channel_id: str | None = None) -> Any:
-    """Helper para obter contexto de forma síncrona via thread-safe main loop."""
-    if not context_manager._main_loop:
-        # Fallback se o loop ainda não foi injetado (muito improvável)
-        return None
-    future = asyncio.run_coroutine_threadsafe(
-        context_manager.get(channel_id), context_manager._main_loop
-    )
-    return future.result(timeout=5.0)
+    """Helper para obter contexto de forma síncrona."""
+    return context_manager.get(channel_id)
 
 
 def build_observability_payload() -> dict[str, Any]:

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Literal, overload
+from typing import Any, Literal, Optional, overload
 
 from bot.logic_constants import (
     EMPTY_RESPONSE_FALLBACK,
@@ -10,8 +10,14 @@ from bot.logic_constants import (
     MODEL_RATE_LIMIT_MAX_RETRIES,
     MODEL_TEMPERATURE,
     UNSTABLE_CONNECTION_FALLBACK,
+    UNSTABLE_RESPONSE_FALLBACK,
 )
-from bot.logic_context import build_dynamic_prompt, build_system_instruction, enforce_reply_limits
+from bot.logic_context import (
+    build_dynamic_prompt,
+    build_system_instruction,
+    context_manager,
+    enforce_reply_limits,
+)
 from bot.logic_grounding import (
     GroundingMetadata,
     empty_grounding_metadata,
@@ -54,10 +60,7 @@ def _select_model(enable_grounding: bool, is_serious: bool) -> str:
 
 
 def _extract_search_query(user_msg: str) -> str:
-    """Extract a clean search query from the user message.
-
-    Strips LLM instruction noise, keeps the factual question core.
-    """
+    """Extract a clean search query from the user message."""
     clean = (user_msg or "").strip()
     if "\n" in clean:
         clean = clean.split("\n")[0].strip()
@@ -87,10 +90,7 @@ def _build_grounding_metadata(
 async def _fetch_search_results(
     user_msg: str, enable_grounding: bool
 ) -> tuple[list[Any], GroundingMetadata]:
-    """Fetch search results and build grounding metadata.
-
-    Returns tuple of (search_results, grounding_metadata).
-    """
+    """Fetch search results and build grounding metadata."""
     search_results: list[Any] = []
     if enable_grounding:
         search_query = _extract_search_query(user_msg)
@@ -107,7 +107,11 @@ def _build_messages(
     enable_live_context: bool,
     search_results: list[Any],
 ) -> list[dict[str, str]]:
-    """Build the message payload for the LLM API."""
+    """Build the message payload for the LLM API (CURA: Síncrono)."""
+    # CURA DEFINITIVA: context_manager.get() agora é síncrono. Sem 'await' fora de async.
+    if context is None:
+        context = context_manager.get()
+
     system_instr = build_system_instruction(context)
     user_prompt = build_dynamic_prompt(
         user_msg,
@@ -269,15 +273,7 @@ async def agent_inference(
     max_length: int = MAX_REPLY_LENGTH,
     return_metadata: bool = False,
 ) -> str | tuple[str, GroundingMetadata]:
-    """Execute AI inference with optional web search grounding.
-
-    This is the main entry point for AI-powered responses.
-    The function has been refactored into smaller, focused helper functions:
-    - _fetch_search_results: handles web search and grounding metadata
-    - _build_messages: constructs the prompt payload
-    - _execute_inference_with_retry: handles API calls with retry logic
-    - _process_response: extracts and formats the reply text
-    """
+    """Execute AI inference with optional web search grounding."""
     if not user_msg:
         if return_metadata:
             return "", empty_grounding_metadata(enabled=False)
@@ -287,6 +283,10 @@ async def agent_inference(
 
     is_serious = not enable_grounding and len(user_msg) >= 40
     model = _select_model(enable_grounding, is_serious)
+
+    # CURA: O contexto agora é resolvido síncronamente
+    if context is None:
+        context = context_manager.get()
 
     messages = _build_messages(user_msg, author_name, context, enable_live_context, search_results)
 
@@ -303,7 +303,11 @@ async def agent_inference(
         logger.error("Inference Error (model=%s): %s", model, error)
         if return_metadata:
             return UNSTABLE_CONNECTION_FALLBACK, empty_grounding_metadata(enabled=False)
-        return UNSTABLE_CONNECTION_FALLBACK
+        return (
+            UNSTABLE_RESPONSE_FALLBACK
+            if "UNSTABLE_RESPONSE_FALLBACK" in globals()
+            else UNSTABLE_CONNECTION_FALLBACK
+        )
 
     if return_metadata:
         return EMPTY_RESPONSE_FALLBACK, empty_grounding_metadata(enabled=False)

@@ -6,6 +6,7 @@ from bot.clip_jobs_runtime import clip_jobs
 from bot.eventsub_runtime import ByteBot
 from bot.irc_runtime import IrcByteBot
 from bot.observability import observability
+from bot.persistence_layer import persistence
 from bot.runtime_config import (
     TWITCH_BOT_LOGIN,
     TWITCH_CHANNEL_LOGIN,
@@ -25,7 +26,10 @@ from bot.twitch_tokens import TwitchTokenManager
 
 
 def get_secret(secret_name: str = "twitch-client-secret") -> str:
-    return os.environ.get("TWITCH_CLIENT_SECRET") or ""
+    value = os.environ.get("TWITCH_CLIENT_SECRET") or ""
+    if not value:
+        raise RuntimeError(f"Secret não configurado: {secret_name}")
+    return value
 
 
 def require_env(name: str) -> str:
@@ -37,8 +41,6 @@ def require_env(name: str) -> str:
 
 async def resolve_irc_channel_logins() -> list[str]:
     """Resolve a lista de canais para entrar (Supabase com Fallback para ENV)."""
-    from bot.persistence_layer import persistence
-
     # Tentativa 1: Supabase (PersistenceLayer)
     db_channels = await persistence.get_active_channels()
     if db_channels:
@@ -68,6 +70,9 @@ def resolve_client_secret_for_irc_refresh() -> str:
     secret_name = TWITCH_CLIENT_SECRET_NAME or "twitch-client-secret"
     try:
         return get_secret(secret_name=secret_name)
+    except RuntimeError as error:
+        logger.warning("Falha ao carregar secret '%s': %s", secret_name, error)
+        return ""
     except Exception as error:
         logger.warning("Falha ao carregar secret '%s': %s", secret_name, error)
         return ""
@@ -95,8 +100,8 @@ def build_irc_token_manager() -> TwitchTokenManager:
 
 def run_irc_mode() -> None:
     try:
-        from bot.channel_control import irc_channel_control
         from bot.logic import context_manager
+        from bot.runtime_config import irc_channel_control
 
         token_manager = build_irc_token_manager()
 

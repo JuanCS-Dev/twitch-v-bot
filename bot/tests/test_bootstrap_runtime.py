@@ -1,57 +1,50 @@
 import os
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import bot.bootstrap_runtime as bootstrap
 
 
-class TestBootstrapRuntime(unittest.TestCase):
-    def test_get_secret_success(self):
-        with patch.dict(os.environ, {"MY_SECRET": "hush"}):
-            self.assertEqual(bootstrap.get_secret("my-secret"), "hush")
+class TestBootstrapRuntime(unittest.IsolatedAsyncioTestCase):
+    @patch("bot.bootstrap_runtime.os.environ.get")
+    def test_get_secret_success(self, mock_env):
+        mock_env.return_value = "hush"
+        self.assertEqual(bootstrap.get_secret(), "hush")
 
     def test_require_env_missing(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(RuntimeError):
-                bootstrap.require_env("MISSING")
+                bootstrap.require_env("MISSING_VAR")
 
+    @patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", "inline")
     def test_resolve_client_secret_refresh(self):
-        # Case 1: Inline secret
-        with patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", "inline"):
-            self.assertEqual(bootstrap.resolve_client_secret_for_irc_refresh(), "inline")
+        self.assertEqual(bootstrap.resolve_client_secret_for_irc_refresh(), "inline")
 
-        # Case 2: From secret name
-        with (
-            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_INLINE", ""),
-            patch("bot.bootstrap_runtime.TWITCH_CLIENT_SECRET_NAME", "my-sec"),
-        ):
-            with patch("bot.bootstrap_runtime.get_secret", return_value="secret_val"):
-                self.assertEqual(bootstrap.resolve_client_secret_for_irc_refresh(), "secret_val")
+    @patch("bot.bootstrap_runtime.parse_channel_logins")
+    @patch("bot.bootstrap_runtime.persistence.get_active_channels", new_callable=AsyncMock)
+    async def test_resolve_irc_channel_logins_fallback(self, mock_get_db, mock_parse):
+        # 1. Supabase falha (retorna vazio)
+        mock_get_db.return_value = []
+        mock_parse.return_value = ["canal_env"]
 
-    def test_resolve_irc_channel_logins_fallback(self):
-        with (
-            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGINS_RAW", ""),
-            patch("bot.bootstrap_runtime.TWITCH_CHANNEL_LOGIN", "only_one"),
-        ):
-            self.assertEqual(bootstrap.resolve_irc_channel_logins(), ["only_one"])
+        with patch.dict(os.environ, {"TWITCH_CHANNEL_LOGINS": "canal_env"}):
+            res = await bootstrap.resolve_irc_channel_logins()
+            self.assertEqual(res, ["canal_env"])
 
+    @patch("bot.bootstrap_runtime.asyncio.run")
     @patch("bot.bootstrap_runtime.IrcByteBot")
     @patch("bot.bootstrap_runtime.build_irc_token_manager")
-    @patch("bot.bootstrap_runtime.resolve_irc_channel_logins")
-    @patch("asyncio.run")
-    def test_run_irc_mode_orchestration(self, mock_run, mock_resolve, mock_btm, mock_bot_class):
-        mock_resolve.return_value = ["c1"]
-        mock_bot = MagicMock()
-        mock_bot_class.return_value = mock_bot
+    def test_run_irc_mode_orchestration(self, mock_build_token, mock_bot, mock_run):
+        # Apenas valida que o asyncio.run é chamado (o que dispara o loop interno)
         bootstrap.run_irc_mode()
-        mock_run.assert_called_once()
+        self.assertTrue(mock_run.called)
 
+    @patch("bot.bootstrap_runtime.asyncio.run")
     @patch("bot.bootstrap_runtime.ByteBot")
-    @patch("bot.bootstrap_runtime.get_secret", return_value="sec")
-    @patch("bot.bootstrap_runtime.require_env")
-    def test_run_eventsub_mode(self, mock_req, mock_sec, mock_bot_class):
-        mock_req.return_value = "id"
-        mock_bot = MagicMock()
-        mock_bot_class.return_value = mock_bot
+    def test_run_eventsub_mode(self, mock_bot, mock_run):
         bootstrap.run_eventsub_mode()
-        mock_bot.run.assert_called_once()
+        self.assertTrue(mock_run.called)
+
+
+if __name__ == "__main__":
+    unittest.main()

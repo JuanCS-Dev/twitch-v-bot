@@ -11,7 +11,7 @@ class IntegratedPhase3Test(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         # Reset total do estado
         for ch in context_manager.list_active_channels():
-            context_manager.cleanup(ch)
+            await context_manager.cleanup(ch)
         if "canal_a" in sentiment_engine._channel_events:
             sentiment_engine._channel_events["canal_a"].clear()
         if "canal_b" in sentiment_engine._channel_events:
@@ -34,7 +34,7 @@ class IntegratedPhase3Test(unittest.IsolatedAsyncioTestCase):
             async def send_reply(self, text, channel_login=None):
                 pass
 
-            def build_status_line(self):
+            async def build_status_line(self):
                 return "status"
 
         bot = MockBot()

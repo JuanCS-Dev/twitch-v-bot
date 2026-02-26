@@ -121,7 +121,7 @@ class IrcLineHandlersMixin:
         byte_prompt = parse_byte_prompt(text)
 
         # Recupera contexto isolado por canal (Async Lazy Load)
-        ctx = await context_manager.get(channel)
+        ctx = context_manager.get(channel)
 
         if not text.startswith("!") or byte_prompt is not None:
             if ENABLE_LIVE_CONTEXT_LEARNING:

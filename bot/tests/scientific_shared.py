@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 import unittest
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot.bootstrap_runtime import build_irc_token_manager, get_secret, resolve_irc_channel_logins
@@ -38,12 +39,33 @@ from bot.runtime_config import (
     SERIOUS_REPLY_MAX_LINES,
 )
 from bot.scene_runtime import auto_update_scene_from_message
-from bot.status_runtime import build_status_line
+from bot.status_runtime import build_status_line as _build_status_line_async
+
+
+async def build_status_line(*args, **kwargs):
+    return await _build_status_line_async(*args, **kwargs)
+
+
 from bot.twitch_tokens import TwitchTokenManager, is_irc_auth_failure_line
 
-# Shim de compatibilidade para suites cientificas legadas
-# Ele sempre retorna o contexto 'default' para testes que nao especificam canal
-context = context_manager.get("default")
+
+class ContextProxy:
+    """
+    Proxy de compatibilidade para testes que acessam 'context' diretamente.
+    Utiliza get_sync para garantir acesso imediato em testes legados.
+    """
+
+    def __getattr__(self, name):
+        ctx = context_manager.get_sync("default")
+        return getattr(ctx, name)
+
+    def __setattr__(self, name, value):
+        ctx = context_manager.get_sync("default")
+        setattr(ctx, name, value)
+
+
+# Símbolo global usado por centenas de testes legados
+context = ContextProxy()
 
 
 class DummyHTTPResponse:
@@ -78,22 +100,21 @@ class DummyIrcWriter:
         return None
 
 
-class ScientificTestCase(unittest.TestCase):
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+class ScientificTestCase(unittest.IsolatedAsyncioTestCase):
+    """Base para testes científicos, 100% Async Aware e retrocompatível."""
 
-        # Reset total do contexto default para cada teste cientifico
-        context_manager.cleanup("default")
-        ctx = context_manager.get("default")
-        ctx.current_game = "N/A"
-        ctx.stream_vibe = "Chill"
-        ctx.last_event = "Bot Online"
-        ctx.style_profile = "Tom generalista, claro e natural em PT-BR, sem giria gamer forcada."
-        for content_type in ctx.live_observability:
-            ctx.live_observability[content_type] = ""
-        ctx.recent_chat_entries = []
-        ctx.last_byte_reply = ""
+    async def asyncSetUp(self):
+        # Resolve o loop atual e injeta no manager
+        self.loop = asyncio.get_running_loop()
+        context_manager.set_main_loop(self.loop)
 
-    def tearDown(self):
-        self.loop.close()
+        # Reset total do estado
+        from bot.logic_context import StreamContext
+
+        context_manager._contexts = {}
+        ctx = StreamContext()
+        ctx.channel_id = "default"
+        context_manager._contexts["default"] = ctx
+
+    async def asyncTearDown(self):
+        pass

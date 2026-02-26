@@ -64,7 +64,7 @@ class AgentComponent(commands.Component):
             query,
             author_name,
             client,
-            await context_manager.get(channel),
+            context_manager.get(channel),
             enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         )
         await ctx.reply(format_chat_reply(ans))
@@ -75,7 +75,7 @@ class AgentComponent(commands.Component):
         channel = str(getattr(ctx.channel, "name", "default")).lower()
         if is_owner(author_id, OWNER_ID):
             new_vibe = get_ctx_message_text(ctx).removeprefix("!vibe").strip()
-            target_ctx = await context_manager.get(channel)
+            target_ctx = context_manager.get(channel)
             target_ctx.stream_vibe = new_vibe or "Conversa"
             target_ctx.last_event = "Vibe atualizada"
             await ctx.reply(f"Vibe atualizada para: {target_ctx.stream_vibe}")
@@ -89,7 +89,7 @@ class AgentComponent(commands.Component):
             await ctx.reply("Somente o dono do canal pode ajustar o estilo.")
             return
 
-        target_ctx = await context_manager.get(channel)
+        target_ctx = context_manager.get(channel)
         if not style_text:
             await ctx.reply(format_chat_reply(f"Estilo atual: {target_ctx.style_profile}"))
             return
@@ -102,7 +102,7 @@ class AgentComponent(commands.Component):
     async def scene(self, ctx: commands.Context) -> None:
         payload = get_ctx_message_text(ctx).removeprefix("!scene").strip()
         channel = str(getattr(ctx.channel, "name", "default")).lower()
-        target_ctx = await context_manager.get(channel)
+        target_ctx = context_manager.get(channel)
         if not payload:
             observability_text = target_ctx.format_observability()
             await ctx.reply(format_chat_reply(f"Observabilidade da live: {observability_text}"))
@@ -187,8 +187,8 @@ class ByteBot(commands.Bot):
     async def event_ready(self) -> None:
         logger.info("%s pronto no chat. Bot ID: %s", BOT_BRAND, self.bot_id)
 
-    def build_status_line(self) -> str:
-        return build_status_line()
+    async def build_status_line(self) -> str:
+        return await build_status_line()
 
     async def handle_byte_prompt(self, message: Any, prompt: str) -> None:
         author = getattr(message, "author", None)
@@ -215,7 +215,7 @@ class ByteBot(commands.Bot):
         author_name = str(getattr(author, "name", "viewer") or "viewer")
         byte_prompt = parse_byte_prompt(raw_text)
         if raw_text and (not raw_text.startswith("!") or byte_prompt is not None):
-            target_ctx = await context_manager.get(channel)
+            target_ctx = context_manager.get(channel)
             if ENABLE_LIVE_CONTEXT_LEARNING:
                 target_ctx.remember_user_message(author_name, raw_text)
 
@@ -232,7 +232,7 @@ class ByteBot(commands.Bot):
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
             updates = await auto_update_scene_from_message(message, channel_id=channel)
-            target_ctx = await context_manager.get(channel)
+            target_ctx = context_manager.get(channel)
             target_ctx.stream_vibe = sentiment_engine.get_vibe(channel)
         if updates:
             labels = ", ".join(

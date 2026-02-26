@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 from bot import byte_semantics
@@ -63,8 +64,8 @@ def unwrap_inference_result(result: Any) -> tuple[str, dict | None]:
     return unwrap_inference_result_impl(result)
 
 
-async def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
-    effective_ctx = ctx or await context_manager.get()
+def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
+    effective_ctx = ctx or context_manager.get()
     return BytePromptRuntime(
         agent_inference=agent_inference,
         client=client,
@@ -105,12 +106,12 @@ async def handle_movie_fact_sheet_prompt(
     reply_fn,
     channel_id: str | None = None,
 ) -> None:
-    ctx = await context_manager.get(channel_id)
+    ctx = context_manager.get(channel_id)
     await handle_movie_fact_sheet_prompt_impl(
         prompt,
         author_name,
         reply_fn,
-        runtime=await build_prompt_runtime(ctx),
+        runtime=build_prompt_runtime(ctx),
     )
 
 
@@ -121,7 +122,7 @@ async def handle_byte_prompt_text(
     status_line_factory=None,
     channel_id: str | None = None,
 ) -> None:
-    ctx = await context_manager.get(channel_id)
+    ctx = context_manager.get(channel_id)
     # Recap detection — short-circuit to recap engine
     from bot.recap_engine import generate_recap, is_recap_prompt
 
@@ -145,20 +146,23 @@ async def handle_byte_prompt_text(
 
     if callable(status_line_factory):
 
-        def effective_status_factory() -> str:
+        async def effective_status_factory() -> str:
             try:
-                return str(status_line_factory())
+                result = status_line_factory()
+                if asyncio.iscoroutine(result):
+                    return str(await result)
+                return str(result)
             except Exception as error:
                 logger.warning("Falha ao montar status customizado: %s", error)
-                return build_status_line()
+                return await build_status_line()
 
     else:
-        effective_status_factory = build_status_line
+        effective_status_factory = status_line_factory
 
     await handle_byte_prompt_text_impl(
         prompt,
         author_name,
         reply_fn,
-        runtime=await build_prompt_runtime(ctx),
+        runtime=build_prompt_runtime(ctx),
         status_line_factory=effective_status_factory,
     )

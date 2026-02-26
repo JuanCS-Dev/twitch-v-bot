@@ -45,3 +45,4 @@ MODEL_INFERENCE_TIMEOUT_SECONDS = max(
 )
 EMPTY_RESPONSE_FALLBACK = "Nao consegui consolidar a resposta agora. Tente reformular em uma frase."
 UNSTABLE_CONNECTION_FALLBACK = "Conexao com o modelo instavel. Tente novamente em instantes."
+UNSTABLE_RESPONSE_FALLBACK = "Modelo retornou resposta invalida ou incompleta."
