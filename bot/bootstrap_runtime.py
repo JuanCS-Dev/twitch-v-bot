@@ -166,8 +166,13 @@ def run_irc_mode() -> None:
             clip_jobs.bind_token_provider(token_manager.ensure_token_for_connection)
             clip_jobs.start(running_loop)
 
-            # Start background task
+            # Start background tasks
             asyncio.create_task(verify_clips_auth_loop())
+
+            # Fase 4: Loop de limpeza de memoria (Context + Sentiment)
+            from bot.logic import context_manager
+
+            asyncio.create_task(context_manager.start_cleanup_loop())
 
             try:
                 await bot.run_forever()

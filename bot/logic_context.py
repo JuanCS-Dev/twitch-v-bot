@@ -1,3 +1,4 @@
+import asyncio
 import threading
 import time
 from datetime import UTC, datetime
@@ -120,7 +121,7 @@ class StreamContext:
 
 
 class ContextManager:
-    """Gerenciador de contextos isolados por canal com thread-safety."""
+    """Gerenciador de contextos isolados por canal com thread-safety e expiração."""
 
     def __init__(self) -> None:
         self._contexts: dict[str, StreamContext] = {}
@@ -139,6 +140,43 @@ class ContextManager:
         key = channel_id.strip().lower()
         with self._lock:
             self._contexts.pop(key, None)
+
+    def purge_expired(self, max_age_seconds: float = 7200) -> int:
+        """Remove contextos que não tiveram atividade recente."""
+        now = time.time()
+        with self._lock:
+            expired_keys = [
+                key
+                for key, ctx in self._contexts.items()
+                if key != "default" and (now - ctx.last_activity) > max_age_seconds
+            ]
+            for key in expired_keys:
+                self._contexts.pop(key, None)
+            return len(expired_keys)
+
+    async def start_cleanup_loop(self, interval_seconds: int = 1800) -> None:
+        """Loop de background para limpeza periódica de memória."""
+        from bot.sentiment_engine import sentiment_engine
+
+        while True:
+            try:
+                await asyncio.sleep(interval_seconds)
+                purged_ctx = self.purge_expired()
+                purged_sent = sentiment_engine.cleanup_inactive()
+                if purged_ctx > 0 or purged_sent > 0:
+                    from bot.runtime_config import logger
+
+                    logger.info(
+                        "Cleanup: Removidos %d contextos e %d motores de sentimento inativos.",
+                        purged_ctx,
+                        purged_sent,
+                    )
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                from bot.runtime_config import logger
+
+                logger.error("Falha no loop de cleanup de memoria: %s", e)
 
     def list_active_channels(self) -> list[str]:
         """Retorna lista de canais com contextos ativos."""
