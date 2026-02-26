@@ -48,6 +48,8 @@ A infraestrutura permanece compartilhada (eficiência de recursos), mas os dados
 ### Fase 2: Isolamento de Sentimento [CONCLUÍDA ✅]
 1.  **`bot/sentiment_engine.py`**:
     *   Modificar `_events` para ser um `dict[str, deque]` mapeado por canal. [OK]
+    *   **Cura Sistêmica**: Refatoração da lógica de `get_vibe` para suportar escala bidirecional (-2.0 a +2.0) com thresholds de extremidade. [OK]
+    *   **Gestão de Memória**: Implementação de `_last_activity` e `cleanup_inactive()` para evitar vazamento de memória por acúmulo de canais. [OK]
     *   Atualizar `ingest_message`, `get_scores` e `get_vibe` para exigir o `channel_id`. [OK]
 2.  **`bot/sentiment_constants.py`**:
     *   Manter constantes, mas validar se os limites fazem sentido por canal. [OK]

@@ -22,9 +22,15 @@ def _score_message(text: str) -> float:
     score = 0.0
     tokens = text.split()
     for token in tokens:
-        clean = token.strip(".,!?;:()")
+        # Tratamento especial para o emote de confusão "???" para não ser limpo pelo strip
+        if token == "???":
+            clean = "???"
+        else:
+            clean = token.strip(".,!?;:()")
+
         if clean in EMOTE_SCORES:
             score += EMOTE_SCORES[clean]
+
     lower = text.lower()
     for keyword, kw_score in KEYWORD_SCORES.items():
         if keyword in lower:
@@ -38,9 +44,11 @@ class SentimentEngine:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._channel_events: dict[str, deque[tuple[float, float]]] = {}
+        self._last_activity: dict[str, float] = {}
 
     def _get_or_create_events(self, channel_id: str) -> deque[tuple[float, float]]:
         key = channel_id.strip().lower()
+        self._last_activity[key] = time.time()
         if key not in self._channel_events:
             self._channel_events[key] = deque(maxlen=SENTIMENT_MAX_EVENTS)
         return self._channel_events[key]
@@ -77,14 +85,48 @@ class SentimentEngine:
         }
 
     def get_vibe(self, channel_id: str) -> str:
+        """Calcula a vibe usando lógica de proximidade e direção (Cura Sistêmica)."""
         scores = self.get_scores(channel_id)
         avg = float(scores.get("avg", 0.0))
-        if scores["count"] == 0:
+        count = int(scores.get("count", 0))
+
+        if count == 0:
             return "Chill"
-        for threshold, label in VIBE_THRESHOLDS:
-            if avg >= threshold:
-                return label
+
+        # A CURA: Ordenamos os thresholds para garantir que o 'mais extremo'
+        # (seja positivo ou negativo) capture o valor primeiro.
+        # Ex: Se avg é -5.0, ele deve bater em -1.0 (Confuso) antes de cair em -0.3 (Chill)
+
+        # Separamos em positivos e negativos
+        positives = sorted(
+            [t for t in VIBE_THRESHOLDS if t[0] >= 0], key=lambda x: x[0], reverse=True
+        )
+        negatives = sorted(
+            [t for t in VIBE_THRESHOLDS if t[0] < 0], key=lambda x: x[0], reverse=False
+        )
+
+        if avg >= 0:
+            for threshold, label in positives:
+                if avg >= threshold:
+                    return label
+        else:
+            for threshold, label in negatives:
+                if avg <= threshold:  # Se é mais negativo que o limite (ex: -2.0 <= -1.0)
+                    return label
+
         return VIBE_DEFAULT
+
+    def cleanup_inactive(self, max_age_seconds: float = 7200) -> int:
+        """Remove dados de canais inativos (Cura de Memória)."""
+        now = time.time()
+        with self._lock:
+            to_remove = [
+                ch for ch, last_ts in self._last_activity.items() if now - last_ts > max_age_seconds
+            ]
+            for ch in to_remove:
+                self._channel_events.pop(ch, None)
+                self._last_activity.pop(ch, None)
+            return len(to_remove)
 
     def should_trigger_anti_boredom(self, channel_id: str) -> bool:
         scores_5m = self.get_scores(channel_id, window_seconds=ANTI_BOREDOM_WINDOW_SECONDS)
