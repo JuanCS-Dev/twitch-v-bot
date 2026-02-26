@@ -128,7 +128,9 @@ class AutonomyRuntime:
 
             dispatcher = self._get_auto_chat_dispatcher()
             for goal in due_goals:
-                processed.append(await process_autonomy_goal(goal, dispatcher))
+                processed.append(
+                    await process_autonomy_goal(goal, dispatcher, channel_id=channel_id)
+                )
 
             return {
                 "ok": True,

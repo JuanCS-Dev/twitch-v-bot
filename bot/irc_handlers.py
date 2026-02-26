@@ -131,7 +131,9 @@ class IrcLineHandlersMixin:
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
-            updates = await auto_update_scene_from_message(message)
+            # A função auto_update_scene_from_message em scene_runtime.py
+            # já foi atualizada para usar o canal específico.
+            updates = await auto_update_scene_from_message(message, channel_id=channel)
             ctx.stream_vibe = sentiment_engine.get_vibe(channel)
         if updates:
             labels = ", ".join(

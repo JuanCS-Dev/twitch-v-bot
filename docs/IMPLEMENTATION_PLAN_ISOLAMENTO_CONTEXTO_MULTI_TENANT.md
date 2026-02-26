@@ -56,13 +56,15 @@ A infraestrutura permanece compartilhada (eficiência de recursos), mas os dados
 3.  **Integração**:
     *   Atualização de consumidores (IRC, EventSub, Recap, Autonomy) para passar o `channel_id`. [OK]
 
-### Fase 3: Integração no Runtime
+### Fase 3: Integração no Runtime [CONCLUÍDA ✅]
 1.  **`bot/irc_handlers.py`**:
-    *   Em `_handle_privmsg`, capturar o `channel` da mensagem.
-    *   Recuperar o contexto específico via `context_manager.get(channel)`.
-    *   Passar este contexto para todas as chamadas subsequentes (`ingest_message`, `remember_user_message`, `handle_byte_prompt_text`).
-2.  **`bot/autonomy_logic.py`**:
-    *   *Nota Crítica:* Autonomia atualmente é global. Precisamos decidir se o loop de autonomia rodará para "o canal principal" ou se criaremos instâncias de tick por canal (Recomendado: Iniciar com o canal principal mas permitir expansão).
+    *   Em `_handle_privmsg`, captura do `channel` da mensagem. [OK]
+    *   Recuperação do contexto específico via `context_manager.get(channel)`. [OK]
+    *   Passagem do contexto para todas as chamadas (`ingest_message`, `remember_user_message`, `handle_byte_prompt_text`). [OK]
+2.  **`bot/autonomy_logic.py` & `bot/autonomy_runtime.py`**:
+    *   Isolamento do loop de autonomia para usar contextos específicos por canal. [OK]
+3.  **`bot/scene_runtime.py`**:
+    *   Refatoração de `auto_update_scene_from_message` para aceitar `channel_id`. [OK]
 
 ### Fase 4: Autolimpeza (Memory Management)
 1.  Implementar um `cleanup_task` no `ContextManager` que remove contextos de canais que não enviam mensagens há mais de 2 horas.

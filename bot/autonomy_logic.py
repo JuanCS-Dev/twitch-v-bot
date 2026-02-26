@@ -26,7 +26,7 @@ def _clip_line(text: str, max_chars: int = 80) -> str:
     return compact[: max_chars - 3].rstrip() + "..."
 
 
-async def generate_goal_text(prompt: str, risk: str) -> str:
+async def generate_goal_text(prompt: str, risk: str, channel_id: str | None = None) -> str:
     risk_hint = {
         RISK_AUTO_CHAT: (
             "Crie uma mensagem para o chat com valor imediato para a live. "
@@ -54,11 +54,12 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
         "Contrato de saida: 1 mensagem, no maximo 4 linhas, alta densidade, sem markdown."
     )
 
+    ctx = context_manager.get(channel_id)
     answer = await agent_inference(
         autonomy_prompt,
         "autonomy",
         client,
-        context_manager.get(),
+        ctx,
         enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         max_lines=MAX_REPLY_LINES,
         max_length=MAX_REPLY_LENGTH,
@@ -70,6 +71,7 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
 async def process_autonomy_goal(
     goal: dict[str, Any],
     dispatcher: AutoChatDispatcher | None,
+    channel_id: str | None = None,
 ) -> dict[str, Any]:
     goal_id = str(goal.get("id", "goal") or "goal")
     goal_name = _clip_line(str(goal.get("name", goal_id) or goal_id), max_chars=60)
@@ -79,7 +81,7 @@ async def process_autonomy_goal(
 
     control_plane.register_goal_run(goal_id=goal_id, risk=risk)
 
-    generated_text = await generate_goal_text(prompt=safe_prompt, risk=risk)
+    generated_text = await generate_goal_text(prompt=safe_prompt, risk=risk, channel_id=channel_id)
     if not generated_text:
         control_plane.register_dispatch_failure("goal_generation_empty")
         observability.record_error(
@@ -93,7 +95,9 @@ async def process_autonomy_goal(
         }
 
     if risk == RISK_AUTO_CHAT:
-        return await _handle_auto_chat(goal_id, risk, goal_name, generated_text, dispatcher)
+        return await _handle_auto_chat(
+            goal_id, risk, goal_name, generated_text, dispatcher, channel_id=channel_id
+        )
 
     if risk == RISK_CLIP_CANDIDATE:
         return _handle_clip_candidate(goal_id, risk, goal_name, generated_text)
@@ -107,6 +111,7 @@ async def _handle_auto_chat(
     goal_name: str,
     text: str,
     dispatcher: AutoChatDispatcher | None,
+    channel_id: str | None = None,
 ) -> dict[str, Any]:
     allowed, block_reason, usage = control_plane.can_send_auto_chat()
     if not allowed:
@@ -161,7 +166,7 @@ async def _handle_auto_chat(
         }
 
     control_plane.register_auto_chat_sent()
-    context_manager.get().remember_bot_reply(text)
+    context_manager.get(channel_id).remember_bot_reply(text)
     observability.record_reply(text=text)
     observability.record_autonomy_goal(
         risk=risk,

@@ -86,7 +86,7 @@ def build_sanitized_scene_description(
     )
 
 
-async def auto_update_scene_from_message(message: Any) -> list[str]:
+async def auto_update_scene_from_message(message: Any, channel_id: str | None = None) -> list[str]:
     author = getattr(message, "author", None)
     if not is_trusted_curator(author, OWNER_ID):
         return []
@@ -122,7 +122,8 @@ async def auto_update_scene_from_message(message: Any) -> list[str]:
             build_sanitized_scene_description(content_type, author_name, metadata),
             max_len=220,
         )
-        if context_manager.get().update_content(content_type, description):
+        ctx = context_manager.get(channel_id)
+        if ctx.update_content(content_type, description):
             updated_types.append(content_type)
             seen_types.add(content_type)
     return updated_types
