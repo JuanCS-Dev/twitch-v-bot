@@ -22,6 +22,8 @@
 *   Criar `PersistenceLayer` com suporte a timeouts curtos. [OK]
 *   Implementar lógica de boot: `get_active_channels()` -> `try Supabase else Env`. [OK]
 *   Unificar telemetria do `supabase_client.py`. [OK]
+*   **Auditoria de Lógica**: Validada integridade cronológica do histórico e resiliência fire-and-forget. [OK]
+*   **Segurança de Dados**: Implementado truncation preventivo de strings longas. [OK]
 
 ### Fase 2: ContextManager Assíncrono e Thread-Safe
 *   **Refatoração:** `async def get(channel_id)`.
