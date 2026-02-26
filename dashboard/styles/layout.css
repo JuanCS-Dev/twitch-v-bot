@@ -70,23 +70,29 @@
     display: grid;
     /* Adaptação fluida sem media query estrita:
        cria colunas de no mínimo 240px que expandem (1fr) */
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: var(--spacing-4);
-    align-items: start; /* Impede cards de esticarem verticalmente sem necessidade */
+    align-items: stretch; /* Cards ocupam todo espaço vertical */
 }
 
 .grid-two {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(450px, 100%), 1fr));
     gap: var(--spacing-5);
-    align-items: start;
+    align-items: stretch; /* Cards vizinhos mantêm a mesma altura visualmente */
+}
+
+@media (max-width: 1024px) {
+    .grid-two {
+        grid-template-columns: 1fr;
+    }
 }
 
 .grid-hero {
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--spacing-5);
-    align-items: start;
+    align-items: stretch;
 }
 
 @media (min-width: 1080px) {

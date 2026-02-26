@@ -5,12 +5,15 @@
 .panel {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-default);
-    border-radius: var(--radius-xl); /* Nested Radius: 16px (Outer) */
+    border-radius: var(--radius-xl);
+    /* Nested Radius: 16px (Outer) */
     box-shadow: var(--shadow-sm);
     padding: var(--spacing-4);
     position: relative;
     overflow: hidden;
     transition: transform var(--transition-med), box-shadow var(--transition-med), border-color var(--transition-med);
+    display: flex;
+    flex-direction: column;
 }
 
 .card:hover,
@@ -95,10 +98,21 @@
     margin: 0;
 }
 
-.card.status-ok { border-bottom: 3px solid var(--status-ok); }
-.card.status-warn { border-bottom: 3px solid var(--status-warn); }
-.card.status-error { border-bottom: 3px solid var(--status-error); }
-.card.status-info { border-bottom: 3px solid var(--status-pending); }
+.card.status-ok {
+    border-bottom: 3px solid var(--status-ok);
+}
+
+.card.status-warn {
+    border-bottom: 3px solid var(--status-warn);
+}
+
+.card.status-error {
+    border-bottom: 3px solid var(--status-error);
+}
+
+.card.status-info {
+    border-bottom: 3px solid var(--status-pending);
+}
 
 /* Buttons com Spring Physics e Nested Radius (8px) */
 .btn {
@@ -110,7 +124,8 @@
     font-family: var(--font-family-sans);
     font-weight: 600;
     font-size: 0.9rem;
-    border-radius: var(--radius-md); /* 16px padding pai - 8px radius filho = perfeito */
+    border-radius: var(--radius-md);
+    /* 16px padding pai - 8px radius filho = perfeito */
     cursor: pointer;
     transition: all var(--transition-elastic);
     border: 1px solid transparent;
@@ -122,7 +137,8 @@
 .btn-sm {
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
-    min-height: 32px; /* Reduzido para encaixar bem dentro de chips/lists */
+    min-height: 32px;
+    /* Reduzido para encaixar bem dentro de chips/lists */
     border-radius: var(--radius-sm);
 }
 
@@ -139,7 +155,8 @@
 
 .btn-primary {
     background-color: var(--color-accent);
-    color: var(--bg-base); /* Alto contraste invertido no botão primário neon */
+    color: var(--bg-base);
+    /* Alto contraste invertido no botão primário neon */
     font-weight: 700;
 }
 
@@ -188,16 +205,42 @@
     color: var(--text-primary);
 }
 
-.chip.ok { color: var(--status-ok); border-color: color-mix(in srgb, var(--status-ok) 30%, transparent); }
-.chip.warn { color: var(--status-warn); border-color: color-mix(in srgb, var(--status-warn) 30%, transparent); }
-.chip.error { color: var(--status-error); border-color: color-mix(in srgb, var(--status-error) 30%, transparent); }
-.chip.pending { color: var(--status-pending); border-color: color-mix(in srgb, var(--status-pending) 30%, transparent); }
+.chip.ok {
+    color: var(--status-ok);
+    border-color: color-mix(in srgb, var(--status-ok) 30%, transparent);
+}
+
+.chip.warn {
+    color: var(--status-warn);
+    border-color: color-mix(in srgb, var(--status-warn) 30%, transparent);
+}
+
+.chip.error {
+    color: var(--status-error);
+    border-color: color-mix(in srgb, var(--status-error) 30%, transparent);
+}
+
+.chip.pending {
+    color: var(--status-pending);
+    border-color: color-mix(in srgb, var(--status-pending) 30%, transparent);
+}
 
 /* Foco tático na animação (breathing dot) */
 @keyframes breathingDot {
-    0% { opacity: 0.4; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.2); }
-    100% { opacity: 0.4; transform: scale(0.8); }
+    0% {
+        opacity: 0.4;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 0.4;
+        transform: scale(0.8);
+    }
 }
 
 .chip.ok::before {
@@ -279,18 +322,18 @@
     transition: transform var(--transition-elastic), background-color var(--transition-med);
 }
 
-.toggle-switch input:checked + .toggle-slider {
+.toggle-switch input:checked+.toggle-slider {
     background-color: var(--color-accent-a10);
     border-color: var(--color-accent);
 }
 
-.toggle-switch input:checked + .toggle-slider::before {
+.toggle-switch input:checked+.toggle-slider::before {
     transform: translateX(20px);
     background-color: var(--color-accent);
     box-shadow: 0 0 8px var(--color-accent-soft);
 }
 
-.toggle-switch input:focus-visible + .toggle-slider {
+.toggle-switch input:focus-visible+.toggle-slider {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
 }
@@ -348,16 +391,26 @@
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Action-Driven UI: Destaque visual agressivo */
-.card.attention-required, .panel.attention-required {
+.card.attention-required,
+.panel.attention-required {
     border-color: var(--status-warn);
     box-shadow: 0 0 16px color-mix(in srgb, var(--status-warn) 15%, transparent);
 }
-.card.attention-required::before, .panel.attention-required::before {
+
+.card.attention-required::before,
+.panel.attention-required::before {
     background: radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, -20%), color-mix(in srgb, var(--status-warn) 15%, transparent), transparent 40%);
 }
 
@@ -365,7 +418,8 @@
 .form-control {
     width: 100%;
     padding: var(--spacing-2) var(--spacing-3);
-    font-family: var(--font-family-mono); /* Dados técnicos combinam com Mono */
+    font-family: var(--font-family-mono);
+    /* Dados técnicos combinam com Mono */
     font-size: 0.9rem;
     color: var(--text-primary);
     background-color: var(--bg-base);
@@ -386,7 +440,8 @@
     display: flex;
     gap: var(--spacing-3);
     align-items: flex-end;
-    flex-wrap: wrap; /* Fallback de responsividade */
+    flex-wrap: wrap;
+    /* Fallback de responsividade */
 }
 
 /* Tabelas (para dados densos) */
@@ -477,6 +532,12 @@ tbody tr:hover {
     gap: var(--spacing-2);
 }
 
+/* Ensure dynamic elements fill up height inside panels so the footer buttons stick to the bottom */
+.panel>.events-list,
+.panel>.table-wrap {
+    flex: 1;
+}
+
 .events-list li {
     padding: var(--spacing-3);
     background-color: var(--bg-base);
@@ -510,9 +571,23 @@ tbody tr:hover {
     color: var(--text-muted);
 }
 
-.event-level-info { color: var(--status-ok); font-weight: 600; text-shadow: 0 0 8px color-mix(in srgb, var(--status-ok) 40%, transparent); }
-.event-level-warn { color: var(--status-warn); font-weight: 600; text-shadow: 0 0 8px color-mix(in srgb, var(--status-warn) 40%, transparent); }
-.event-level-error { color: var(--status-error); font-weight: 600; text-shadow: 0 0 8px color-mix(in srgb, var(--status-error) 40%, transparent); }
+.event-level-info {
+    color: var(--status-ok);
+    font-weight: 600;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--status-ok) 40%, transparent);
+}
+
+.event-level-warn {
+    color: var(--status-warn);
+    font-weight: 600;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--status-warn) 40%, transparent);
+}
+
+.event-level-error {
+    color: var(--status-error);
+    font-weight: 600;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--status-error) 40%, transparent);
+}
 
 /* Bloco Temporário / Spinner */
 .loading-box {
@@ -528,7 +603,15 @@ tbody tr:hover {
 }
 
 @keyframes pulse {
-    0% { opacity: 0.5; }
-    50% { opacity: 1; }
-    100% { opacity: 0.5; }
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.5;
+    }
 }
