@@ -91,6 +91,8 @@ async def handle_byte_prompt_text(
 ) -> None:
     normalized_prompt = (prompt or "").strip()
     lowered_prompt = normalized_prompt.lower()
+    runtime.logger.info("Handling BytePrompt: '%s' (author=%s)", normalized_prompt, author_name)
+
     prompt_length = len(normalized_prompt)
     serious_mode = runtime.is_serious_technical_prompt(normalized_prompt)
     follow_up_mode = runtime.is_follow_up_prompt(normalized_prompt)
@@ -143,7 +145,7 @@ async def handle_byte_prompt_text(
         log_interaction("help")
         return
 
-    if runtime.is_intro_prompt(normalized_prompt):
+    if runtime.is_intro_prompt(normalized_prompt) or lowered_prompt.startswith("se apresente"):
         await tracked_reply(runtime.build_intro_reply())
         log_interaction("intro")
         return

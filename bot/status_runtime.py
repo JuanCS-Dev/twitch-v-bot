@@ -11,7 +11,7 @@ from bot.channel_status import (
 from bot.channel_status import (
     parse_channel_logins as parse_channel_logins_impl,
 )
-from bot.logic import BOT_BRAND, context
+from bot.logic import BOT_BRAND, context_manager
 from bot.observability import observability
 from bot.runtime_config import (
     BYTE_VERSION,
@@ -47,12 +47,14 @@ def build_status_line(channel_logins: list[str] | None = None) -> str:
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,
         bot_mode=TWITCH_CHAT_MODE,
-        stream_context=context,
+        stream_context=context_manager.get(),
     )
     metrics = snapshot.get("metrics", {})
     chatters = snapshot.get("chatters", {})
     chat_analytics = snapshot.get("chat_analytics", {})
-    uptime = int(snapshot.get("bot", {}).get("uptime_minutes", context.get_uptime_minutes()))
+    uptime = int(
+        snapshot.get("bot", {}).get("uptime_minutes", context_manager.get().get_uptime_minutes())
+    )
     chat_10m = int(chat_analytics.get("messages_10m", 0))
     active_10m = int(chatters.get("active_10m", 0))
     triggers_10m = int(chat_analytics.get("byte_triggers_10m", 0))

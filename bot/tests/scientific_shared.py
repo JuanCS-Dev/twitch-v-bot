@@ -18,7 +18,7 @@ from bot.dashboard_server import HealthHandler
 from bot.eventsub_runtime import AgentComponent, ByteBot
 from bot.irc_protocol import is_irc_notice_delivery_block
 from bot.irc_runtime import IrcByteBot
-from bot.logic import MAX_REPLY_LINES, context
+from bot.logic import context_manager
 from bot.prompt_runtime import (
     build_intro_reply,
     build_quality_rewrite_prompt,
@@ -78,16 +78,16 @@ class ScientificTestCase(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        context.current_game = "N/A"
-        context.stream_vibe = "Conversa"
-        context.last_event = "Bot Online"
-        context.style_profile = (
+        context_manager.get().current_game = "N/A"
+        context_manager.get().stream_vibe = "Conversa"
+        context_manager.get().last_event = "Bot Online"
+        context_manager.get().style_profile = (
             "Tom generalista, claro e natural em PT-BR, sem giria gamer forcada."
         )
-        for content_type in context.live_observability:
-            context.live_observability[content_type] = ""
-        context.recent_chat_entries = []
-        context.last_byte_reply = ""
+        for content_type in context_manager.get().live_observability:
+            context_manager.get().live_observability[content_type] = ""
+        context_manager.get().recent_chat_entries = []
+        context_manager.get().last_byte_reply = ""
 
     def tearDown(self):
         self.loop.close()

@@ -9,7 +9,7 @@ from twitchio.ext import commands  # pyright: ignore[reportMissingImports]
 from bot import byte_semantics
 from bot.access_control import is_owner
 from bot.autonomy_runtime import autonomy_runtime
-from bot.logic import BOT_BRAND, OBSERVABILITY_TYPES, agent_inference, context
+from bot.logic import BOT_BRAND, OBSERVABILITY_TYPES, agent_inference, context_manager
 from bot.observability import observability
 from bot.prompt_runtime import format_chat_reply, handle_byte_prompt_text
 from bot.runtime_config import (
@@ -62,7 +62,7 @@ class AgentComponent(commands.Component):
             query,
             author_name,
             client,
-            context,
+            context_manager.get(),
             enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         )
         await ctx.reply(format_chat_reply(ans))
@@ -72,9 +72,9 @@ class AgentComponent(commands.Component):
         author_id = str(getattr(get_ctx_author(ctx), "id", "") or "")
         if is_owner(author_id, OWNER_ID):
             new_vibe = get_ctx_message_text(ctx).removeprefix("!vibe").strip()
-            context.stream_vibe = new_vibe or "Conversa"
-            context.last_event = "Vibe atualizada"
-            await ctx.reply(f"Vibe atualizada para: {context.stream_vibe}")
+            context_manager.get().stream_vibe = new_vibe or "Conversa"
+            context_manager.get().last_event = "Vibe atualizada"
+            await ctx.reply(f"Vibe atualizada para: {context_manager.get().stream_vibe}")
 
     @commands.command(name="style")
     async def style(self, ctx: commands.Context) -> None:
@@ -84,18 +84,20 @@ class AgentComponent(commands.Component):
             await ctx.reply("Somente o dono do canal pode ajustar o estilo.")
             return
         if not style_text:
-            await ctx.reply(format_chat_reply(f"Estilo atual: {context.style_profile}"))
+            await ctx.reply(
+                format_chat_reply(f"Estilo atual: {context_manager.get().style_profile}")
+            )
             return
 
-        context.style_profile = style_text
-        context.last_event = "Estilo de conversa atualizado"
+        context_manager.get().style_profile = style_text
+        context_manager.get().last_event = "Estilo de conversa atualizado"
         await ctx.reply("Estilo de conversa atualizado.")
 
     @commands.command(name="scene")
     async def scene(self, ctx: commands.Context) -> None:
         payload = get_ctx_message_text(ctx).removeprefix("!scene").strip()
         if not payload:
-            observability_text = context.format_observability()
+            observability_text = context_manager.get().format_observability()
             await ctx.reply(format_chat_reply(f"Observabilidade da live: {observability_text}"))
             return
 
@@ -109,12 +111,14 @@ class AgentComponent(commands.Component):
         if action_or_type == "clear":
             if len(tokens) < 2:
                 await ctx.reply(
-                    f"Uso: !scene clear <tipo>. Tipos: {context.list_supported_content_types()}"
+                    f"Uso: !scene clear <tipo>. Tipos: {context_manager.get().list_supported_content_types()}"
                 )
                 return
             content_type = tokens[1].strip().lower()
-            if not context.clear_content(content_type):
-                await ctx.reply(f"Tipo invalido. Tipos: {context.list_supported_content_types()}")
+            if not context_manager.get().clear_content(content_type):
+                await ctx.reply(
+                    f"Tipo invalido. Tipos: {context_manager.get().list_supported_content_types()}"
+                )
                 return
             label = OBSERVABILITY_TYPES.get(content_type, content_type)
             await ctx.reply(f"Contexto removido: {label}.")
@@ -122,15 +126,15 @@ class AgentComponent(commands.Component):
 
         if len(tokens) < 2:
             await ctx.reply(
-                f"Uso: !scene <tipo> <descricao>. Tipos: {context.list_supported_content_types()}"
+                f"Uso: !scene <tipo> <descricao>. Tipos: {context_manager.get().list_supported_content_types()}"
             )
             return
 
         content_type = action_or_type
         description = tokens[1].strip()
-        if not context.update_content(content_type, description):
+        if not context_manager.get().update_content(content_type, description):
             await ctx.reply(
-                f"Tipo invalido ou descricao vazia. Tipos: {context.list_supported_content_types()}"
+                f"Tipo invalido ou descricao vazia. Tipos: {context_manager.get().list_supported_content_types()}"
             )
             return
 
@@ -202,7 +206,7 @@ class ByteBot(commands.Bot):
         byte_prompt = parse_byte_prompt(raw_text)
         if raw_text and (not raw_text.startswith("!") or byte_prompt is not None):
             if ENABLE_LIVE_CONTEXT_LEARNING:
-                context.remember_user_message(author_name, raw_text)
+                context_manager.get().remember_user_message(author_name, raw_text)
             observability.record_chat_message(
                 author_name=author_name, source="eventsub", text=raw_text
             )

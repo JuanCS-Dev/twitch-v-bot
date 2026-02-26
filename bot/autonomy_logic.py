@@ -12,7 +12,7 @@ from bot.control_plane import (
 )
 from bot.control_plane_constants import utc_iso
 from bot.hud_runtime import hud_runtime
-from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context
+from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context_manager
 from bot.observability import observability
 from bot.runtime_config import CHANNEL_ID, ENABLE_LIVE_CONTEXT_LEARNING, client
 
@@ -58,7 +58,7 @@ async def generate_goal_text(prompt: str, risk: str) -> str:
         autonomy_prompt,
         "autonomy",
         client,
-        context,
+        context_manager.get(),
         enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
         max_lines=MAX_REPLY_LINES,
         max_length=MAX_REPLY_LENGTH,
@@ -161,7 +161,7 @@ async def _handle_auto_chat(
         }
 
     control_plane.register_auto_chat_sent()
-    context.remember_bot_reply(text)
+    context_manager.get().remember_bot_reply(text)
     observability.record_reply(text=text)
     observability.record_autonomy_goal(
         risk=risk,

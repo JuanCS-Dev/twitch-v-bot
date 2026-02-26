@@ -2,7 +2,7 @@ from typing import Any
 
 from bot.access_control import is_trusted_curator
 from bot.byte_semantics import compact_message, normalize_text_for_scene
-from bot.logic import context
+from bot.logic import context_manager
 from bot.runtime_config import (
     AUTO_SCENE_REQUIRE_METADATA,
     METADATA_CACHE_TTL_SECONDS,
@@ -122,7 +122,7 @@ async def auto_update_scene_from_message(message: Any) -> list[str]:
             build_sanitized_scene_description(content_type, author_name, metadata),
             max_len=220,
         )
-        if context.update_content(content_type, description):
+        if context_manager.get().update_content(content_type, description):
             updated_types.append(content_type)
             seen_types.add(content_type)
     return updated_types

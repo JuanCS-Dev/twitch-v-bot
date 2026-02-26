@@ -1,7 +1,7 @@
 import re
 
 from bot.byte_semantics import format_chat_reply
-from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context
+from bot.logic import MAX_REPLY_LENGTH, MAX_REPLY_LINES, agent_inference, context_manager
 from bot.observability import observability
 from bot.runtime_config import ENABLE_LIVE_CONTEXT_LEARNING, client, logger
 from bot.sentiment_engine import sentiment_engine
@@ -33,10 +33,11 @@ def is_recap_prompt(text: str) -> bool:
     return bool(RECAP_PATTERNS.search(text))
 
 
-async def generate_recap() -> str:
-    obs_text = context.format_observability()
+async def generate_recap(channel_id: str | None = None) -> str:
+    ctx = context_manager.get(channel_id)
+    obs_text = ctx.format_observability()
     vibe = sentiment_engine.get_vibe()
-    recent = context.format_recent_chat(limit=8)
+    recent = ctx.format_recent_chat(limit=8)
     prompt = RECAP_PROMPT_TEMPLATE.format(
         context=obs_text,
         vibe=vibe,
@@ -47,7 +48,7 @@ async def generate_recap() -> str:
             prompt,
             "recap",
             client,
-            context,
+            ctx,
             enable_live_context=ENABLE_LIVE_CONTEXT_LEARNING,
             max_lines=MAX_REPLY_LINES,
             max_length=MAX_REPLY_LENGTH,

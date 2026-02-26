@@ -2,7 +2,7 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from bot.irc_protocol import flatten_chat_text
-from bot.logic import context
+from bot.logic import context_manager
 from bot.observability import observability
 from bot.prompt_runtime import format_chat_reply
 from bot.runtime_config import TWITCH_IRC_CHANNEL_ACTION_TIMEOUT_SECONDS, logger
@@ -52,7 +52,7 @@ class IrcChannelStateMixin:
         safe_text = self._prepare_reply_text(text)
         if not safe_text:
             return
-        context.remember_bot_reply(safe_text)
+        context_manager.get().remember_bot_reply(safe_text)
         observability.record_reply(text=safe_text)
         await self._send_raw(f"PRIVMSG #{target_channel} :{safe_text}")
 

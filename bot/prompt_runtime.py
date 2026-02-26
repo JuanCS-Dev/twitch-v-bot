@@ -1,7 +1,7 @@
 from typing import Any
 
 from bot import byte_semantics
-from bot.logic import MAX_REPLY_LINES, agent_inference, context, has_grounding_signal
+from bot.logic import MAX_REPLY_LINES, agent_inference, context_manager, has_grounding_signal
 from bot.observability import observability
 from bot.prompt_flow import (
     BytePromptRuntime,
@@ -63,11 +63,12 @@ def unwrap_inference_result(result: Any) -> tuple[str, dict | None]:
     return unwrap_inference_result_impl(result)
 
 
-def build_prompt_runtime() -> BytePromptRuntime:
+def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
+    effective_ctx = ctx or context_manager.get()
     return BytePromptRuntime(
         agent_inference=agent_inference,
         client=client,
-        context=context,
+        context=effective_ctx,
         observability=observability,
         logger=logger,
         byte_help_message=BYTE_HELP_MESSAGE,
@@ -102,12 +103,14 @@ async def handle_movie_fact_sheet_prompt(
     prompt: str,
     author_name: str,
     reply_fn,
+    channel_id: str | None = None,
 ) -> None:
+    ctx = context_manager.get(channel_id)
     await handle_movie_fact_sheet_prompt_impl(
         prompt,
         author_name,
         reply_fn,
-        runtime=build_prompt_runtime(),
+        runtime=build_prompt_runtime(ctx),
     )
 
 
@@ -116,12 +119,14 @@ async def handle_byte_prompt_text(
     author_name: str,
     reply_fn,
     status_line_factory=None,
+    channel_id: str | None = None,
 ) -> None:
+    ctx = context_manager.get(channel_id)
     # Recap detection — short-circuit to recap engine
     from bot.recap_engine import generate_recap, is_recap_prompt
 
     if is_recap_prompt(prompt):
-        recap_text = await generate_recap()
+        recap_text = await generate_recap(channel_id=channel_id)
         formatted = format_chat_reply(recap_text)
         if formatted:
             await reply_fn(formatted)
@@ -154,6 +159,6 @@ async def handle_byte_prompt_text(
         prompt,
         author_name,
         reply_fn,
-        runtime=build_prompt_runtime(),
+        runtime=build_prompt_runtime(ctx),
         status_line_factory=effective_status_factory,
     )

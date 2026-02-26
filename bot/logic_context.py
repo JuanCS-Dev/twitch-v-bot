@@ -1,3 +1,4 @@
+import threading
 import time
 from datetime import UTC, datetime
 
@@ -45,11 +46,16 @@ class StreamContext:
         self.recent_chat_entries: list[str] = []
         self.last_byte_reply = ""
         self.start_time = time.time()
+        self.last_activity = time.time()
 
     def get_uptime_minutes(self) -> int:
         return int((time.time() - self.start_time) / 60)
 
+    def _touch(self) -> None:
+        self.last_activity = time.time()
+
     def update_content(self, content_type: str, description: str) -> bool:
+        self._touch()
         normalized_type = content_type.strip().lower()
         cleaned_description = description.strip()
         if normalized_type not in OBSERVABILITY_TYPES or not cleaned_description:
@@ -62,6 +68,7 @@ class StreamContext:
         return True
 
     def clear_content(self, content_type: str) -> bool:
+        self._touch()
         normalized_type = content_type.strip().lower()
         if normalized_type not in OBSERVABILITY_TYPES:
             return False
@@ -88,6 +95,7 @@ class StreamContext:
         return f"Vibe: {self.stream_vibe} | Contextos ativos: {active_count}"
 
     def remember_user_message(self, author_name: str, message_text: str) -> None:
+        self._touch()
         safe_author = normalize_memory_excerpt(author_name or "viewer", max_length=32)
         safe_message = normalize_memory_excerpt(message_text)
         if not safe_message:
@@ -96,6 +104,7 @@ class StreamContext:
         self.recent_chat_entries = self.recent_chat_entries[-MAX_RECENT_CHAT_ENTRIES:]
 
     def remember_bot_reply(self, reply_text: str) -> None:
+        self._touch()
         safe_reply = normalize_memory_excerpt(reply_text, max_length=180)
         if not safe_reply:
             return
@@ -110,7 +119,34 @@ class StreamContext:
         return " || ".join(selected)
 
 
-context = StreamContext()
+class ContextManager:
+    """Gerenciador de contextos isolados por canal com thread-safety."""
+
+    def __init__(self) -> None:
+        self._contexts: dict[str, StreamContext] = {}
+        self._lock = threading.Lock()
+
+    def get(self, channel_id: str | None = None) -> StreamContext:
+        """Recupera ou cria um contexto para o canal especificado."""
+        key = (channel_id or "default").strip().lower()
+        with self._lock:
+            if key not in self._contexts:
+                self._contexts[key] = StreamContext()
+            return self._contexts[key]
+
+    def cleanup(self, channel_id: str) -> None:
+        """Remove explicitamente um contexto."""
+        key = channel_id.strip().lower()
+        with self._lock:
+            self._contexts.pop(key, None)
+
+    def list_active_channels(self) -> list[str]:
+        """Retorna lista de canais com contextos ativos."""
+        with self._lock:
+            return list(self._contexts.keys())
+
+
+context_manager = ContextManager()
 
 
 def build_system_instruction(ctx: StreamContext) -> str:

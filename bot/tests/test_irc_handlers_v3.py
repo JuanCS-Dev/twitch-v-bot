@@ -91,19 +91,22 @@ class TestIrcHandlersV3:
 
     @pytest.mark.asyncio
     @patch("bot.irc_handlers.ENABLE_LIVE_CONTEXT_LEARNING", True)
-    @patch("bot.irc_handlers.context.remember_user_message")
+    @patch("bot.irc_handlers.context_manager")
     @patch("bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock)
     @patch("bot.irc_handlers.handle_byte_prompt_text", new_callable=AsyncMock)
     async def test_handle_privmsg_byte_prompt(
-        self, mock_handle_text, mock_auto_update, mock_remember
+        self, mock_handle_text, mock_auto_update, mock_context_manager
     ):
         handler = DummyHandlers()
+        mock_ctx = MagicMock()
+        mock_context_manager.get.return_value = mock_ctx
         mock_auto_update.return_value = ["movie"]
         line = "@display-name=User :user!user@user.tmi.twitch.tv PRIVMSG #channel1 :byte hello"
 
         await handler._handle_privmsg(line)
 
-        mock_remember.assert_called_with("User", "byte hello")
+        mock_context_manager.get.assert_called_with("channel1")
+        mock_ctx.remember_user_message.assert_called_with("User", "byte hello")
         mock_auto_update.assert_called_once()
         mock_handle_text.assert_called_once()
         assert mock_handle_text.call_args[0][0] == "hello"  # byte_prompt

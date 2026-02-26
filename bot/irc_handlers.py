@@ -12,7 +12,7 @@ from bot.irc_protocol import (
     is_irc_notice_delivery_block,
     parse_irc_tags,
 )
-from bot.logic import OBSERVABILITY_TYPES, context
+from bot.logic import OBSERVABILITY_TYPES, context_manager
 from bot.observability import observability
 from bot.prompt_runtime import handle_byte_prompt_text
 from bot.runtime_config import ENABLE_LIVE_CONTEXT_LEARNING, logger
@@ -119,16 +119,20 @@ class IrcLineHandlersMixin:
         author = IrcAuthor(author_login, tags)
         message = IrcMessageAdapter(text, author)
         byte_prompt = parse_byte_prompt(text)
+
+        # Recupera contexto isolado por canal
+        ctx = context_manager.get(channel)
+
         if not text.startswith("!") or byte_prompt is not None:
             if ENABLE_LIVE_CONTEXT_LEARNING:
-                context.remember_user_message(author.name, text)
+                ctx.remember_user_message(author.name, text)
             observability.record_chat_message(author_name=author.name, source="irc", text=text)
             sentiment_engine.ingest_message(text)
 
         updates: list[str] = []
         if ENABLE_LIVE_CONTEXT_LEARNING:
             updates = await auto_update_scene_from_message(message)
-            context.stream_vibe = sentiment_engine.get_vibe()
+            ctx.stream_vibe = sentiment_engine.get_vibe()
         if updates:
             labels = ", ".join(
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
@@ -153,6 +157,7 @@ class IrcLineHandlersMixin:
             author.name,
             reply_in_source_channel,
             status_line_factory=self.build_status_line,
+            channel_id=channel,
         )
 
     async def _recover_authentication(self, auth_error: Exception) -> bool:

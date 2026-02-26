@@ -5,7 +5,7 @@ from typing import Any
 
 from bot.control_plane import RISK_CLIP_CANDIDATE, control_plane
 from bot.control_plane_constants import utc_iso
-from bot.logic import context
+from bot.logic import context_manager
 from bot.observability import observability
 from bot.runtime_config import CHANNEL_ID, client
 from bot.vision_constants import (
@@ -76,7 +76,7 @@ class VisionRuntime:
             self._enqueue_visual_clip(analysis, now)
 
         if "cena_normal" not in analysis.lower():
-            context.update_content("game", analysis[:220])
+            context_manager.get().update_content("game", analysis[:220])
 
         observability.record_vision_frame(analysis=analysis)
 
