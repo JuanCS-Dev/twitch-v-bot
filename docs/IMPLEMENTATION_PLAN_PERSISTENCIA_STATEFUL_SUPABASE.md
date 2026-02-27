@@ -68,38 +68,16 @@
 
 ## 5. Evidências de Validação (ciclo de auditoria atual)
 
-- `pytest -q --no-cov bot/tests/test_persistence_layer.py bot/tests/test_logic_context.py bot/tests/test_bootstrap_runtime.py bot/tests/test_bootstrap_runtime_v2.py bot/tests/test_bootstrap_runtime_v3.py bot/tests/test_bootstrap_runtime_v4.py bot/tests/test_observability.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_routes_post.py bot/tests/test_semantic_memory.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_structural_health_gate.py bot/tests/test_stream_health_score.py bot/tests/test_post_stream_report.py bot/tests/test_control_plane_config.py bot/tests/test_control_plane.py bot/tests/test_autonomy_runtime.py`
-  **Resultado:** `198 passed, 2 skipped, 4 warnings`.
+- `pytest -q --no-cov bot/tests/test_revenue_attribution_engine.py bot/tests/test_persistence_revenue_repository.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_routes_post.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_persistence_layer.py bot/tests/test_logic_context.py bot/tests/test_bootstrap_runtime.py bot/tests/test_bootstrap_runtime_v2.py bot/tests/test_bootstrap_runtime_v3.py bot/tests/test_bootstrap_runtime_v4.py bot/tests/test_observability.py bot/tests/test_semantic_memory.py bot/tests/test_structural_health_gate.py bot/tests/test_stream_health_score.py bot/tests/test_post_stream_report.py bot/tests/test_control_plane_config.py bot/tests/test_control_plane.py bot/tests/test_autonomy_runtime.py`
+  **Resultado:** `224 passed, 2 skipped, 5 warnings`.
 - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
-  **Resultado:** `20 passed`.
+  **Resultado:** `21 passed`.
 - `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=21 headless_approved=2`.
+  **Resultado:** `ok integrated=25 headless_approved=2`.
 - `python -m bot.structural_health_gate`
   **Resultado:** `ok`.
-- `ruff check bot/coaching_churn_risk.py bot/coaching_runtime.py bot/dashboard_server_routes.py bot/structural_health_gate.py bot/tests/test_coaching_churn_risk.py bot/tests/test_coaching_runtime.py bot/tests/test_dashboard_routes_v3.py`
+- `ruff check bot/`
   **Resultado:** `All checks passed!`.
-- `pytest -q --no-cov bot/tests/test_coaching_churn_risk.py bot/tests/test_coaching_runtime.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_routes.py bot/tests/test_structural_health_gate.py`
-  **Resultado:** `81 passed`.
-- `node --test dashboard/tests/multi_channel_focus.test.js dashboard/tests/api_contract_parity.test.js`
-  **Resultado:** `23 passed`.
-- `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=23 headless_approved=2`.
-- `python -m bot.structural_health_gate`
-  **Resultado:** `ok`.
-- `pytest --no-cov bot/tests/test_ops_playbooks.py bot/tests/test_control_plane.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_post.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_autonomy_runtime.py`
-  **Resultado:** `108 passed, 2 warnings`.
-- `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
-  **Resultado:** `20 passed`.
-- `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=23 headless_approved=2`.
-- `pytest -q --no-cov bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_logic_context.py bot/tests/test_logic.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_structural_health_gate.py`
-  **Resultado:** `148 passed`.
-- `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
-  **Resultado:** `22 passed`.
-- `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=23 headless_approved=2`.
-- `python -m bot.structural_health_gate`
-  **Resultado:** `ok`.
 
 ---
 
