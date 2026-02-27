@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.18
+**Versão:** 1.19
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.3 CONCLUÍDAS, PRÓXIMA: 10.4)
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.3 CONCLUÍDAS, PRÓXIMA: 10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -217,34 +217,125 @@
 
 1. **Fase 10.4 (saneamento estrutural):** automatizar gate de complexidade/duplicação no pipeline para impedir regressão estrutural.
 2. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
-3. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
-4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+3. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
+4. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
+5. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
+6. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+7. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+8. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+9. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+10. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+11. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+12. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
-## 4. Matriz Atual de Controles
+## 4. Roadmap de Posicionamento Validado no Código (Fases 11-19)
 
-| Controle | Status no código | Observação |
-| :--- | :--- | :--- |
-| **Channel join/part/list** | ✅ | Runtime IRC + dashboard |
-| **Action queue approve/reject** | ✅ | Fluxo operacional ativo |
-| **Manual Tick** | ✅ | `/api/autonomy/tick` |
-| **Streamer HUD** | ✅ | Embutida + overlay standalone |
-| **Panic Suspend/Resume** | ✅ | Backend + dashboard + bloqueio operacional implementados |
-| **Persistent global observability rollup** | ✅ | `observability_rollups` + restore automático + chip de status na dashboard |
-| **Observability per-channel real** | ✅ | `channel_scopes` no rollup (schema v2) + snapshot isolado por canal |
-| **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
-| **Pause/Silence por canal (`agent_paused`)** | ✅ | Persistido em `channels_config`, aplicado no runtime e respeitado no prompt/autonomia |
-| **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
-| **Histórico persistido + comparativo multi-canal na observabilidade** | ✅ | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals` |
-| **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
-| **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
-| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1-10.3 concluídas, próxima etapa: 10.4) |
-| **Vector Memory** | ❌ | Ainda não implementado |
+### 4.1 Triagem crítica do report (`byte_positioning_report.docx.md`)
+
+| Item do report                         | Situação real (código/plano atual)                                                                          | Decisão aplicada neste plano                                 |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
+| **F1 Stream Health Score**             | ❌ Não existe score único 0-100 por canal.                                                                  | Entrou como **Fase 11** (nova).                              |
+| **F2 Ops Playbooks**                   | ❌ Não existe motor determinístico de playbooks.                                                            | Entrou como **Fase 14** (nova).                              |
+| **F3 Per-Channel Identity**            | ⚠️ Parcial: `agent_notes` e config por canal existem, mas sem identidade estruturada.                       | Entrou como **Fase 15** (evolução).                          |
+| **F4 Post-Stream Intelligence Report** | ❌ Não existe relatório pós-stream narrativo.                                                               | Entrou como **Fase 12** (nova).                              |
+| **F5 Viewer Churn Risk Signal**        | ❌ Não existe sinal explícito de risco de churn por viewer.                                                 | Entrou como **Fase 16** (nova, junto com coaching HUD).      |
+| **F6 Goal-Driven Autonomy Session**    | ⚠️ Parcial: goals no control plane já existem, mas sem contrato KPI por sessão.                             | Entrou como **Fase 13** (evolução, sem retrabalho).          |
+| **F7 Revenue Attribution Trace**       | ❌ Não existe correlação de ações com follow/sub/cheer; EventSub hoje está centrado em chat message.        | Entrou como **Fase 17** (nova).                              |
+| **F8 Outbound Webhook API**            | ❌ Não existem rotas/config de webhook outbound.                                                            | Entrou como **Fase 18** (nova).                              |
+| **F9 Streamer Coaching Mode**          | ⚠️ Parcial: HUD já existe (`/dashboard/hud` + painel principal), mas sem camada de coaching tático.         | Entrou como **Fase 16** (evolução sobre HUD existente).      |
+| **F10 Autonomous Clip Suggestion**     | ⚠️ Parcial: pipeline de clips + `clip_candidate` existem, mas sem detecção inteligente de momento clipável. | Entrou como **Fase 19** (evolução sobre pipeline existente). |
+
+### 4.2 Fases novas (sem duplicação)
+
+#### Fase 11: Stream Health Score Multi-Canal
+
+- **Escopo backend:** calcular score 0-100 por canal com base em sentimento, velocidade de chat, trigger hit rate e anomalias.
+- **Escopo dashboard:** exibir score no painel de observabilidade já existente (sem criar nova tela).
+- **DoD:** endpoint/versionamento do score, visualização por canal, testes unitários do cálculo e testes de rota/UI.
+
+#### Fase 12: Post-Stream Intelligence Report
+
+- **Escopo backend:** sumarização pós-live usando `observability_channel_history`, métricas de ação/aprovação/rejeição e custo operacional.
+- **Escopo dashboard:** relatório acessível no fluxo atual de observabilidade/contexto.
+- **DoD:** geração manual + automática ao fim de sessão, persistência do relatório, testes de integração e regressão.
+
+#### Fase 13: Goal-Driven Autonomy 2.0
+
+- **Escopo backend:** evoluir goals para contrato com KPI/target/janela/resultado da sessão.
+- **Escopo dashboard:** ampliar editor de goals no control plane existente (incluindo riscos hoje não expostos na UI, como `clip_candidate`).
+- **DoD:** objetivos avaliáveis no fim da sessão, telemetria de cumprimento, testes de lógica/autonomia/UI.
+
+#### Fase 14: Ops Playbooks Determinísticos
+
+- **Escopo backend:** engine de playbooks (state machine) disparada por condições operacionais, integrada à action queue.
+- **Escopo dashboard:** CRUD de playbooks no layout atual do control plane.
+- **DoD:** execução auditável e reproduzível, fallback seguro quando condição falhar, testes de fluxo completo.
+
+#### Fase 15: Per-Channel Identity Estruturada
+
+- **Escopo backend:** modelo persistido por canal para `persona_name`, `tone`, `emote_vocab`, `lore`.
+- **Escopo dashboard:** editor no bloco de configuração por canal já existente.
+- **Restrições técnicas explícitas:** nome de usuário Twitch no chat depende da conta autenticada; escopo desta fase cobre identidade textual/comportamental sem prometer troca de login por canal.
+- **DoD:** injeção consistente no prompt/runtime, restore persistido, testes de sanitização e integração.
+
+#### Fase 16: Coaching em Tempo Real + Viewer Churn Risk
+
+- **Escopo backend:** heurísticas de coaching + sinal de risco por ausência/queda de participação recorrente.
+- **Escopo dashboard/HUD:** mensagens táticas no HUD e dashboard principal, respeitando layout atual.
+- **DoD:** alertas com cooldown/antirruído, trilha histórica curta para auditoria, testes de regra e apresentação.
+
+#### Fase 17: Revenue Attribution Trace
+
+- **Escopo backend:** ampliar ingestão EventSub para eventos de conversão (follow/sub/cheer) e correlacionar temporalmente com ações do agente.
+- **Escopo dashboard:** visão de correlação em observabilidade histórica/comparativa já existente.
+- **DoD:** correlação explicável (não causal), janela configurável, testes de ingestão/correlação/API.
+
+#### Fase 18: Outbound Webhook API (Agency Integration Layer)
+
+- **Escopo backend:** cadastro de destinos, assinatura/HMAC, retries, DLQ simples e observabilidade de entrega.
+- **Escopo dashboard:** gestão de endpoints e eventos no painel operacional atual.
+- **DoD:** contrato versionado de payload, segurança mínima (assinatura + segredo rotacionável), testes de entrega e reprocessamento.
+
+#### Fase 19: Autonomous Clip Suggestion Intelligence Layer
+
+- **Escopo backend:** detector de momento clipável em tempo real (spike de sentimento + densidade de chat + padrão de emotes) acoplado ao pipeline de clips existente.
+- **Escopo dashboard/HUD:** sugestões operacionais no painel de clips e HUD, sem UI paralela.
+- **DoD:** precisão mínima inicial definida por baseline, feedback approve/reject para calibragem, testes de detector e fluxo E2E.
+
+### 4.3 Gate obrigatório de integração visual (para Fases 11-19)
+
+- Toda fase nova deve iniciar por **discovery do layout atual** (componentes/painéis existentes) antes de qualquer UI.
+- Toda capacidade backend deve ter mapeamento explícito `endpoint/runtime -> painel existente -> teste`.
+- Não criar dashboard paralela nem blocos genéricos fora da linguagem visual atual.
 
 ---
 
-## 5. Conclusão
+## 5. Matriz Atual de Controles
+
+| Controle                                                                                        | Status no código | Observação                                                                                                         |
+| :---------------------------------------------------------------------------------------------- | :--------------- | :----------------------------------------------------------------------------------------------------------------- |
+| **Channel join/part/list**                                                                      | ✅               | Runtime IRC + dashboard                                                                                            |
+| **Action queue approve/reject**                                                                 | ✅               | Fluxo operacional ativo                                                                                            |
+| **Manual Tick**                                                                                 | ✅               | `/api/autonomy/tick`                                                                                               |
+| **Streamer HUD**                                                                                | ✅               | Embutida + overlay standalone                                                                                      |
+| **Panic Suspend/Resume**                                                                        | ✅               | Backend + dashboard + bloqueio operacional implementados                                                           |
+| **Persistent global observability rollup**                                                      | ✅               | `observability_rollups` + restore automático + chip de status na dashboard                                         |
+| **Observability per-channel real**                                                              | ✅               | `channel_scopes` no rollup (schema v2) + snapshot isolado por canal                                                |
+| **Per-channel temperature/top_p**                                                               | ✅               | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard                                     |
+| **Pause/Silence por canal (`agent_paused`)**                                                    | ✅               | Persistido em `channels_config`, aplicado no runtime e respeitado no prompt/autonomia                              |
+| **Dashboard focused channel + persisted context**                                               | ✅               | Selector persistido, `/api/observability?channel=` e `/api/channel-context`                                        |
+| **Histórico persistido + comparativo multi-canal na observabilidade**                           | ✅               | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals`     |
+| **Thought Injection (`agent_notes`)**                                                           | ✅               | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
+| **Contrato backend -> dashboard (paridade visual por capability)**                              | ⚠️               | Fase 9 planejada para virar gate obrigatório de entrega operacional                                                |
+| **Saneamento anti-espaguete/anti-duplicação**                                                   | 🚧               | Fase 10 em andamento (10.1-10.3 concluídas, próxima etapa: 10.4)                                                   |
+| **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
+| **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
+
+---
+
+## 6. Conclusão
 
 O plano anterior estava correto no direcionamento, mas subestimava o que já foi entregue e misturava itens já implementados com itens ainda futuros. O estado real em 27/02/2026 é:
 
@@ -257,6 +348,7 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - soberania por canal já cobre tuning + notes + pause/silence;
 - contrato formal de paridade backend -> dashboard agora está em execução com discovery de layout aplicado;
 - foi identificado débito estrutural objetivo de complexidade/duplicação e aberta fase dedicada de saneamento (Fase 10);
+- roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
@@ -266,5 +358,6 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - Saneamento estrutural: duplicação entre repositórios de configuração/notas removida via base comum (`CachedChannelRepository`) e utilitários compartilhados.
 - Escopo validado: comportamento operacional e contratos HTTP existentes preservados.
 - Testes da etapa: suíte focal Python verde (`93 passed`, `--no-cov`) + lint/format/duplicação (`ruff` + `pylint R0801`) verdes.
+- Planejamento: trilha F11-F19 adicionada com dependências, DoD e gate visual obrigatório sem criar backlog duplicado.
 
-*Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*
+_Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._
