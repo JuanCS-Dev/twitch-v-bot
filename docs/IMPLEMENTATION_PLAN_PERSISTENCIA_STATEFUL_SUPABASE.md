@@ -98,24 +98,33 @@
 
 - Garantir que toda capacidade operacional implementada no backend tenha previsão e trilha explícita de integração visual na dashboard.
 - Evitar backlog invisível de features backend sem superfície de operação para streamer/admin.
+- Preservar o layout, hierarquia visual, padrões de interação e linguagem de componentes já existentes na dashboard operacional (sem UI genérica/paralela).
+
+**Etapa obrigatória de discovery (antes de implementar UI nova)**
+
+- Estudar a dashboard atual (`/dashboard`) e mapear: estrutura de painéis, componentes reutilizáveis, padrões de estado/seleção de canal e contratos visuais já consolidados.
+- Registrar no plano, para cada capability nova, onde ela entra no layout atual (painel existente, card existente ou extensão incremental) antes de codar.
 
 **Definição de pronto (DoD da paridade)**
 
 - Toda entrega backend que altera operação (`/api/*`, state runtime, governança por canal, observabilidade, autonomia) deve mapear pelo menos um ponto de visualização/controle na dashboard.
 - Se não houver UI no mesmo ciclo, o item só pode ser aceito com justificativa explícita de endpoint interno e plano de exposição visual com prioridade definida.
 - O plano deve ser atualizado na mesma PR com a linha de paridade (backend -> painel UI -> teste).
+- Toda UI nova deve ser extensão do layout atual (componentes/painéis existentes), sem criar "dashboard paralela" nem padrão visual genérico desconectado.
 
 **Entregáveis da fase**
 
 - Matriz de paridade backend/dashboard por domínio: Observability, Control Plane, Channel Governance, Clips, Prompt/Inference Runtime.
 - Gate de revisão: mudança backend operacional exige teste de rota/API e teste da dashboard correspondente.
 - Checklist de release para impedir merge de capacidade operacional "headless" sem decisão explícita.
+- Checklist de consistência visual: aderência ao layout atual, reaproveitamento de componentes e ausência de blocos genéricos fora do padrão do projeto.
 
 **Critérios de aceite**
 
 - 100% dos endpoints operacionais críticos mapeados para painel existente ou card planejado com prioridade.
 - Testes de backend e dashboard verdes para os fluxos alterados no ciclo.
 - Documento de implementação atualizado com o status de paridade por capability.
+- Evidência de discovery do layout atual anexada ao ciclo (mapa de encaixe visual por capability).
 
 ---
 
