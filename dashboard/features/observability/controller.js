@@ -2,6 +2,7 @@ import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
   getObservabilitySnapshot,
+  getSentimentScoresSnapshot,
 } from "./api.js";
 import {
   renderChannelContextSnapshot,
@@ -45,7 +46,12 @@ export function createObservabilityController({
     isPolling = true;
     setConnectionState("pending", obsEls);
     try {
-      const [data, channelData, historyData] = await Promise.all([
+      const sentimentPromise = getSentimentScoresSnapshot(
+        selectedChannel,
+        OBSERVABILITY_TIMEOUT_MS,
+      ).catch((_error) => null);
+
+      const [data, channelData, historyData, sentimentData] = await Promise.all([
         getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
         getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
         getObservabilityHistorySnapshot(
@@ -54,8 +60,9 @@ export function createObservabilityController({
           OBSERVABILITY_HISTORY_LIMIT,
           OBSERVABILITY_COMPARE_LIMIT,
         ),
+        sentimentPromise,
       ]);
-      renderObservabilitySnapshot(data, obsEls);
+      renderObservabilitySnapshot(data, obsEls, sentimentData);
       renderChannelContextSnapshot(channelData, obsEls);
       renderObservabilityHistorySnapshot(historyData, obsEls);
       setConnectionState("ok", obsEls);

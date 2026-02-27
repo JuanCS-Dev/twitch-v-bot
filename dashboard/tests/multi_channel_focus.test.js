@@ -11,6 +11,7 @@ import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
   getObservabilitySnapshot,
+  getSentimentScoresSnapshot,
 } from "../features/observability/api.js";
 import {
   renderChannelContextSnapshot,
@@ -297,6 +298,30 @@ function createObservabilityElements(document) {
       "eventsList",
       new MockElement("ul", document),
     ),
+    mStreamHealthScore: document.registerElement(
+      "mStreamHealthScore",
+      new MockElement("dd", document),
+    ),
+    mStreamHealthBand: document.registerElement(
+      "mStreamHealthBand",
+      new MockElement("dd", document),
+    ),
+    ctxStreamHealthScore: document.registerElement(
+      "ctxStreamHealthScore",
+      new MockElement("dd", document),
+    ),
+    ctxStreamHealthBand: document.registerElement(
+      "ctxStreamHealthBand",
+      new MockElement("dd", document),
+    ),
+    intStreamHealthScore: document.registerElement(
+      "intStreamHealthScore",
+      new MockElement("dd", document),
+    ),
+    intStreamHealthBand: document.registerElement(
+      "intStreamHealthBand",
+      new MockElement("dd", document),
+    ),
     sentimentProgressBar: document.registerElement(
       "sentimentProgressBar",
       new MockElement("div", document),
@@ -467,6 +492,7 @@ test("observability api resolves channel-scoped endpoints", async () => {
   await getObservabilitySnapshot(" Canal_A ");
   await getChannelContextSnapshot("Canal_B");
   await getObservabilityHistorySnapshot("Canal_C", 10000, 12, 4);
+  await getSentimentScoresSnapshot("Canal_D");
 
   assert.equal(
     calls[0].url,
@@ -480,9 +506,14 @@ test("observability api resolves channel-scoped endpoints", async () => {
     calls[2].url,
     "http://localhost:8000/api/observability/history?channel=canal_c&limit=12&compare_limit=4",
   );
+  assert.equal(
+    calls[3].url,
+    "http://localhost:8000/api/sentiment/scores?channel=canal_d",
+  );
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[1].options.method, "GET");
   assert.equal(calls[2].options.method, "GET");
+  assert.equal(calls[3].options.method, "GET");
 });
 
 test("observability views render focused channel and persisted context state", () => {
@@ -506,8 +537,25 @@ test("observability views render focused channel and persisted context state", (
         positive: 3,
         negative: 1,
       },
+      stream_health: {
+        score: 40,
+        band: "critical",
+      },
     },
     els,
+    {
+      sentiment: {
+        vibe: "Hyped",
+        avg: 1.6,
+        count: 8,
+        positive: 6,
+        negative: 1,
+      },
+      stream_health: {
+        score: 91,
+        band: "excellent",
+      },
+    },
   );
 
   renderChannelContextSnapshot(
@@ -550,6 +598,10 @@ test("observability views render focused channel and persisted context state", (
           chatters: {
             active_60m: 4,
           },
+          stream_health: {
+            score: 74,
+            band: "stable",
+          },
         },
       ],
       comparison: [
@@ -567,6 +619,10 @@ test("observability views render focused channel and persisted context state", (
           agent_outcomes: {
             ignored_rate_60m: 10.5,
           },
+          stream_health: {
+            score: 88,
+            band: "excellent",
+          },
         },
         {
           channel_id: "canal_b",
@@ -582,6 +638,10 @@ test("observability views render focused channel and persisted context state", (
           agent_outcomes: {
             ignored_rate_60m: 4.2,
           },
+          stream_health: {
+            score: 52,
+            band: "watch",
+          },
         },
       ],
     },
@@ -592,6 +652,12 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
   assert.equal(els.ctxPersistedStatusChip.textContent, "PERSISTED READY");
   assert.equal(els.ctxRuntimeStatusChip.textContent, "RUNTIME HOT");
+  assert.equal(els.mStreamHealthScore.textContent, "91");
+  assert.equal(els.mStreamHealthBand.textContent, "Excellent");
+  assert.equal(els.ctxStreamHealthScore.textContent, "91/100");
+  assert.equal(els.ctxStreamHealthBand.textContent, "Excellent");
+  assert.equal(els.intStreamHealthScore.textContent, "91/100");
+  assert.equal(els.intStreamHealthBand.textContent, "Excellent");
   assert.equal(els.ctxPersistedGame.textContent, "Celeste");
   assert.equal(
     els.ctxPersistedNotes.textContent,
@@ -608,10 +674,18 @@ test("observability views render focused channel and persisted context state", (
     els.persistedChannelTimelineBody.children[0].children[1].textContent,
     "30",
   );
+  assert.equal(
+    els.persistedChannelTimelineBody.children[0].children[6].textContent,
+    "74 (Stable)",
+  );
   assert.equal(els.persistedChannelComparisonBody.children.length, 2);
   assert.equal(
     els.persistedChannelComparisonBody.children[0].children[0].textContent,
     "canal_a (focused)",
+  );
+  assert.equal(
+    els.persistedChannelComparisonBody.children[0].children[6].textContent,
+    "88 (Excellent)",
   );
 });
 
@@ -626,6 +700,28 @@ test("observability controller fetches observability, context and history for th
 
   globalThis.fetch = async (url) => {
     urls.push(url);
+    if (String(url).includes("/api/sentiment/scores")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            sentiment: {
+              vibe: "Hyped",
+              avg: 1.3,
+              count: 10,
+              positive: 7,
+              negative: 2,
+            },
+            stream_health: {
+              score: 84,
+              band: "stable",
+            },
+          };
+        },
+      };
+    }
     if (String(url).includes("/api/observability/history")) {
       return {
         ok: true,
@@ -689,6 +785,7 @@ test("observability controller fetches observability, context and history for th
   await controller.fetchAndRenderObservability();
 
   assert.deepEqual(urls, [
+    "http://localhost:8000/api/sentiment/scores?channel=canal_z",
     "http://localhost:8000/api/observability?channel=canal_z",
     "http://localhost:8000/api/channel-context?channel=canal_z",
     "http://localhost:8000/api/observability/history?channel=canal_z&limit=24&compare_limit=6",
@@ -696,6 +793,8 @@ test("observability controller fetches observability, context and history for th
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");
   assert.equal(obsEls.ctxRuntimeStatusChip.textContent, "RUNTIME LAZY");
+  assert.equal(obsEls.mStreamHealthScore.textContent, "84");
+  assert.equal(obsEls.intStreamHealthBand.textContent, "Stable");
   assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
 });
 

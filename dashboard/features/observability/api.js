@@ -4,6 +4,7 @@ import { fetchWithTimeout } from "../shared/api.js";
 const OBSERVABILITY_ENDPOINT = "./api/observability";
 const CHANNEL_CONTEXT_ENDPOINT = "./api/channel-context";
 const OBSERVABILITY_HISTORY_ENDPOINT = "./api/observability/history";
+const SENTIMENT_SCORES_ENDPOINT = "./api/sentiment/scores";
 
 function normalizeChannelId(channelId) {
   return (
@@ -56,6 +57,14 @@ export async function getObservabilityHistorySnapshot(
       limit,
       compare_limit: compareLimit,
     })}`,
+    { method: "GET" },
+    timeoutMs,
+  );
+}
+
+export async function getSentimentScoresSnapshot(channelId, timeoutMs = 10000) {
+  return await fetchWithTimeout(
+    `${SENTIMENT_SCORES_ENDPOINT}${buildChannelQuery(channelId)}`,
     { method: "GET" },
     timeoutMs,
   );

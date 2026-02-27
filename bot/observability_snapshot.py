@@ -15,6 +15,7 @@ from bot.observability_helpers import (
     compute_p95,
     utc_iso,
 )
+from bot.stream_health_score import build_stream_health_score
 
 
 def build_observability_snapshot(
@@ -44,6 +45,7 @@ def build_observability_snapshot(
     bot_version: str,
     bot_mode: str,
     stream_context: Any,
+    channel_id: str = "default",
 ) -> dict[str, Any]:
     # Active users
     active_chatters_10m = sum(1 for value in chatter_last_seen.values() if now - value <= 600)
@@ -97,7 +99,7 @@ def build_observability_snapshot(
     get_uptime_minutes = getattr(stream_context, "get_uptime_minutes", None)
     if callable(get_uptime_minutes):
         uptime_value = get_uptime_minutes()
-        if isinstance(uptime_value, (int, float, str)):
+        if isinstance(uptime_value, int | float | str):
             uptime_minutes = max(0, int(uptime_value))
         else:
             uptime_minutes = max(0, int((now - started_at) / 60))
@@ -124,6 +126,22 @@ def build_observability_snapshot(
     sorted_routes = sorted(route_counts.items(), key=lambda item: item[1], reverse=True)
     route_rows = [{"route": route, "count": count} for route, count in sorted_routes]
     events_desc = list(reversed(recent_events[-40:]))
+    sentiment_block = _build_sentiment_block(channel_id)
+    agent_outcomes = {
+        **interaction_metrics,
+        **quality_metrics,
+        **autonomy_metrics,
+        "token_input_total": int(counters.get("token_input_total", 0)),
+        "token_output_total": int(counters.get("token_output_total", 0)),
+        **token_metrics,
+        "estimated_cost_usd_total": round(max(0.0, float(estimated_cost_usd_total or 0.0)), 6),
+    }
+    stream_health = build_stream_health_score(
+        sentiment=sentiment_block,
+        chat_analytics=chat_metrics,
+        agent_outcomes=agent_outcomes,
+        timeline=timeline,
+    )
 
     return {
         "timestamp": utc_iso(now),
@@ -171,15 +189,7 @@ def build_observability_snapshot(
         },
         "chat_analytics": chat_metrics,
         "leaderboards": leaderboards,
-        "agent_outcomes": {
-            **interaction_metrics,
-            **quality_metrics,
-            **autonomy_metrics,
-            "token_input_total": int(counters.get("token_input_total", 0)),
-            "token_output_total": int(counters.get("token_output_total", 0)),
-            **token_metrics,
-            "estimated_cost_usd_total": round(max(0.0, float(estimated_cost_usd_total or 0.0)), 6),
-        },
+        "agent_outcomes": agent_outcomes,
         "context": {
             "stream_vibe": context_vibe,
             "last_event": context_last_event,
@@ -193,17 +203,18 @@ def build_observability_snapshot(
         "routes": route_rows,
         "timeline": timeline,
         "recent_events": events_desc,
-        "sentiment": _build_sentiment_block(),
+        "sentiment": sentiment_block,
+        "stream_health": stream_health,
         "vision": _build_vision_block(),
     }
 
 
-def _build_sentiment_block() -> dict[str, Any]:
+def _build_sentiment_block(channel_id: str = "default") -> dict[str, Any]:
     from bot.sentiment_engine import sentiment_engine  # lazy: avoid circular
 
-    scores = sentiment_engine.get_scores()
+    scores = sentiment_engine.get_scores(channel_id)
     return {
-        "vibe": sentiment_engine.get_vibe(),
+        "vibe": sentiment_engine.get_vibe(channel_id),
         "avg": scores["avg"],
         "count": scores["count"],
         "positive": scores["positive"],

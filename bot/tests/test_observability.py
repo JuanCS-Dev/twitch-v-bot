@@ -37,6 +37,8 @@ class FakePersistence:
             "channel_id": str(channel_id or ""),
             "captured_at": str((payload or {}).get("captured_at") or ""),
             "metrics": dict((payload or {}).get("metrics") or {}),
+            "sentiment": dict((payload or {}).get("sentiment") or {}),
+            "stream_health": dict((payload or {}).get("stream_health") or {}),
         }
         self.history_saved.append(point)
         return point
@@ -122,6 +124,12 @@ class TestObservabilityState(unittest.TestCase):
         self.assertEqual(snapshot["context"]["items"]["movie"], "Duna Parte 2")
         self.assertEqual(snapshot["routes"][0]["route"], "llm_default")
         self.assertEqual(snapshot["routes"][0]["count"], 1)
+        self.assertEqual(snapshot["stream_health"]["version"], "v1")
+        self.assertIn(
+            snapshot["stream_health"]["band"], {"excellent", "stable", "watch", "critical"}
+        )
+        self.assertGreaterEqual(snapshot["stream_health"]["score"], 0)
+        self.assertLessEqual(snapshot["stream_health"]["score"], 100)
         self.assertEqual(len(snapshot["timeline"]), 30)
 
     def test_snapshot_tracks_errors_refresh_and_event_order(self):
@@ -287,6 +295,75 @@ class TestObservabilityState(unittest.TestCase):
         self.assertEqual(unknown_channel_snapshot["metrics"]["byte_triggers_total"], 0)
         self.assertEqual(unknown_channel_snapshot["chatters"]["unique_total"], 0)
 
+    @patch("bot.observability_snapshot._build_sentiment_block")
+    def test_snapshot_uses_channel_scoped_sentiment_for_stream_health(self, mock_sentiment_block):
+        state = ObservabilityState()
+        base = 1_700_011_500.0
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Bot Online",
+            live_observability={},
+        )
+
+        def sentiment_for_channel(channel_id):
+            if channel_id == "canal_a":
+                return {
+                    "vibe": "Hyped",
+                    "avg": 1.5,
+                    "count": 8,
+                    "positive": 6,
+                    "negative": 1,
+                }
+            return {
+                "vibe": "Tense",
+                "avg": -1.5,
+                "count": 8,
+                "positive": 1,
+                "negative": 6,
+            }
+
+        mock_sentiment_block.side_effect = sentiment_for_channel
+        state.record_chat_message(
+            author_name="alice",
+            source="irc",
+            text="byte status",
+            channel_id="canal_a",
+            timestamp=base,
+        )
+        state.record_chat_message(
+            author_name="bob",
+            source="irc",
+            text="oi",
+            channel_id="canal_b",
+            timestamp=base + 1,
+        )
+
+        channel_a_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_a",
+            timestamp=base + 120,
+        )
+        channel_b_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_b",
+            timestamp=base + 120,
+        )
+
+        self.assertEqual(channel_a_snapshot["sentiment"]["vibe"], "Hyped")
+        self.assertEqual(channel_b_snapshot["sentiment"]["vibe"], "Tense")
+        self.assertGreater(
+            channel_a_snapshot["stream_health"]["score"],
+            channel_b_snapshot["stream_health"]["score"],
+        )
+        self.assertEqual(mock_sentiment_block.call_args_list[0].args[0], "canal_a")
+        self.assertEqual(mock_sentiment_block.call_args_list[1].args[0], "canal_b")
+
     def test_state_restores_and_persists_channel_scopes(self):
         persistence = FakePersistence(
             loaded={
@@ -418,6 +495,11 @@ class TestObservabilityState(unittest.TestCase):
         )
         self.assertEqual(channel_a_point["metrics"]["chat_messages_total"], 1)
         self.assertEqual(channel_a_point["metrics"]["byte_triggers_total"], 1)
+        self.assertEqual(channel_a_point["stream_health"]["version"], "v1")
+        self.assertIn(
+            channel_a_point["stream_health"]["band"], {"excellent", "stable", "watch", "critical"}
+        )
+        self.assertIn("vibe", channel_a_point["sentiment"])
 
     def test_state_restores_persisted_rollup_and_exposes_metadata(self):
         persistence = FakePersistence(

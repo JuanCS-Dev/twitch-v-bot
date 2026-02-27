@@ -18,7 +18,6 @@ from bot.observability import observability
 from bot.observability_history_contract import normalize_observability_history_point
 from bot.persistence_layer import persistence
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
-from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import build_status_line
 from bot.vision_runtime import vision_runtime
 
@@ -237,6 +236,28 @@ def build_observability_history_payload(
     }
 
 
+def build_sentiment_scores_payload(channel_id: str | None = None) -> dict[str, Any]:
+    ctx = _get_context_sync(channel_id)
+    selected_channel = str(getattr(ctx, "channel_id", channel_id or "default") or "default")
+    snapshot = observability.snapshot(
+        bot_brand=BOT_BRAND,
+        bot_version=BYTE_VERSION,
+        bot_mode=TWITCH_CHAT_MODE,
+        stream_context=ctx,
+        channel_id=selected_channel,
+    )
+    sentiment = dict(snapshot.get("sentiment") or {})
+    stream_health = dict(snapshot.get("stream_health") or {})
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "channel_id": selected_channel,
+        **sentiment,
+        "sentiment": sentiment,
+        "stream_health": stream_health,
+    }
+
+
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
@@ -386,10 +407,9 @@ def _handle_get_hud_messages(handler: Any, query: dict[str, list[str]]) -> None:
     handler._send_json({"ok": True, "messages": messages}, status_code=200)
 
 
-def _handle_get_sentiment_scores(handler: Any, _query: dict[str, list[str]]) -> None:
-    scores = sentiment_engine.get_scores("default")
-    scores["vibe"] = sentiment_engine.get_vibe("default")
-    handler._send_json({"ok": True, **scores}, status_code=200)
+def _handle_get_sentiment_scores(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    handler._send_json(build_sentiment_scores_payload(channel_id), status_code=200)
 
 
 def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> None:
@@ -550,8 +570,10 @@ from bot.dashboard_server_routes_post import handle_post
 __all__ = [
     "CHANNEL_CONTROL_IRC_ONLY_ACTIONS",
     "_dashboard_asset_route",
+    "build_channel_context_payload",
     "build_observability_history_payload",
     "build_observability_payload",
+    "build_sentiment_scores_payload",
     "handle_get",
     "handle_get_config_js",
     "handle_post",

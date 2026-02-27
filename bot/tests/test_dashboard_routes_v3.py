@@ -7,6 +7,7 @@ from bot.dashboard_server_routes import (
     _dashboard_asset_route,
     build_channel_context_payload,
     build_observability_history_payload,
+    build_sentiment_scores_payload,
     handle_get,
     handle_get_config_js,
 )
@@ -312,13 +313,43 @@ class TestDashboardRoutesV3:
         mock_hud.get_messages.assert_called_with(since=123.45)
         handler._send_json.assert_called_once()
 
-    @patch("bot.dashboard_server_routes.sentiment_engine")
-    def test_handle_get_api_sentiment(self, mock_sent):
-        mock_sent.get_scores.return_value = {"score": 1}
-        mock_sent.get_vibe.return_value = "chill"
-        handler = MagicMock(path="/api/sentiment/scores")
+    @patch("bot.dashboard_server_routes._get_context_sync")
+    @patch("bot.dashboard_server_routes.observability")
+    def test_build_sentiment_scores_payload_uses_channel_snapshot(
+        self, mock_observability, mock_get_context
+    ):
+        mock_get_context.return_value = MagicMock(channel_id="canal_ctx")
+        mock_observability.snapshot.return_value = {
+            "sentiment": {
+                "vibe": "Hyped",
+                "avg": 1.4,
+                "count": 7,
+                "positive": 5,
+                "negative": 1,
+            },
+            "stream_health": {
+                "version": "v1",
+                "score": 86,
+                "band": "excellent",
+            },
+        }
+
+        payload = build_sentiment_scores_payload("canal_a")
+
+        mock_get_context.assert_called_once_with("canal_a")
+        assert mock_observability.snapshot.call_args.kwargs["channel_id"] == "canal_ctx"
+        assert payload["channel_id"] == "canal_ctx"
+        assert payload["vibe"] == "Hyped"
+        assert payload["sentiment"]["count"] == 7
+        assert payload["stream_health"]["score"] == 86
+
+    @patch("bot.dashboard_server_routes.build_sentiment_scores_payload")
+    def test_handle_get_api_sentiment(self, mock_build_payload):
+        mock_build_payload.return_value = {"ok": True, "vibe": "chill"}
+        handler = MagicMock(path="/api/sentiment/scores?channel=Canal_A")
         handler._dashboard_authorized.return_value = True
         handle_get(handler)
+        mock_build_payload.assert_called_once_with("canal_a")
         handler._send_json.assert_called_once()
         assert handler._send_json.call_args[0][0]["vibe"] == "chill"
 

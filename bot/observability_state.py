@@ -28,6 +28,7 @@ from bot.observability_state_recorders import (
     record_token_usage_locked,
     record_vision_frame_locked,
 )
+from bot.stream_health_score import build_stream_health_score
 
 
 def _normalize_channel_id(channel_id: str | None) -> str:
@@ -354,6 +355,18 @@ class ObservabilityState:
             scope._interaction_events,
             cutoff=cutoff_60m,
         )
+        retry_60m = sum(
+            1
+            for event in scope._quality_events
+            if float(event.get("ts", 0.0)) >= cutoff_60m
+            and str(event.get("outcome") or "").strip().lower() == "retry"
+        )
+        fallback_60m = sum(
+            1
+            for event in scope._quality_events
+            if float(event.get("ts", 0.0)) >= cutoff_60m
+            and str(event.get("outcome") or "").strip().lower() == "fallback"
+        )
         ignored_60m = sum(
             1
             for event in scope._quality_events
@@ -367,6 +380,34 @@ class ObservabilityState:
         active_60m = sum(
             1 for seen in scope._chatter_last_seen.values() if now - float(seen) <= 3600
         )
+        from bot.sentiment_engine import sentiment_engine  # lazy import avoids startup side effects
+
+        sentiment_scores = sentiment_engine.get_scores(channel_id)
+        sentiment = {
+            "vibe": sentiment_engine.get_vibe(channel_id),
+            "avg": sentiment_scores.get("avg", 0.0),
+            "count": sentiment_scores.get("count", 0),
+            "positive": sentiment_scores.get("positive", 0),
+            "negative": sentiment_scores.get("negative", 0),
+        }
+        chat_analytics = {
+            "messages_60m": int(messages_60m),
+            "byte_triggers_60m": int(triggers_60m),
+            "messages_per_minute_60m": round(messages_60m / 60.0, 2),
+        }
+        agent_outcomes = {
+            "llm_interactions_60m": int(interactions_60m),
+            "quality_retry_60m": int(retry_60m),
+            "quality_fallback_60m": int(fallback_60m),
+            "useful_engagement_rate_60m": round(useful_rate, 1),
+            "ignored_rate_60m": round(ignored_rate, 1),
+        }
+        stream_health = build_stream_health_score(
+            sentiment=sentiment,
+            chat_analytics=chat_analytics,
+            agent_outcomes=agent_outcomes,
+            timeline=[],
+        )
 
         return {
             "channel_id": _normalize_channel_id(channel_id),
@@ -379,18 +420,16 @@ class ObservabilityState:
                 "errors_total": int(scope._counters.get("errors_total", 0)),
             },
             "chatters": {
-                "unique_total": int(len(scope._known_chatters)),
+                "unique_total": len(scope._known_chatters),
                 "active_60m": int(active_60m),
             },
-            "chat_analytics": {
-                "messages_60m": int(messages_60m),
-                "byte_triggers_60m": int(triggers_60m),
-                "messages_per_minute_60m": round(messages_60m / 60.0, 2),
-            },
+            "chat_analytics": chat_analytics,
             "agent_outcomes": {
-                "useful_engagement_rate_60m": round(useful_rate, 1),
-                "ignored_rate_60m": round(ignored_rate, 1),
+                "useful_engagement_rate_60m": float(agent_outcomes["useful_engagement_rate_60m"]),
+                "ignored_rate_60m": float(agent_outcomes["ignored_rate_60m"]),
             },
+            "sentiment": sentiment,
+            "stream_health": stream_health,
             "context": {
                 "last_prompt": str(scope._last_prompt or "")[:120],
                 "last_reply": str(scope._last_reply or "")[:140],
@@ -657,11 +696,10 @@ class ObservabilityState:
                 prune_locked(scope, now)
             self._persist_if_needed_locked(now, force=True)
             scope: Any = self
+            selected_channel_id = "default"
             if channel_id is not None:
-                scope = (
-                    self._channel_scopes.get(_normalize_channel_id(channel_id))
-                    or _ObservabilityScope()
-                )
+                selected_channel_id = _normalize_channel_id(channel_id)
+                scope = self._channel_scopes.get(selected_channel_id) or _ObservabilityScope()
             snapshot = build_observability_snapshot(
                 now=now,
                 started_at=self._started_at,
@@ -688,6 +726,7 @@ class ObservabilityState:
                 bot_version=bot_version,
                 bot_mode=bot_mode,
                 stream_context=stream_context,
+                channel_id=selected_channel_id,
             )
             snapshot["persistence"] = {
                 "enabled": bool(self._persistence),

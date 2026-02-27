@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.21
+**Versão:** 1.22
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 CONCLUÍDA ✅ (GATE FORMAL BACKEND -> DASHBOARD + CHECKLIST DE RELEASE ATIVO NA CI) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 CONCLUÍDA ✅ (GATE FORMAL BACKEND -> DASHBOARD + CHECKLIST DE RELEASE ATIVO NA CI) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | FASE 11 CONCLUÍDA ✅ (STREAM HEALTH SCORE MULTI-CANAL + INTEGRAÇÃO VISUAL NO LAYOUT ATUAL) | FASE 12 NO TOPO DO BACKLOG
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -145,8 +145,8 @@
   - execução de testes da dashboard (`node --test ...`);
   - execução do gate formal de paridade (`python -m bot.dashboard_parity_gate`) no job de lint.
 - Exceções headless agora são explícitas e versionadas no gate:
-  - `/api/sentiment/scores` com exposição planejada na **Fase 11** (Stream Health Score);
   - `/api/vision/status` e `/api/vision/ingest` com exposição planejada na **Fase 19** (Clip Suggestion Intelligence).
+- `/api/sentiment/scores` saiu do status headless e foi integrado ao layout atual na Fase 11 (`metrics_health`, `intelligence_panel`, `agent_context_internals`), com cobertura de testes backend + dashboard.
 - Preservação de layout: o contrato mantém o encaixe das capacidades no layout existente (`control_plane`, `risk_queue`, `agent context`, `clips`, `hud`) sem dashboard paralela.
 
 ### Fase 10: Saneamento Estrutural (Anti-Espaguete + Anti-Duplicação) ✅ Concluída
@@ -249,20 +249,52 @@
   - `ruff check bot/structural_health_gate.py bot/tests/test_structural_health_gate.py` (verde);
   - `ruff format --check bot/structural_health_gate.py bot/tests/test_structural_health_gate.py` (verde).
 
+### Fase 11: Stream Health Score Multi-Canal ✅ Concluída
+
+**Objetivo da fase**
+
+- Sintetizar o estado operacional por canal em um score único (0-100) versionado, sem perder explicabilidade dos componentes.
+- Integrar o score no layout atual da dashboard, sem criar tela paralela nem bloco visual genérico.
+
+**Fechamento da Fase 11 (ciclo atual)**
+
+- Backend:
+  - novo módulo `bot/stream_health_score.py` com cálculo determinístico (`version`, `score`, `band`, componentes ponderados);
+  - snapshot de observabilidade passou a incluir `stream_health` por canal em `bot/observability_snapshot.py`;
+  - endpoint `GET /api/sentiment/scores?channel=` passou a refletir snapshot real por canal via `build_sentiment_scores_payload` em `bot/dashboard_server_routes.py`;
+  - contrato persistido do histórico estendido para `sentiment` e `stream_health` em `bot/observability_history_contract.py`.
+- Dashboard (layout atual preservado):
+  - `dashboard/features/observability/api.js` ganhou `getSentimentScoresSnapshot`;
+  - `dashboard/features/observability/controller.js` passou a buscar o endpoint de score no ciclo padrão de observabilidade;
+  - `dashboard/features/observability/view.js` renderiza score/band em cards já existentes e nas tabelas históricas persistidas;
+  - parciais atualizados sem UI paralela: `dashboard/partials/metrics_health.html`, `dashboard/partials/intelligence_panel.html`, `dashboard/partials/analytics_logs.html`.
+- Paridade backend -> dashboard:
+  - `bot/dashboard_parity_gate.py` promoveu `/api/sentiment/scores` para `integrated`;
+  - cobertura de contrato adicionada em `dashboard/tests/api_contract_parity.test.js` e `dashboard/tests/multi_channel_focus.test.js`.
+- Testes novos/ajustados da fase:
+  - novo: `bot/tests/test_stream_health_score.py` (cálculo de score por banda + path defensivo);
+  - backend ajustado: `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_observability.py`, `bot/tests/test_observability_history_contract.py`, `bot/tests/test_dashboard_parity_gate.py`;
+  - dashboard ajustado: `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`.
+- Validação executada:
+  - `pytest -q --no-cov bot/tests/test_stream_health_score.py bot/tests/test_observability.py bot/tests/test_observability_history_contract.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_routes.py` (`81 passed`);
+  - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js` (`16 passed`);
+  - `python -m bot.dashboard_parity_gate` (`ok integrated=18 headless_approved=2`);
+  - `ruff check bot/stream_health_score.py bot/observability_snapshot.py bot/observability_state.py bot/observability_history_contract.py bot/dashboard_server_routes.py bot/dashboard_parity_gate.py bot/tests/test_stream_health_score.py bot/tests/test_observability.py bot/tests/test_observability_history_contract.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_dashboard_routes_v3.py` (verde);
+  - `ruff format --check bot/stream_health_score.py bot/observability_snapshot.py bot/observability_state.py bot/observability_history_contract.py bot/dashboard_server_routes.py bot/dashboard_parity_gate.py bot/tests/test_stream_health_score.py bot/tests/test_observability.py bot/tests/test_observability_history_contract.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_dashboard_routes_v3.py` (verde).
+
 ---
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
-2. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
-3. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
-4. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
-5. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
-6. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
-7. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
-8. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
-9. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
-10. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
+2. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
+3. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+4. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+5. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+6. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+7. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+8. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+9. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -272,7 +304,7 @@
 
 | Item do report                         | Situação real (código/plano atual)                                                                          | Decisão aplicada neste plano                                 |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
-| **F1 Stream Health Score**             | ❌ Não existe score único 0-100 por canal.                                                                  | Entrou como **Fase 11** (nova).                              |
+| **F1 Stream Health Score**             | ✅ Implementado na Fase 11 com score 0-100 por canal (`v1` + bandas + componentes).                        | Entregue sem duplicação no layout atual da dashboard.        |
 | **F2 Ops Playbooks**                   | ❌ Não existe motor determinístico de playbooks.                                                            | Entrou como **Fase 14** (nova).                              |
 | **F3 Per-Channel Identity**            | ⚠️ Parcial: `agent_notes` e config por canal existem, mas sem identidade estruturada.                       | Entrou como **Fase 15** (evolução).                          |
 | **F4 Post-Stream Intelligence Report** | ❌ Não existe relatório pós-stream narrativo.                                                               | Entrou como **Fase 12** (nova).                              |
@@ -287,6 +319,7 @@
 
 #### Fase 11: Stream Health Score Multi-Canal
 
+- **Status atual:** ✅ Concluída no ciclo atual.
 - **Escopo backend:** calcular score 0-100 por canal com base em sentimento, velocidade de chat, trigger hit rate e anomalias.
 - **Escopo dashboard:** exibir score no painel de observabilidade já existente (sem criar nova tela).
 - **DoD:** endpoint/versionamento do score, visualização por canal, testes unitários do cálculo e testes de rota/UI.
@@ -366,6 +399,7 @@
 | **Thought Injection (`agent_notes`)**                                                           | ✅               | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)**                              | ✅               | Fase 9 concluída com gate obrigatório (`bot/dashboard_parity_gate.py`) e checklist de release ativo na CI          |
 | **Saneamento anti-espaguete/anti-duplicação**                                                   | ✅               | Fase 10 concluída (10.1-10.4) com gate automatizado ativo no pipeline CI                                           |
+| **Stream Health Score multi-canal (score + banda + histórico persistido)**                     | ✅               | Fase 11 concluída com endpoint por canal (`/api/sentiment/scores`) e render no layout atual                        |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
 | **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
 
@@ -384,20 +418,21 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - soberania por canal já cobre tuning + notes + pause/silence;
 - contrato formal de paridade backend -> dashboard concluído, com gate de release/CI ativo e discovery de layout aplicado;
 - saneamento estrutural foi concluído (Fase 10) com gate automatizado de complexidade/duplicação no pipeline;
+- stream health score multi-canal foi concluído (Fase 11) com contrato versionado e exposição no layout operacional existente;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: Fase 9 (gate formal de paridade backend -> dashboard) concluída sem regressão funcional.
+- Etapa entregue: Fase 11 (Stream Health Score Multi-Canal) concluída sem regressão funcional.
 - Backend/infra de qualidade:
-  - `bot/dashboard_parity_gate.py` valida cobertura por endpoint operacional (integrado ou headless aprovado com fase definida);
-  - `dashboard/tests/api_contract_parity.test.js` valida chamadas reais de API dos módulos de dashboard.
+  - `bot/stream_health_score.py` centraliza score determinístico por canal e componentes explicáveis;
+  - `bot/dashboard_parity_gate.py` passou a classificar `/api/sentiment/scores` como `integrated` com evidência backend + dashboard.
 - Pipeline:
-  - job `lint` da CI agora executa testes Node da dashboard;
-  - job `lint` executa `python -m bot.dashboard_parity_gate` antes do MyPy.
-- Escopo validado: merge é bloqueado quando surgir endpoint operacional sem decisão de paridade/testes.
-- Testes da etapa: suíte nova Python do gate + suíte nova Node de contrato + regressão backend/dashboard preservada.
-- Planejamento: backlog priorizado passa a iniciar na Fase 11, com Fase 9 e Fase 10 fechadas.
+  - gates de `ruff` + `pytest` + `node --test` + `python -m bot.dashboard_parity_gate` executados e verdes no ciclo;
+  - contrato visual manteve o encaixe no layout existente (`metrics_health`, `agent context`, `intelligence`) sem tela paralela.
+- Escopo validado: score e banda por canal fluem de runtime/persistência até UI comparativa histórica com cobertura de regressão.
+- Testes da etapa: suíte nova Python de score + ajustes de contratos backend/dashboard + regressão multi-canal preservada.
+- Planejamento: backlog priorizado passa a iniciar na Fase 12, com Fases 9-11 fechadas.
 
 _Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._

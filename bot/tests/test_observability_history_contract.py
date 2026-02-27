@@ -18,6 +18,12 @@ def test_normalize_observability_history_point_defaults_when_payload_missing():
     assert normalized["chat_analytics"]["messages_per_minute_60m"] == 0.0
     assert normalized["agent_outcomes"]["useful_engagement_rate_60m"] == 0.0
     assert normalized["agent_outcomes"]["ignored_rate_60m"] == 0.0
+    assert normalized["sentiment"]["vibe"] == "Chill"
+    assert normalized["sentiment"]["avg"] == 0.0
+    assert normalized["sentiment"]["count"] == 0
+    assert normalized["stream_health"]["version"] == "v1"
+    assert normalized["stream_health"]["score"] == 0
+    assert normalized["stream_health"]["band"] == "critical"
     assert normalized["context"]["last_prompt"] == ""
     assert normalized["context"]["last_reply"] == ""
 
@@ -53,3 +59,36 @@ def test_normalize_observability_history_point_uses_timestamp_and_default_fallba
 
     assert with_timestamp["captured_at"] == "2026-02-27T19:00:00Z"
     assert with_default["captured_at"] == "2026-02-27T20:00:00Z"
+
+
+def test_normalize_observability_history_point_clamps_stream_health_and_coerces_sentiment():
+    normalized = normalize_observability_history_point(
+        {
+            "channel_id": "canal_z",
+            "sentiment": {
+                "vibe": "Hyped",
+                "avg": "1.25",
+                "count": "9",
+                "positive": "7",
+                "negative": "2",
+            },
+            "stream_health": {
+                "version": "",
+                "score": "140",
+                "band": "unknown-band",
+            },
+        }
+    )
+
+    assert normalized["sentiment"] == {
+        "vibe": "Hyped",
+        "avg": 1.25,
+        "count": 9,
+        "positive": 7,
+        "negative": 2,
+    }
+    assert normalized["stream_health"] == {
+        "version": "v1",
+        "score": 100,
+        "band": "critical",
+    }

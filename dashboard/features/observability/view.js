@@ -12,6 +12,36 @@ function formatUsd(value) {
   return `$${amount.toFixed(4)}`;
 }
 
+function normalizeStreamHealthBand(band) {
+  const normalized = String(band || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "excellent") return "excellent";
+  if (normalized === "stable") return "stable";
+  if (normalized === "watch") return "watch";
+  return "critical";
+}
+
+function formatStreamHealthBandLabel(band) {
+  const normalized = normalizeStreamHealthBand(band);
+  if (normalized === "excellent") return "Excellent";
+  if (normalized === "stable") return "Stable";
+  if (normalized === "watch") return "Watch";
+  return "Critical";
+}
+
+function formatStreamHealthScore(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "0";
+  const clamped = Math.max(0, Math.min(100, parsed));
+  return String(Math.round(clamped));
+}
+
+function formatStreamHealthCell(source) {
+  const streamHealth = source?.stream_health || {};
+  return `${formatStreamHealthScore(streamHealth.score)} (${formatStreamHealthBandLabel(streamHealth.band)})`;
+}
+
 export function getObservabilityElements() {
   return {
     botIdentity: document.getElementById("botIdentity"),
@@ -79,8 +109,12 @@ export function getObservabilityElements() {
     mVisionFrames: document.getElementById("mVisionFrames"),
     mSentimentVibe: document.getElementById("mSentimentVibe"),
     mSentimentAvg: document.getElementById("mSentimentAvg"),
+    mStreamHealthScore: document.getElementById("mStreamHealthScore"),
+    mStreamHealthBand: document.getElementById("mStreamHealthBand"),
     ctxSentimentVibe: document.getElementById("ctxSentimentVibe"),
     ctxSentimentAvg: document.getElementById("ctxSentimentAvg"),
+    ctxStreamHealthScore: document.getElementById("ctxStreamHealthScore"),
+    ctxStreamHealthBand: document.getElementById("ctxStreamHealthBand"),
     ctxVisionFrames: document.getElementById("ctxVisionFrames"),
     ctxVisionLast: document.getElementById("ctxVisionLast"),
     ctxSelectedChannelChip: document.getElementById("ctxSelectedChannelChip"),
@@ -112,6 +146,8 @@ export function getObservabilityElements() {
     intSentimentCount: document.getElementById("intSentimentCount"),
     intSentimentPositive: document.getElementById("intSentimentPositive"),
     intSentimentNegative: document.getElementById("intSentimentNegative"),
+    intStreamHealthScore: document.getElementById("intStreamHealthScore"),
+    intStreamHealthBand: document.getElementById("intStreamHealthBand"),
     sentimentProgressBar: document.getElementById("sentimentProgressBar"),
   };
 }
@@ -231,7 +267,7 @@ function renderPersistedTimelineRows(rows, targetBody) {
   targetBody.innerHTML = "";
   const safeRows = asArray(rows);
   if (!safeRows.length) {
-    targetBody.appendChild(createCellRow(["-", 0, 0, 0, 0, 0]));
+    targetBody.appendChild(createCellRow(["-", 0, 0, 0, 0, 0, "0 (Critical)"]));
     return;
   }
   safeRows.slice(0, 16).forEach((item) => {
@@ -245,6 +281,7 @@ function renderPersistedTimelineRows(rows, targetBody) {
         formatNumber(metrics.replies_total),
         formatNumber(chatters.active_60m),
         formatNumber(metrics.errors_total),
+        formatStreamHealthCell(item),
       ]),
     );
   });
@@ -255,7 +292,9 @@ function renderPersistedComparisonRows(rows, targetBody, selectedChannel) {
   targetBody.innerHTML = "";
   const safeRows = asArray(rows);
   if (!safeRows.length) {
-    targetBody.appendChild(createCellRow(["-", 0, 0, 0, 0, "0.0%", "-"]));
+    targetBody.appendChild(
+      createCellRow(["-", 0, 0, 0, 0, "0.0%", "0 (Critical)", "-"]),
+    );
     return;
   }
   safeRows.slice(0, 12).forEach((item) => {
@@ -278,6 +317,7 @@ function renderPersistedComparisonRows(rows, targetBody, selectedChannel) {
         formatNumber(metrics.replies_total),
         formatNumber(chatters.active_60m),
         formatPercent(outcomes.ignored_rate_60m),
+        formatStreamHealthCell(item),
         String(item?.captured_at || "-"),
       ]),
     );
@@ -330,7 +370,7 @@ function renderEvents(events, targetBody) {
   });
 }
 
-export function renderObservabilitySnapshot(data, els) {
+export function renderObservabilitySnapshot(data, els, sentimentPayload = null) {
   const safeData = data && typeof data === "object" ? data : {};
   const bot = safeData.bot || {};
   const metrics = safeData.metrics || {};
@@ -341,6 +381,20 @@ export function renderObservabilitySnapshot(data, els) {
   const context = safeData.context || {};
   const outcomes = safeData.agent_outcomes || {};
   const persistence = safeData.persistence || {};
+  const safeSentimentPayload =
+    sentimentPayload && typeof sentimentPayload === "object"
+      ? sentimentPayload
+      : {};
+  const sentimentFromScores = safeSentimentPayload.sentiment || {};
+  const streamHealthFromScores = safeSentimentPayload.stream_health || {};
+  const sentiment =
+    Object.keys(sentimentFromScores).length > 0
+      ? sentimentFromScores
+      : safeData.sentiment || {};
+  const streamHealth =
+    Object.keys(streamHealthFromScores).length > 0
+      ? streamHealthFromScores
+      : safeData.stream_health || {};
 
   setText(els.botIdentity, `${bot.brand || "Byte"} v${bot.version || "-"}`);
   setText(els.mChatMessages, formatNumber(metrics.chat_messages_total));
@@ -479,13 +533,19 @@ export function renderObservabilitySnapshot(data, els) {
   renderEvents(safeData.recent_events || [], els.eventsList);
 
   // Sentiment & Vision (Fases 6-8)
-  const sentiment = safeData.sentiment || {};
   const vision = safeData.vision || {};
   setText(els.mVisionFrames, formatNumber(vision.frame_count));
   setText(els.mSentimentVibe, sentiment.vibe || "Chill");
   setText(els.mSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
+  setText(els.mStreamHealthScore, formatStreamHealthScore(streamHealth.score));
+  setText(els.mStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
   setText(els.ctxSentimentVibe, sentiment.vibe || "-");
   setText(els.ctxSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
+  setText(
+    els.ctxStreamHealthScore,
+    `${formatStreamHealthScore(streamHealth.score)}/100`,
+  );
+  setText(els.ctxStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
   setText(els.ctxVisionFrames, formatNumber(vision.frame_count));
   setText(els.ctxVisionLast, vision.last_analysis || "-");
 
@@ -498,6 +558,11 @@ export function renderObservabilitySnapshot(data, els) {
   setText(els.intSentimentCount, formatNumber(sentiment.count));
   setText(els.intSentimentPositive, formatNumber(sentiment.positive));
   setText(els.intSentimentNegative, formatNumber(sentiment.negative));
+  setText(
+    els.intStreamHealthScore,
+    `${formatStreamHealthScore(streamHealth.score)}/100`,
+  );
+  setText(els.intStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
 
   if (els.sentimentProgressBar) {
     const totalSentiments =

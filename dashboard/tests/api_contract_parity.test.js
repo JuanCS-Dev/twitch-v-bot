@@ -23,6 +23,7 @@ import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
   getObservabilitySnapshot,
+  getSentimentScoresSnapshot,
 } from "../features/observability/api.js";
 
 const TOKEN_KEY = "byte_dashboard_admin_token";
@@ -135,6 +136,7 @@ test("operational runtime APIs keep backend contract", async () => {
   await getObservabilitySnapshot("Canal_Z");
   await getChannelContextSnapshot("Canal_Z");
   await getObservabilityHistorySnapshot("Canal_Z", 10000, 12, 4);
+  await getSentimentScoresSnapshot("Canal_Z");
 
   const channelControlCall = findCall(calls, "/api/channel-control", "POST");
   assert.ok(channelControlCall);
@@ -173,4 +175,5 @@ test("operational runtime APIs keep backend contract", async () => {
       "GET",
     ),
   );
+  assert.ok(findCall(calls, "/api/sentiment/scores?channel=canal_z", "GET"));
 });

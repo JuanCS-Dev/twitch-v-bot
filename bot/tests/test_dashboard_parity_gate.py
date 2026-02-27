@@ -19,6 +19,7 @@ def test_collect_dashboard_api_routes_contains_core_routes():
     routes = set(collect_dashboard_api_routes())
     expected = {
         "/api/observability",
+        "/api/sentiment/scores",
         "/api/control-plane",
         "/api/channel-control",
         "/api/action-queue",
