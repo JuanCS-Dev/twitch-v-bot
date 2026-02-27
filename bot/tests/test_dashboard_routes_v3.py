@@ -7,6 +7,7 @@ from bot.dashboard_server_routes import (
     _dashboard_asset_route,
     build_channel_context_payload,
     build_observability_history_payload,
+    build_ops_playbooks_payload,
     build_post_stream_report_payload,
     build_semantic_memory_payload,
     build_sentiment_scores_payload,
@@ -557,6 +558,37 @@ class TestDashboardRoutesV3:
             status_code=200,
         )
 
+    @patch("bot.dashboard_server_routes.control_plane")
+    def test_build_ops_playbooks_payload(self, mock_cp):
+        mock_cp.ops_playbooks_snapshot.return_value = {
+            "enabled": True,
+            "updated_at": "2026-02-27T19:10:00Z",
+            "summary": {"total": 2, "awaiting_decision": 1},
+            "playbooks": [{"id": "queue_backlog_recovery"}],
+        }
+
+        payload = build_ops_playbooks_payload("Canal_A")
+
+        mock_cp.ops_playbooks_snapshot.assert_called_once_with(channel_id="canal_a")
+        assert payload["ok"] is True
+        assert payload["selected_channel"] == "canal_a"
+        assert payload["summary"]["awaiting_decision"] == 1
+        assert payload["playbooks"][0]["id"] == "queue_backlog_recovery"
+
+    @patch("bot.dashboard_server_routes.build_ops_playbooks_payload")
+    def test_handle_get_api_ops_playbooks(self, mock_build_payload):
+        mock_build_payload.return_value = {"ok": True, "selected_channel": "canal_a"}
+        handler = MagicMock(path="/api/ops-playbooks?channel=Canal_A")
+        handler._dashboard_authorized.return_value = True
+
+        handle_get(handler)
+
+        mock_build_payload.assert_called_once_with("canal_a")
+        handler._send_json.assert_called_once_with(
+            {"ok": True, "selected_channel": "canal_a"},
+            status_code=200,
+        )
+
     def test_handle_get_api_unauthorized(self):
         handler = MagicMock(path="/api/control-plane")
         handler._dashboard_authorized.return_value = False
@@ -685,6 +717,33 @@ class TestDashboardRoutesV3:
         handler._send_json.assert_called_with(
             {"ok": False, "error": "action_not_pending", "message": "not pending"}, status_code=409
         )
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_post_ops_playbooks_trigger_success(self, mock_cp):
+        mock_cp.trigger_ops_playbook.return_value = {
+            "enabled": True,
+            "summary": {"total": 2},
+            "playbooks": [],
+        }
+        handler = MagicMock(path="/api/ops-playbooks/trigger")
+        handler._dashboard_authorized.return_value = True
+        handler._read_json_payload.return_value = {
+            "playbook_id": "queue_backlog_recovery",
+            "channel_id": "Canal_A",
+            "reason": "manual_test",
+            "force": False,
+        }
+
+        handle_post(handler)
+
+        mock_cp.trigger_ops_playbook.assert_called_once_with(
+            playbook_id="queue_backlog_recovery",
+            channel_id="canal_a",
+            reason="manual_test",
+            force=False,
+        )
+        handler._send_json.assert_called_once()
+        assert handler._send_json.call_args.kwargs["status_code"] == 200
 
     @patch("bot.dashboard_server_routes_post.vision_runtime")
     def test_handle_vision_ingest_success(self, mock_vis):

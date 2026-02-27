@@ -173,10 +173,62 @@ def _handle_vision_ingest(handler: Any) -> None:
     handler._send_json(result, status_code=status_code)
 
 
+def _handle_ops_playbook_trigger(handler: Any) -> None:
+    payload = require_auth_and_read_payload(handler, allow_empty=True)
+    if payload is None:
+        return
+
+    playbook_id = str(payload.get("playbook_id", "") or "").strip().lower()
+    channel_id = str(payload.get("channel_id", "default") or "default").strip().lower() or "default"
+    reason = str(payload.get("reason", "manual_dashboard") or "manual_dashboard")
+    force = bool(payload.get("force", False))
+    if not playbook_id:
+        send_invalid_request(handler, "playbook_id obrigatorio.")
+        return
+    try:
+        snapshot = control_plane.trigger_ops_playbook(
+            playbook_id=playbook_id,
+            channel_id=channel_id,
+            reason=reason,
+            force=force,
+        )
+    except KeyError:
+        handler._send_json(
+            {
+                "ok": False,
+                "error": "playbook_not_found",
+                "message": "Playbook nao encontrado.",
+            },
+            status_code=404,
+        )
+        return
+    except RuntimeError as error:
+        handler._send_json(
+            {
+                "ok": False,
+                "error": str(error),
+                "message": str(error),
+            },
+            status_code=409,
+        )
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "selected_channel": channel_id,
+            **snapshot,
+        },
+        status_code=200,
+    )
+
+
 _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/channel-control": _handle_channel_control_post,
     "/api/autonomy/tick": _handle_autonomy_tick,
     "/api/agent/suspend": _handle_agent_suspend,
     "/api/agent/resume": _handle_agent_resume,
+    "/api/ops-playbooks/trigger": _handle_ops_playbook_trigger,
     "/api/vision/ingest": _handle_vision_ingest,
 }

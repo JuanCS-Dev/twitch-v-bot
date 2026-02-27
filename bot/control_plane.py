@@ -10,6 +10,7 @@ from bot.control_plane_constants import (
     SUPPORTED_DECISIONS,
     SUPPORTED_RISK_LEVELS,
 )
+from bot.ops_playbooks import OpsPlaybookRuntime
 
 
 class ControlPlaneState:
@@ -18,6 +19,36 @@ class ControlPlaneState:
     def __init__(self) -> None:
         self._config_runtime = ControlPlaneConfigRuntime()
         self._action_queue = ControlPlaneActionQueue(max_items=self.MAX_ACTION_ITEMS)
+        self._ops_playbooks = OpsPlaybookRuntime()
+
+    def _action_ignore_after_seconds(self) -> int:
+        return self._config_runtime.action_ignore_after_seconds()
+
+    def _get_action_for_ops_playbook(
+        self,
+        action_id: str,
+        *,
+        timestamp: float | None = None,
+    ) -> dict[str, Any] | None:
+        return self._action_queue.get_action(
+            action_id,
+            ignore_after_seconds=self._action_ignore_after_seconds(),
+            timestamp=timestamp,
+        )
+
+    def _ops_playbook_metrics(self, *, timestamp: float | None = None) -> dict[str, Any]:
+        queue_runtime = self._action_queue.runtime_snapshot(
+            ignore_after_seconds=self._action_ignore_after_seconds(),
+            timestamp=timestamp,
+        )
+        queue = queue_runtime.get("queue", {})
+        queue_window_60m = queue_runtime.get("queue_window_60m", {})
+        return {
+            "queue_pending": int(queue.get("pending", 0)),
+            "queue_ignored_rate_60m": float(queue_window_60m.get("ignored_rate", 0.0)),
+            "queue_decisions_total_60m": int(queue_window_60m.get("decisions_total", 0)),
+            "queue_target_pending": 3,
+        }
 
     def get_config(self) -> dict[str, Any]:
         return self._config_runtime.get_config()
@@ -146,7 +177,57 @@ class ControlPlaneState:
         return self._action_queue.list_actions(
             status=status,
             limit=limit,
-            ignore_after_seconds=self._config_runtime.action_ignore_after_seconds(),
+            ignore_after_seconds=self._action_ignore_after_seconds(),
+            timestamp=timestamp,
+        )
+
+    def ops_playbooks_snapshot(
+        self,
+        *,
+        channel_id: str = "default",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        return self._ops_playbooks.reconcile(
+            channel_id=channel_id,
+            metrics=self._ops_playbook_metrics(timestamp=timestamp),
+            get_action=self._get_action_for_ops_playbook,
+            enqueue_action=self._action_queue.enqueue_action,
+            timestamp=timestamp,
+        )
+
+    def run_ops_playbooks(
+        self,
+        *,
+        channel_id: str = "default",
+        reason: str = "autonomy_tick",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        return self._ops_playbooks.evaluate(
+            channel_id=channel_id,
+            metrics=self._ops_playbook_metrics(timestamp=timestamp),
+            trigger_reason=reason,
+            get_action=self._get_action_for_ops_playbook,
+            enqueue_action=self._action_queue.enqueue_action,
+            timestamp=timestamp,
+        )
+
+    def trigger_ops_playbook(
+        self,
+        *,
+        playbook_id: str,
+        channel_id: str = "default",
+        reason: str = "manual_dashboard",
+        force: bool = False,
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        return self._ops_playbooks.trigger(
+            playbook_id=playbook_id,
+            channel_id=channel_id,
+            reason=reason,
+            metrics=self._ops_playbook_metrics(timestamp=timestamp),
+            get_action=self._get_action_for_ops_playbook,
+            enqueue_action=self._action_queue.enqueue_action,
+            force=force,
             timestamp=timestamp,
         )
 
@@ -182,6 +263,11 @@ class ControlPlaneState:
                 "reason": "Fluxo por risco com fila e decisao approve/reject.",
                 "levels": sorted(SUPPORTED_RISK_LEVELS),
             },
+            "ops_playbooks": {
+                "enabled": True,
+                "reason": "Playbooks deterministicos com state machine e trilha auditavel.",
+                "surface": "risk_queue_panel",
+            },
             "response_contract": {
                 "max_messages": 1,
                 "max_lines": 4,
@@ -196,11 +282,12 @@ class ControlPlaneState:
     def runtime_snapshot(self, *, timestamp: float | None = None) -> dict[str, Any]:
         runtime = self._config_runtime.runtime_base_snapshot(timestamp=timestamp)
         queue_runtime = self._action_queue.runtime_snapshot(
-            ignore_after_seconds=self._config_runtime.action_ignore_after_seconds(),
+            ignore_after_seconds=self._action_ignore_after_seconds(),
             timestamp=timestamp,
         )
         runtime["queue"] = queue_runtime.get("queue", {})
         runtime["queue_window_60m"] = queue_runtime.get("queue_window_60m", {})
+        runtime["ops_playbooks"] = self.ops_playbooks_snapshot(timestamp=timestamp)
         return runtime
 
 

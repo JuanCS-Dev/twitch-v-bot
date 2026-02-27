@@ -125,6 +125,90 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.assertTrue(args[0]["ok"])
         self.assertEqual(args[0]["item"]["id"], "123")
 
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_ops_playbook_trigger_success(self, mock_cp):
+        self.handler.path = "/api/ops-playbooks/trigger"
+        self.handler._read_json_payload.return_value = {
+            "playbook_id": "queue_backlog_recovery",
+            "channel_id": "Canal_A",
+            "reason": "manual_test",
+            "force": True,
+        }
+        mock_cp.trigger_ops_playbook.return_value = {
+            "enabled": True,
+            "summary": {"total": 2, "awaiting_decision": 1},
+            "playbooks": [],
+        }
+
+        routes_post.handle_post(self.handler)
+
+        mock_cp.trigger_ops_playbook.assert_called_with(
+            playbook_id="queue_backlog_recovery",
+            channel_id="canal_a",
+            reason="manual_test",
+            force=True,
+        )
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "mode": routes_post.TWITCH_CHAT_MODE,
+                "selected_channel": "canal_a",
+                "enabled": True,
+                "summary": {"total": 2, "awaiting_decision": 1},
+                "playbooks": [],
+            },
+            status_code=200,
+        )
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_ops_playbook_trigger_not_found(self, mock_cp):
+        self.handler.path = "/api/ops-playbooks/trigger"
+        self.handler._read_json_payload.return_value = {"playbook_id": "unknown"}
+        mock_cp.trigger_ops_playbook.side_effect = KeyError("playbook_not_found")
+
+        routes_post.handle_post(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "playbook_not_found",
+                "message": "Playbook nao encontrado.",
+            },
+            status_code=404,
+        )
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_ops_playbook_trigger_conflict(self, mock_cp):
+        self.handler.path = "/api/ops-playbooks/trigger"
+        self.handler._read_json_payload.return_value = {"playbook_id": "queue_backlog_recovery"}
+        mock_cp.trigger_ops_playbook.side_effect = RuntimeError("playbook_cooldown")
+
+        routes_post.handle_post(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "playbook_cooldown",
+                "message": "playbook_cooldown",
+            },
+            status_code=409,
+        )
+
+    def test_handle_ops_playbook_trigger_invalid_request(self):
+        self.handler.path = "/api/ops-playbooks/trigger"
+        self.handler._read_json_payload.return_value = {}
+
+        routes_post.handle_post(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "invalid_request",
+                "message": "playbook_id obrigatorio.",
+            },
+            status_code=400,
+        )
+
     @patch("bot.dashboard_server_routes_post.vision_runtime")
     def test_handle_vision_ingest_success(self, mock_vision):
         self.handler.path = "/api/vision/ingest"

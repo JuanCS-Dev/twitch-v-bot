@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.25
+**Versão:** 1.26
 **Data:** 27 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) concluídas ✅ | Backlog ativo: Fases 14-19 + otimização `pgvector` (futuro)
+**Status:** Fases antigas (1-13) + Fase 14 concluídas ✅ | Backlog ativo: Fases 15-19 + otimização `pgvector` (futuro)
 
 ---
 
@@ -34,6 +34,7 @@
 | **11** | Stream Health Score multi-canal | `bot/stream_health_score.py`, snapshot/histórico com `stream_health`, `/api/sentiment/scores`, render no layout atual | `bot/tests/test_stream_health_score.py`, `bot/tests/test_observability.py`, `dashboard/tests/multi_channel_focus.test.js`, parity gate | ✅ |
 | **12** | Post-Stream Intelligence Report | `bot/post_stream_report.py`, `bot/persistence_post_stream_report_repository.py`, `/api/observability/post-stream-report`, geração automática em `part` | `bot/tests/test_post_stream_report.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_server_extra.py`, parity gate | ✅ |
 | **13** | Goal-Driven Autonomy 2.0 (KPI por sessão) | `bot/control_plane_constants.py`, `bot/control_plane_config_helpers.py`, `bot/control_plane_config.py`, `bot/autonomy_runtime.py`, UI em `dashboard/features/control-plane/view.js` | `bot/tests/test_control_plane_config.py`, `bot/tests/test_control_plane.py`, `bot/tests/test_autonomy_runtime.py`, `dashboard/tests/multi_channel_focus.test.js` | ✅ |
+| **14** | Ops Playbooks determinísticos | `bot/ops_playbooks.py`, integração em `bot/control_plane.py` + `bot/autonomy_runtime.py`, rotas `/api/ops-playbooks` e `/api/ops-playbooks/trigger`, UI integrada em `dashboard/features/action-queue/*` + `dashboard/partials/risk_queue.html` | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_control_plane.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_dashboard_parity_gate.py` | ✅ |
 
 ---
 
@@ -47,18 +48,18 @@
 | Post-stream report | `/api/observability/post-stream-report` (`generate=1`) + auto em `part` | `Intelligence Overview` (mesmo painel) | `bot/tests/test_post_stream_report.py`, `bot/tests/test_dashboard_server_extra.py`, `bot/tests/test_dashboard_routes_v3.py` |
 | Goal KPI por sessão | runtime `register_goal_session_result` + telemetria `kpi_met/kpi_missed` | `Control Plane` (editor de goals existente) | `bot/tests/test_control_plane_config.py`, `bot/tests/test_autonomy_runtime.py`, `dashboard/tests/multi_channel_focus.test.js` |
 | Soberania operacional | `/api/autonomy/tick`, `/api/agent/suspend`, `/api/agent/resume` | `Control Plane` + HUD | `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js` |
+| Ops playbooks determinísticos | `/api/ops-playbooks` (`GET`) + `/api/ops-playbooks/trigger` (`POST`) + execução em `autonomy_runtime` | `Risk Queue` (mesmo painel/layout atual) | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js` |
 
 ---
 
 ## 4. Backlog Prioritário (Fases Futuras)
 
-1. **Fase 14 - Ops Playbooks Determinísticos:** state machine operacional integrada à action queue.
-2. **Fase 15 - Per-Channel Identity Estruturada:** persona persistida por canal (`persona_name`, `tone`, `emote_vocab`, `lore`).
-3. **Fase 16 - Coaching em Tempo Real + Viewer Churn Risk:** alertas táticos no HUD/dashboard com antirruído.
-4. **Fase 17 - Revenue Attribution Trace:** correlação temporal entre ação do agente e conversão (follow/sub/cheer).
-5. **Fase 18 - Outbound Webhook API:** destinos, assinatura/HMAC, retry e observabilidade de entrega.
-6. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
-7. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
+1. **Fase 15 - Per-Channel Identity Estruturada:** persona persistida por canal (`persona_name`, `tone`, `emote_vocab`, `lore`).
+2. **Fase 16 - Coaching em Tempo Real + Viewer Churn Risk:** alertas táticos no HUD/dashboard com antirruído.
+3. **Fase 17 - Revenue Attribution Trace:** correlação temporal entre ação do agente e conversão (follow/sub/cheer).
+4. **Fase 18 - Outbound Webhook API:** destinos, assinatura/HMAC, retry e observabilidade de entrega.
+5. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
+6. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
 
 ---
 
@@ -72,6 +73,12 @@
   **Resultado:** `ok integrated=21 headless_approved=2`.
 - `python -m bot.structural_health_gate`
   **Resultado:** `ok`.
+- `pytest --no-cov bot/tests/test_ops_playbooks.py bot/tests/test_control_plane.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_post.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_autonomy_runtime.py`
+  **Resultado:** `108 passed, 2 warnings`.
+- `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
+  **Resultado:** `20 passed`.
+- `python -m bot.dashboard_parity_gate`
+  **Resultado:** `ok integrated=23 headless_approved=2`.
 
 ---
 

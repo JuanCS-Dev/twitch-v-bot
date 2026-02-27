@@ -76,3 +76,43 @@ class TestControlPlaneState(unittest.TestCase):
         self.assertEqual(runtime["autonomy_goal_kpi_met_total"], 1)
         self.assertIn("queue", runtime)
         self.assertIn("queue_window_60m", runtime)
+        self.assertIn("ops_playbooks", runtime)
+
+    def test_ops_playbooks_capabilities_and_runtime_snapshot(self):
+        capabilities = self.control_plane.build_capabilities(bot_mode="eventsub")
+        runtime = self.control_plane.runtime_snapshot(timestamp=200.0)
+
+        self.assertIn("ops_playbooks", capabilities)
+        self.assertTrue(capabilities["ops_playbooks"]["enabled"])
+        self.assertEqual(capabilities["ops_playbooks"]["surface"], "risk_queue_panel")
+        self.assertIn("summary", runtime["ops_playbooks"])
+        self.assertGreaterEqual(runtime["ops_playbooks"]["summary"]["total"], 1)
+
+    def test_trigger_ops_playbook_creates_action_queue_item(self):
+        snapshot = self.control_plane.trigger_ops_playbook(
+            playbook_id="queue_backlog_recovery",
+            channel_id="canal_a",
+            reason="manual_test",
+            timestamp=300.0,
+        )
+        self.assertEqual(snapshot["summary"]["awaiting_decision"], 1)
+
+        pending_items = self.control_plane.list_actions(
+            status="pending",
+            limit=40,
+            timestamp=301.0,
+        )["items"]
+        playbook_item = next(
+            (item for item in pending_items if item.get("kind") == "ops_playbook_step"),
+            None,
+        )
+        self.assertIsNotNone(playbook_item)
+        self.assertEqual(playbook_item["audit"][0]["by"], "ops_playbook")
+
+        with self.assertRaisesRegex(RuntimeError, "playbook_busy"):
+            self.control_plane.trigger_ops_playbook(
+                playbook_id="queue_backlog_recovery",
+                channel_id="canal_a",
+                reason="manual_test_retry",
+                timestamp=302.0,
+            )

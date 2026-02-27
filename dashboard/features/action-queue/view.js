@@ -15,6 +15,37 @@ function chipClassByRisk(risk) {
     return "warn";
 }
 
+function chipClassByPlaybookState(state) {
+    const safeState = String(state || "").trim().toLowerCase();
+    if (safeState === "idle") return "ok";
+    if (safeState === "cooldown") return "pending";
+    if (safeState === "awaiting_decision") return "warn";
+    return "warn";
+}
+
+function chipClassByPlaybookOutcome(outcome) {
+    const safeOutcome = String(outcome || "").trim().toLowerCase();
+    if (safeOutcome === "completed") return "ok";
+    if (safeOutcome === "aborted") return "error";
+    return "pending";
+}
+
+function formatPlaybookState(state) {
+    const safeState = String(state || "").trim().toLowerCase();
+    if (safeState === "awaiting_decision") return "awaiting decision";
+    if (safeState === "cooldown") return "cooldown";
+    if (safeState === "idle") return "idle";
+    return safeState || "-";
+}
+
+function formatPlaybookOutcome(outcome) {
+    const safeOutcome = String(outcome || "").trim().toLowerCase();
+    if (safeOutcome === "never_run") return "never run";
+    if (safeOutcome === "completed") return "completed";
+    if (safeOutcome === "aborted") return "aborted";
+    return safeOutcome || "-";
+}
+
 function buildChip(text, tone) {
     const chip = document.createElement("span");
     chip.className = `chip ${tone}`;
@@ -97,6 +128,69 @@ function buildActionItem(item, onDecision) {
     return card;
 }
 
+function buildPlaybookItem(item) {
+    const card = document.createElement("li");
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.gap = "var(--spacing-2)";
+
+    const topRow = document.createElement("div");
+    topRow.style.display = "flex";
+    topRow.style.flexWrap = "wrap";
+    topRow.style.gap = "var(--spacing-2)";
+    topRow.style.alignItems = "center";
+
+    const title = document.createElement("strong");
+    title.textContent = String(item?.name || item?.id || "Playbook");
+    topRow.appendChild(title);
+    topRow.appendChild(
+        buildChip(
+            formatPlaybookState(item?.state),
+            chipClassByPlaybookState(item?.state)
+        )
+    );
+    topRow.appendChild(
+        buildChip(
+            formatPlaybookOutcome(item?.last_outcome),
+            chipClassByPlaybookOutcome(item?.last_outcome)
+        )
+    );
+    card.appendChild(topRow);
+
+    const description = document.createElement("div");
+    description.textContent = String(item?.description || "-");
+    card.appendChild(description);
+
+    const step = Number(item?.current_step_number || 0);
+    const totalSteps = Number(item?.total_steps || 0);
+    const waitingActionId = String(item?.waiting_action_id || "").trim();
+    const progress = document.createElement("div");
+    progress.className = "panel-hint";
+    progress.textContent =
+        step > 0 && totalSteps > 0
+            ? `Passo ${step}/${totalSteps}: ${item?.current_step_title || "-"}`
+            : `Passos totais: ${formatNumber(totalSteps)}`;
+    card.appendChild(progress);
+
+    const meta = document.createElement("div");
+    meta.className = "event-meta";
+    meta.textContent = `id=${item?.id || "-"} | run=${item?.last_run_id || "-"} | updated=${item?.updated_at || "-"}`;
+    card.appendChild(meta);
+
+    const detail = document.createElement("div");
+    detail.className = "panel-hint";
+    if (waitingActionId) {
+        detail.textContent = `Aguardando decisao da fila para action_id=${waitingActionId}.`;
+    } else if (String(item?.state || "").trim().toLowerCase() === "cooldown") {
+        detail.textContent = `Cooldown ate ${item?.cooldown_until || "-"}.`;
+    } else {
+        detail.textContent = `Ultimo motivo: ${item?.last_outcome_reason || "n/a"}.`;
+    }
+    card.appendChild(detail);
+
+    return card;
+}
+
 export function getActionQueueElements() {
     return {
         panel: document.getElementById("aqPanel"),
@@ -110,6 +204,19 @@ export function getActionQueueElements() {
         ignoredCount: document.getElementById("aqIgnoredCount"),
         totalCount: document.getElementById("aqTotalCount"),
         list: document.getElementById("aqList"),
+        opsUpdatedAt: document.getElementById("aqOpsUpdatedAt"),
+        opsIdleCount: document.getElementById("aqOpsIdleCount"),
+        opsAwaitingCount: document.getElementById("aqOpsAwaitingCount"),
+        opsCooldownCount: document.getElementById("aqOpsCooldownCount"),
+        opsCompletedCount: document.getElementById("aqOpsCompletedCount"),
+        opsAbortedCount: document.getElementById("aqOpsAbortedCount"),
+        opsPlaybookSelect: document.getElementById("aqOpsPlaybookSelect"),
+        opsReasonInput: document.getElementById("aqOpsReasonInput"),
+        opsForceToggle: document.getElementById("aqOpsForceToggle"),
+        opsRefreshBtn: document.getElementById("aqOpsRefreshBtn"),
+        opsTriggerBtn: document.getElementById("aqOpsTriggerBtn"),
+        opsFeedback: document.getElementById("aqOpsFeedbackMsg"),
+        opsList: document.getElementById("aqOpsList"),
     };
 }
 
@@ -125,12 +232,26 @@ export function setActionQueueBusy(els, busy) {
         });
         els.list.style.opacity = disabled ? "0.7" : "1";
     }
+    if (els?.opsPlaybookSelect) els.opsPlaybookSelect.disabled = disabled;
+    if (els?.opsReasonInput) els.opsReasonInput.disabled = disabled;
+    if (els?.opsForceToggle) els.opsForceToggle.disabled = disabled;
+    if (els?.opsRefreshBtn) els.opsRefreshBtn.disabled = disabled;
+    if (els?.opsTriggerBtn) els.opsTriggerBtn.disabled = disabled;
+    if (els?.opsList) {
+        els.opsList.style.opacity = disabled ? "0.7" : "1";
+    }
 }
 
 export function showActionQueueFeedback(els, message, type = "info") {
     if (!els?.feedback) return;
     setText(els.feedback, message);
     els.feedback.className = `panel-hint event-level-${type === "ok" ? "info" : type}`;
+}
+
+export function showOpsPlaybooksFeedback(els, message, type = "info") {
+    if (!els?.opsFeedback) return;
+    setText(els.opsFeedback, message);
+    els.opsFeedback.className = `panel-hint event-level-${type === "ok" ? "info" : type}`;
 }
 
 export function getActionQueueQuery(els) {
@@ -141,6 +262,62 @@ export function getActionQueueQuery(els) {
         els.limitInput.value = String(limit);
     }
     return { status, limit };
+}
+
+function syncOpsPlaybookSelect(playbooks, selectEl) {
+    if (!selectEl) return;
+    const items = asArray(playbooks).filter((item) => item && item.id);
+    const previousValue = String(selectEl.value || "").trim().toLowerCase();
+    selectEl.innerHTML = "";
+    if (!items.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Nenhum playbook";
+        selectEl.appendChild(option);
+        selectEl.value = "";
+        return;
+    }
+
+    items.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = String(item.id || "").trim().toLowerCase();
+        option.textContent = String(item.name || item.id || "Playbook");
+        selectEl.appendChild(option);
+    });
+
+    const hasPrevious = items.some(
+        (item) => String(item.id || "").trim().toLowerCase() === previousValue
+    );
+    selectEl.value = hasPrevious ? previousValue : String(items[0].id || "").trim().toLowerCase();
+}
+
+function renderOpsPlaybookRows(playbooks, targetList) {
+    if (!targetList) return;
+    targetList.innerHTML = "";
+    const items = asArray(playbooks);
+    if (!items.length) {
+        const emptyItem = document.createElement("li");
+        emptyItem.style.fontStyle = "italic";
+        emptyItem.style.color = "var(--text-muted)";
+        emptyItem.textContent = "Nenhum playbook operacional registrado.";
+        targetList.appendChild(emptyItem);
+        return;
+    }
+    items.forEach((playbook) => {
+        targetList.appendChild(buildPlaybookItem(playbook));
+    });
+}
+
+export function getOpsPlaybookTriggerPayload(els, channelId = "default") {
+    const playbookId = String(els?.opsPlaybookSelect?.value || "").trim().toLowerCase();
+    const reason = String(els?.opsReasonInput?.value || "").trim() || "manual_dashboard";
+    const force = Boolean(els?.opsForceToggle?.checked);
+    return {
+        playbookId,
+        channelId: String(channelId || "").trim().toLowerCase() || "default",
+        reason,
+        force,
+    };
 }
 
 export function renderActionQueuePayload(payload, els, onDecision) {
@@ -176,4 +353,20 @@ export function renderActionQueuePayload(payload, els, onDecision) {
     items.forEach((item) => {
         els.list.appendChild(buildActionItem(item, onDecision));
     });
+}
+
+export function renderOpsPlaybooksPayload(payload, els) {
+    const safePayload = payload && typeof payload === "object" ? payload : {};
+    const summary = safePayload.summary || {};
+    const playbooks = asArray(safePayload.playbooks);
+
+    setText(els?.opsUpdatedAt, safePayload.updated_at || "-");
+    setText(els?.opsIdleCount, formatNumber(summary.idle));
+    setText(els?.opsAwaitingCount, formatNumber(summary.awaiting_decision));
+    setText(els?.opsCooldownCount, formatNumber(summary.cooldown));
+    setText(els?.opsCompletedCount, formatNumber(summary.completed));
+    setText(els?.opsAbortedCount, formatNumber(summary.aborted));
+
+    syncOpsPlaybookSelect(playbooks, els?.opsPlaybookSelect);
+    renderOpsPlaybookRows(playbooks, els?.opsList);
 }

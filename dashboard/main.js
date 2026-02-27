@@ -30,6 +30,7 @@ async function bootstrapDashboard() {
     autEls,
   });
   let controlPlaneController;
+  let actionQueueController;
   async function syncDashboardChannel(
     channelId,
     { refreshObservability = true } = {},
@@ -37,6 +38,9 @@ async function bootstrapDashboard() {
     observabilityController.setSelectedChannel(channelId);
     if (controlPlaneController) {
       controlPlaneController.setSelectedChannel(channelId);
+    }
+    if (actionQueueController) {
+      actionQueueController.setSelectedChannel(channelId);
     }
 
     const jobs = [];
@@ -46,11 +50,14 @@ async function bootstrapDashboard() {
     if (controlPlaneController) {
       jobs.push(controlPlaneController.loadChannelConfig(false));
     }
+    if (actionQueueController) {
+      jobs.push(actionQueueController.refreshActionQueue({ showFeedback: false }));
+    }
     if (jobs.length) {
       await Promise.all(jobs);
     }
   }
-  const actionQueueController = createActionQueueController({
+  actionQueueController = createActionQueueController({
     aqEls,
     fetchAndRenderObservability:
       observabilityController.fetchAndRenderObservability,

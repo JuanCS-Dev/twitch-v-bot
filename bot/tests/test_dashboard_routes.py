@@ -56,6 +56,32 @@ class TestDashboardRoutes(unittest.TestCase):
         mock_cp.list_actions.assert_called_with(status="pending", limit=10)
         self.handler._send_json.assert_called()
 
+    @patch("bot.dashboard_server_routes.control_plane")
+    def test_handle_get_ops_playbooks(self, mock_cp):
+        self.handler.path = "/api/ops-playbooks?channel=Canal_A"
+        mock_cp.ops_playbooks_snapshot.return_value = {
+            "enabled": True,
+            "updated_at": "2026-02-27T21:00:00Z",
+            "summary": {"total": 2, "awaiting_decision": 1},
+            "playbooks": [],
+        }
+
+        routes.handle_get(self.handler)
+
+        mock_cp.ops_playbooks_snapshot.assert_called_with(channel_id="canal_a")
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "mode": routes.TWITCH_CHAT_MODE,
+                "selected_channel": "canal_a",
+                "enabled": True,
+                "updated_at": "2026-02-27T21:00:00Z",
+                "summary": {"total": 2, "awaiting_decision": 1},
+                "playbooks": [],
+            },
+            status_code=200,
+        )
+
     @patch("bot.dashboard_server_routes.clip_jobs")
     def test_handle_get_clip_jobs(self, mock_jobs):
         self.handler.path = "/api/clip-jobs"

@@ -155,12 +155,18 @@ class AutonomyRuntime:
                     result["session_kpi"] = evaluation
                 processed.append(result)
 
+            ops_playbooks = control_plane.run_ops_playbooks(
+                channel_id=channel_id,
+                reason=reason,
+            )
+
             return {
                 "ok": True,
                 "reason": reason,
                 "force": bool(force),
                 "due_goals": len(due_goals),
                 "processed": processed,
+                "ops_playbooks": ops_playbooks,
                 "runtime": control_plane.runtime_snapshot(),
             }
 

@@ -15,6 +15,8 @@ import {
 import {
   getActionQueue,
   decideActionQueueItem,
+  getOpsPlaybooks,
+  triggerOpsPlaybook,
 } from "../features/action-queue/api.js";
 import { triggerAutonomyTick } from "../features/autonomy/api.js";
 import { fetchClipJobs } from "../features/clips/api.js";
@@ -134,6 +136,13 @@ test("operational runtime APIs keep backend contract", async () => {
   await triggerAutonomyTick({ force: false, reason: "manual_test" });
   await getActionQueue({ status: "pending", limit: 7 });
   await decideActionQueueItem("action 123", "APPROVE", "ok");
+  await getOpsPlaybooks("Canal_Z");
+  await triggerOpsPlaybook({
+    playbookId: "queue_backlog_recovery",
+    channelId: "Canal_Z",
+    reason: "manual_test",
+    force: true,
+  });
   await fetchClipJobs();
   await fetchHudMessages(12.5);
   await getObservabilitySnapshot("Canal_Z");
@@ -173,6 +182,15 @@ test("operational runtime APIs keep backend contract", async () => {
   assert.deepEqual(JSON.parse(String(decisionCall.options.body)), {
     decision: "approve",
     note: "ok",
+  });
+  assert.ok(findCall(calls, "/api/ops-playbooks?channel=canal_z", "GET"));
+  const triggerPlaybookCall = findCall(calls, "/api/ops-playbooks/trigger", "POST");
+  assert.ok(triggerPlaybookCall);
+  assert.deepEqual(JSON.parse(String(triggerPlaybookCall.options.body)), {
+    playbook_id: "queue_backlog_recovery",
+    channel_id: "canal_z",
+    reason: "manual_test",
+    force: true,
   });
 
   assert.ok(findCall(calls, "/api/clip-jobs", "GET"));

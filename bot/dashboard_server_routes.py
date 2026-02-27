@@ -367,6 +367,19 @@ def build_semantic_memory_payload(
     }
 
 
+def build_ops_playbooks_payload(
+    channel_id: str | None = None,
+) -> dict[str, Any]:
+    safe_channel_id = str(channel_id or "default").strip().lower() or "default"
+    snapshot = control_plane.ops_playbooks_snapshot(channel_id=safe_channel_id)
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "selected_channel": safe_channel_id,
+        **snapshot,
+    }
+
+
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
@@ -562,6 +575,14 @@ def _handle_get_semantic_memory(handler: Any, query: dict[str, list[str]]) -> No
     )
 
 
+def _handle_get_ops_playbooks(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    handler._send_json(
+        build_ops_playbooks_payload(channel_id),
+        status_code=200,
+    )
+
+
 def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> None:
     handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
 
@@ -583,6 +604,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/sentiment/scores": _handle_get_sentiment_scores,
     "/api/observability/post-stream-report": _handle_get_post_stream_report,
     "/api/semantic-memory": _handle_get_semantic_memory,
+    "/api/ops-playbooks": _handle_get_ops_playbooks,
     "/api/vision/status": _handle_get_vision_status,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
@@ -755,6 +777,7 @@ __all__ = [
     "build_channel_context_payload",
     "build_observability_history_payload",
     "build_observability_payload",
+    "build_ops_playbooks_payload",
     "build_post_stream_report_payload",
     "build_semantic_memory_payload",
     "build_sentiment_scores_payload",

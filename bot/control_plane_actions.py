@@ -187,6 +187,27 @@ class ControlPlaneActionQueue:
                 "expired": expired,
             }
 
+    def get_action(
+        self,
+        action_id: str,
+        *,
+        ignore_after_seconds: int = 900,
+        timestamp: float | None = None,
+    ) -> dict[str, Any] | None:
+        safe_action_id = str(action_id or "").strip()
+        if not safe_action_id:
+            return None
+
+        now = time.time() if timestamp is None else float(timestamp)
+        ttl_seconds = max(60, int(ignore_after_seconds))
+
+        with self._lock:
+            self._expire_pending_actions_locked(now, ttl_seconds)
+            item = self._action_items.get(safe_action_id)
+            if item is None:
+                return None
+            return copy.deepcopy(item)
+
     def runtime_snapshot(
         self,
         *,

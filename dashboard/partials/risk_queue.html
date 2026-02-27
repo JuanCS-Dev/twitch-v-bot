@@ -33,6 +33,44 @@
 
     <p id="aqFeedbackMsg" class="panel-hint event-level-info">Aguardando fila...</p>
     <ul id="aqList" class="events-list" style="max-height: 560px; overflow-y: auto;"></ul>
+
+    <h3>Ops Playbooks Determinísticos</h3>
+    <p class="panel-hint">State machine operacional com trilha auditável integrada na mesma fila de risco.</p>
+
+    <div class="form-row" style="flex-wrap:wrap;">
+      <div class="form-group" style="min-width:260px;">
+        <label for="aqOpsPlaybookSelect">Playbook</label>
+        <select id="aqOpsPlaybookSelect" class="form-control">
+          <option value="">Nenhum playbook</option>
+        </select>
+      </div>
+      <div class="form-group" style="min-width:260px;">
+        <label for="aqOpsReasonInput">Motivo do trigger</label>
+        <input id="aqOpsReasonInput" class="form-control" type="text" value="manual_dashboard" />
+      </div>
+      <div class="form-group" style="min-width:140px;">
+        <label for="aqOpsForceToggle">Force cooldown</label>
+        <input id="aqOpsForceToggle" class="form-control" type="checkbox" />
+      </div>
+      <div class="form-group">
+        <button id="aqOpsRefreshBtn" class="btn btn-secondary" type="button">Refresh Playbooks</button>
+      </div>
+      <div class="form-group">
+        <button id="aqOpsTriggerBtn" class="btn btn-primary" type="button">Trigger Playbook</button>
+      </div>
+    </div>
+
+    <dl class="kv">
+      <div><dt>Idle</dt><dd id="aqOpsIdleCount">0</dd></div>
+      <div><dt>Awaiting</dt><dd id="aqOpsAwaitingCount">0</dd></div>
+      <div><dt>Cooldown</dt><dd id="aqOpsCooldownCount">0</dd></div>
+      <div><dt>Completed</dt><dd id="aqOpsCompletedCount">0</dd></div>
+      <div><dt>Aborted</dt><dd id="aqOpsAbortedCount">0</dd></div>
+      <div><dt>Updated</dt><dd id="aqOpsUpdatedAt">-</dd></div>
+    </dl>
+
+    <p id="aqOpsFeedbackMsg" class="panel-hint event-level-info">Aguardando status de playbooks...</p>
+    <ul id="aqOpsList" class="events-list" style="max-height: 420px; overflow-y: auto;"></ul>
   </article>
 
   <article class="panel">
