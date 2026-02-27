@@ -648,6 +648,22 @@ def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> Non
     handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
 
 
+def _handle_get_revenue_conversions(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    limit = _resolve_int_query_param(query, "limit", default=20, minimum=1, maximum=100)
+    conversions = persistence.load_recent_revenue_conversions_sync(channel_id, limit=limit)
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "channel_id": channel_id,
+            "conversions": conversions,
+            "limit": limit,
+        },
+        status_code=200,
+    )
+
+
 def _handle_get_dashboard_config(handler: Any, _query: dict[str, list[str]]) -> None:
     handle_get_config_js(handler)
 
@@ -667,6 +683,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/semantic-memory": _handle_get_semantic_memory,
     "/api/ops-playbooks": _handle_get_ops_playbooks,
     "/api/vision/status": _handle_get_vision_status,
+    "/api/observability/conversions": _handle_get_revenue_conversions,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
 

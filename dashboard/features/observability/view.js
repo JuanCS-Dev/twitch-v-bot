@@ -223,6 +223,13 @@ export function getObservabilityElements() {
     ),
     intSemanticMemoryMatches: document.getElementById("intSemanticMemoryMatches"),
     intSemanticMemoryEntries: document.getElementById("intSemanticMemoryEntries"),
+
+    // Revenue Conversions
+    intRevenueEventType: document.getElementById("intRevenueEventType"),
+    intRevenueViewerLogin: document.getElementById("intRevenueViewerLogin"),
+    intRevenueValue: document.getElementById("intRevenueValue"),
+    intRevenueSimulateBtn: document.getElementById("intRevenueSimulateBtn"),
+    intRevenueConversions: document.getElementById("intRevenueConversions"),
   };
 }
 
@@ -1020,4 +1027,34 @@ export function renderSemanticMemorySnapshot(payload, els) {
     "Nenhuma memoria persistida para este canal.",
     false,
   );
+}
+
+export function renderRevenueConversionsSnapshot(payload, els) {
+  if (!els || !els.intRevenueConversions) return;
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const conversions = asArray(safePayload.conversions);
+  const targetBody = els.intRevenueConversions;
+
+  targetBody.innerHTML = "";
+  if (!conversions.length) {
+    const li = document.createElement("li");
+    li.style.fontStyle = "italic";
+    li.style.color = "var(--text-muted)";
+    li.textContent = "Nenhuma conversao recente para este canal.";
+    targetBody.appendChild(li);
+    return;
+  }
+
+  conversions.forEach((item) => {
+    const li = document.createElement("li");
+    const eventType = String(item?.event_type || "-").toUpperCase();
+    const login = item?.viewer_login || "-";
+    const val = Number(item?.revenue_value || 0);
+    const attr = item?.attributed_action_type || "";
+    const badge = attr ? `[Attr: ${attr}] ` : "";
+    const money = val > 0 ? ` $${val.toFixed(2)}` : "";
+
+    li.textContent = `${badge}${eventType} from ${login}${money}`;
+    targetBody.appendChild(li);
+  });
 }

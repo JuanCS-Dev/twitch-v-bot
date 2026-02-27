@@ -224,6 +224,47 @@ def _handle_ops_playbook_trigger(handler: Any) -> None:
     )
 
 
+from bot.persistence_layer import persistence
+from bot.revenue_attribution_engine import RevenueAttributionEngine
+
+_revenue_engine = RevenueAttributionEngine(persistence)
+
+
+def _handle_revenue_conversion(handler: Any) -> None:
+    payload = require_auth_and_read_payload(handler)
+    if payload is None:
+        return
+
+    channel_id = str(payload.get("channel_id", "") or "").strip().lower()
+    event_type = str(payload.get("event_type", "") or "").strip().lower()
+    viewer_id = str(payload.get("viewer_id", "unknown") or "unknown").strip()
+    viewer_login = str(payload.get("viewer_login", "unknown") or "unknown").strip()
+    revenue_value = float(payload.get("revenue_value", 0.0) or 0.0)
+    currency = str(payload.get("currency", "USD") or "USD").strip().upper()
+    timestamp = payload.get("timestamp")
+
+    if not channel_id or not event_type:
+        send_invalid_request(handler, "channel_id e event_type sao obrigatorios.")
+        return
+
+    try:
+        conversion = _revenue_engine.process_conversion(
+            channel_id=channel_id,
+            event_type=event_type,
+            viewer_id=viewer_id,
+            viewer_login=viewer_login,
+            revenue_value=revenue_value,
+            currency=currency,
+            timestamp=timestamp,
+        )
+        handler._send_json({"ok": True, "conversion": conversion}, status_code=200)
+    except Exception as error:
+        handler._send_json(
+            {"ok": False, "error": "conversion_processing_failed", "message": str(error)},
+            status_code=500,
+        )
+
+
 _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/channel-control": _handle_channel_control_post,
     "/api/autonomy/tick": _handle_autonomy_tick,
@@ -231,4 +272,5 @@ _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/agent/resume": _handle_agent_resume,
     "/api/ops-playbooks/trigger": _handle_ops_playbook_trigger,
     "/api/vision/ingest": _handle_vision_ingest,
+    "/api/observability/conversion": _handle_revenue_conversion,
 }

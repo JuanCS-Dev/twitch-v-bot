@@ -2,7 +2,7 @@
 
 **Versão:** 1.28
 **Data:** 27 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) + Fases 14-16 concluídas ✅ | Backlog ativo: Fases 17-19 + otimização `pgvector` (futuro)
+**Status:** Fases antigas (1-13) + Fases 14-17 concluídas ✅ | Backlog ativo: Fases 18-19 + otimização `pgvector` (futuro)
 
 ---
 
@@ -37,6 +37,7 @@
 | **14** | Ops Playbooks determinísticos | `bot/ops_playbooks.py`, integração em `bot/control_plane.py` + `bot/autonomy_runtime.py`, rotas `/api/ops-playbooks` e `/api/ops-playbooks/trigger`, UI integrada em `dashboard/features/action-queue/*` + `dashboard/partials/risk_queue.html` | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_control_plane.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_dashboard_parity_gate.py` | ✅ |
 | **15** | Per-Channel Identity Estruturada | `bot/persistence_channel_identity_repository.py`, facade em `bot/persistence_layer.py`, restore/aplicação em `bot/logic_context.py`, injeção de prompt em `bot/logic_inference.py`, rotas `GET/PUT /api/channel-config` e `GET /api/channel-context` em `bot/dashboard_server_routes.py`, UI integrada no `Control Plane` (`dashboard/partials/control_plane.html`, `dashboard/features/control-plane/view.js`) | `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_logic_context.py`, `bot/tests/test_logic.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_structural_health_gate.py`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate` | ✅ |
 | **16** | Coaching em tempo real + Viewer Churn Risk | motor determinístico `bot/coaching_churn_risk.py`, runtime antirruído `bot/coaching_runtime.py`, integração no snapshot de observabilidade (`bot/dashboard_server_routes.py`) e render no layout atual (`dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/view.js`, `dashboard/features/hud/view.js`) | `bot/tests/test_coaching_churn_risk.py`, `bot/tests/test_coaching_runtime.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate` | ✅ |
+| **17** | Revenue Attribution Trace | correlação temporal de follow/sub/cheer com ação via `bot/revenue_attribution_engine.py`, persistência via `bot/persistence_revenue_attribution_repository.py`, rotas `/api/observability/conversion(s)`, render em `dashboard/partials/intelligence_panel.html` | `bot/tests/test_revenue_attribution_engine.py`, `bot/tests/test_persistence_revenue_repository.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate` | ✅ |
 
 ---
 
@@ -53,15 +54,15 @@
 | Identidade estruturada por canal | `channel_identity` via `PersistenceLayer`, `/api/channel-config` (`GET/PUT`) e `/api/channel-context` | `Control Plane` (card `Channel Directives`, sem dashboard paralela) | `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `dashboard/tests/api_contract_parity.test.js` |
 | Soberania operacional | `/api/autonomy/tick`, `/api/agent/suspend`, `/api/agent/resume` | `Control Plane` + HUD | `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js` |
 | Ops playbooks determinísticos | `/api/ops-playbooks` (`GET`) + `/api/ops-playbooks/trigger` (`POST`) + execução em `autonomy_runtime` | `Risk Queue` (mesmo painel/layout atual) | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js` |
+| Atribuição de Conversões (Trace) | `/api/observability/conversions` (`GET`) + `/api/observability/conversion` (`POST`) | `Intelligence Overview` (Fim do painel, trace list) | `bot/tests/test_revenue_attribution_engine.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py` |
 
 ---
 
 ## 4. Backlog Prioritário (Fases Futuras)
 
-1. **Fase 17 - Revenue Attribution Trace:** correlação temporal entre ação do agente e conversão (follow/sub/cheer).
-2. **Fase 18 - Outbound Webhook API:** destinos, assinatura/HMAC, retry e observabilidade de entrega.
-3. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
-4. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
+1. **Fase 18 - Outbound Webhook API:** destinos, assinatura/HMAC, retry e observabilidade de entrega.
+2. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
+3. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
 
 ---
 

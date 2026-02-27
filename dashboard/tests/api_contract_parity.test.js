@@ -29,6 +29,8 @@ import {
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
   upsertSemanticMemoryEntry,
+  getRevenueConversionsSnapshot,
+  postRevenueConversion,
 } from "../features/observability/api.js";
 
 const TOKEN_KEY = "byte_dashboard_admin_token";
@@ -168,6 +170,13 @@ test("operational runtime APIs keep backend contract", async () => {
     memory_type: "instruction",
     tags: "lore,moderation",
   });
+  await getRevenueConversionsSnapshot("Canal_Z", 10000, 20);
+  await postRevenueConversion({
+    channel_id: "canal_z",
+    event_type: "sub",
+    viewer_login: "test_user",
+    revenue_value: 4.99,
+  });
 
   const channelControlCall = findCall(calls, "/api/channel-control", "POST");
   assert.ok(channelControlCall);
@@ -239,5 +248,22 @@ test("operational runtime APIs keep backend contract", async () => {
   assert.equal(
     JSON.parse(String(semanticUpsertCall.options.body)).memory_type,
     "instruction",
+  );
+  assert.ok(
+    findCall(
+      calls,
+      "/api/observability/conversions?channel=canal_z&limit=20",
+      "GET",
+    ),
+  );
+  const revenueConversionCall = findCall(
+    calls,
+    "/api/observability/conversion",
+    "POST",
+  );
+  assert.ok(revenueConversionCall);
+  assert.equal(
+    JSON.parse(String(revenueConversionCall.options.body)).event_type,
+    "sub",
   );
 });

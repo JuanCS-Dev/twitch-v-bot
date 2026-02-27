@@ -6,6 +6,8 @@ import {
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
   upsertSemanticMemoryEntry,
+  getRevenueConversionsSnapshot,
+  postRevenueConversion,
 } from "./api.js";
 import {
   renderChannelContextSnapshot,
@@ -14,6 +16,7 @@ import {
   renderSemanticMemorySnapshot,
   renderObservabilitySnapshot,
   setConnectionState,
+  renderRevenueConversionsSnapshot,
 } from "./view.js";
 import { applyChannelControlCapability } from "../channel-control/view.js";
 import { renderControlPlaneCapabilities } from "../control-plane/view.js";
@@ -59,7 +62,7 @@ export function createObservabilityController({
         OBSERVABILITY_TIMEOUT_MS,
       ).catch((_error) => null);
 
-      const [data, channelData, historyData, sentimentData, postStreamData, semanticMemoryData] =
+      const [data, channelData, historyData, sentimentData, postStreamData, semanticMemoryData, revenueData] =
         await Promise.all([
           getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
           getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
@@ -81,12 +84,17 @@ export function createObservabilityController({
             SEMANTIC_MEMORY_LIMIT,
             SEMANTIC_MEMORY_SEARCH_LIMIT,
           ).catch((_error) => null),
+          getRevenueConversionsSnapshot(
+            selectedChannel,
+            OBSERVABILITY_TIMEOUT_MS,
+          ).catch((_error) => null),
         ]);
       renderObservabilitySnapshot(data, obsEls, sentimentData);
       renderChannelContextSnapshot(channelData, obsEls);
       renderObservabilityHistorySnapshot(historyData, obsEls);
       renderPostStreamReportSnapshot(postStreamData, obsEls);
       renderSemanticMemorySnapshot(semanticMemoryData, obsEls);
+      renderRevenueConversionsSnapshot(revenueData, obsEls);
       setConnectionState("ok", obsEls);
       applyRuntimeCapabilities(data?.capabilities || {}, data?.bot?.mode || "");
       renderAutonomyRuntime(data?.autonomy || {}, autEls);
@@ -175,6 +183,40 @@ export function createObservabilityController({
     }
   }
 
+  async function simulateRevenueConversion() {
+    if (!obsEls || !obsEls.intRevenueSimulateBtn) return null;
+    const btn = obsEls.intRevenueSimulateBtn;
+    const eventType = obsEls.intRevenueEventType?.value || "sub";
+    const viewerLogin = String(obsEls.intRevenueViewerLogin?.value || "simulated_viewer").trim();
+    const rawValue = obsEls.intRevenueValue?.value || "0";
+    const revenueValue = Number(rawValue) || 0.0;
+
+    btn.disabled = true;
+    try {
+      await postRevenueConversion({
+        channel_id: selectedChannel,
+        event_type: eventType,
+        viewer_login: viewerLogin,
+        revenue_value: revenueValue,
+      }, OBSERVABILITY_TIMEOUT_MS);
+
+      if (obsEls.intRevenueViewerLogin) obsEls.intRevenueViewerLogin.value = "";
+      if (obsEls.intRevenueValue) obsEls.intRevenueValue.value = "";
+
+      const payload = await getRevenueConversionsSnapshot(
+        selectedChannel,
+        OBSERVABILITY_TIMEOUT_MS,
+      );
+      renderRevenueConversionsSnapshot(payload, obsEls);
+      return true;
+    } catch (error) {
+      console.error("Dashboard revenue simulation error", error);
+      return null;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function bindObservabilityEvents() {
     if (!obsEls) return;
     if (obsEls.intPostStreamGenerateBtn) {
@@ -194,6 +236,12 @@ export function createObservabilityController({
       obsEls.intSemanticMemorySaveBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         await saveSemanticMemoryEntry();
+      });
+    }
+    if (obsEls.intRevenueSimulateBtn) {
+      obsEls.intRevenueSimulateBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        await simulateRevenueConversion();
       });
     }
   }

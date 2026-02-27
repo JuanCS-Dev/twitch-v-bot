@@ -409,6 +409,21 @@ class TestDashboardRoutesV3:
         handler._send_json.assert_called_once()
         assert handler._send_json.call_args[0][0]["status"] == "ok"
 
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_get_revenue_conversions(self, mock_persistence):
+        from bot.dashboard_server_routes import _handle_get_revenue_conversions
+
+        mock_persistence.load_recent_revenue_conversions_sync.return_value = [{"id": "conv_1"}]
+        handler = MagicMock(path="/api/observability/conversions?channel=Canal_A")
+        handler._dashboard_authorized.return_value = True
+        _handle_get_revenue_conversions(handler, {"channel": ["Canal_A"], "limit": ["10"]})
+
+        mock_persistence.load_recent_revenue_conversions_sync.assert_called_with(
+            "canal_a", limit=10
+        )
+        handler._send_json.assert_called_once()
+        assert handler._send_json.call_args[0][0]["conversions"] == [{"id": "conv_1"}]
+
     def test_handle_get_api_channel_context_defaults_to_default(self):
         handler = MagicMock(path="/api/channel-context")
         handler._dashboard_authorized.return_value = True

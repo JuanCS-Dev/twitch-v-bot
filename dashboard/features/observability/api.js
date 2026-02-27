@@ -7,6 +7,8 @@ const OBSERVABILITY_HISTORY_ENDPOINT = "./api/observability/history";
 const SENTIMENT_SCORES_ENDPOINT = "./api/sentiment/scores";
 const POST_STREAM_REPORT_ENDPOINT = "./api/observability/post-stream-report";
 const SEMANTIC_MEMORY_ENDPOINT = "./api/semantic-memory";
+const REVENUE_CONVERSIONS_ENDPOINT = "./api/observability/conversions";
+const REVENUE_CONVERSION_POST_ENDPOINT = "./api/observability/conversion";
 
 function normalizeChannelId(channelId) {
   return (
@@ -112,6 +114,32 @@ export async function upsertSemanticMemoryEntry(
     SEMANTIC_MEMORY_ENDPOINT,
     {
       method: "PUT",
+      body: JSON.stringify(payload || {}),
+    },
+    timeoutMs,
+  );
+}
+
+export async function getRevenueConversionsSnapshot(
+  channelId,
+  timeoutMs = 10000,
+  limit = 20,
+) {
+  return await fetchWithTimeout(
+    `${REVENUE_CONVERSIONS_ENDPOINT}${buildChannelQuery(channelId, { limit })}`,
+    { method: "GET" },
+    timeoutMs,
+  );
+}
+
+export async function postRevenueConversion(
+  payload,
+  timeoutMs = 10000,
+) {
+  return await fetchWithTimeout(
+    REVENUE_CONVERSION_POST_ENDPOINT,
+    {
+      method: "POST",
       body: JSON.stringify(payload || {}),
     },
     timeoutMs,

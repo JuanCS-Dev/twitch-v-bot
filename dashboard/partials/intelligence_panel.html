@@ -347,5 +347,45 @@
         Nenhuma memoria persistida para este canal.
       </li>
     </ul>
+
+    <hr style="border: none; border-top: 1px solid var(--border-default)" />
+
+    <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
+      Revenue Attribution Trace (Fase 17)
+    </p>
+
+    <div class="form-row" style="gap: var(--spacing-2); margin-bottom: var(--spacing-2)">
+      <select id="intRevenueEventType" style="flex: 1">
+        <option value="sub">Sub</option>
+        <option value="follow">Follow</option>
+        <option value="cheer">Cheer</option>
+      </select>
+      <input
+        id="intRevenueViewerLogin"
+        type="text"
+        placeholder="Viewer Login"
+        style="flex: 1"
+      />
+      <input
+        id="intRevenueValue"
+        type="number"
+        step="0.01"
+        placeholder="Valor (ex: 4.99)"
+        style="flex: 1"
+      />
+      <button
+        id="intRevenueSimulateBtn"
+        class="btn btn-secondary"
+        type="button"
+      >
+        Simular
+      </button>
+    </div>
+
+    <ul id="intRevenueConversions" class="events-list" style="max-height: 180px">
+      <li style="font-style: italic; color: var(--text-muted)">
+        Nenhuma conversao recente para este canal.
+      </li>
+    </ul>
   </article>
 </section>

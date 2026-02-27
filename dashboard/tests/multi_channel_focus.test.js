@@ -1097,6 +1097,7 @@ test("observability controller fetches observability, context and history for th
     "http://localhost:8000/api/observability/history?channel=canal_z&limit=24&compare_limit=6",
     "http://localhost:8000/api/observability/post-stream-report?channel=canal_z",
     "http://localhost:8000/api/semantic-memory?channel=canal_z&limit=8&search_limit=60",
+    "http://localhost:8000/api/observability/conversions?channel=canal_z&limit=20",
   ]);
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");

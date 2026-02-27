@@ -373,6 +373,28 @@ PARITY_CONTRACT: tuple[ParityContractEntry, ...] = (
         headless_reason="Ingest visual segue interno ate finalizar UX de operacao ao vivo na Fase 19.",
         planned_phase="Fase 19",
     ),
+    ParityContractEntry(
+        method="GET",
+        backend_route="/api/observability/conversions",
+        domain="observability",
+        dashboard_surface="intelligence_panel",
+        status="integrated",
+        dashboard_route_prefix="/api/observability/conversions",
+        backend_test_files=("bot/tests/test_dashboard_routes_v3.py",),
+        dashboard_test_files=("dashboard/tests/api_contract_parity.test.js",),
+        route_snippet="/api/observability/conversions",
+    ),
+    ParityContractEntry(
+        method="POST",
+        backend_route="/api/observability/conversion",
+        domain="observability",
+        dashboard_surface="intelligence_panel",
+        status="integrated",
+        dashboard_route_prefix="/api/observability/conversion",
+        backend_test_files=("bot/tests/test_dashboard_routes_post.py",),
+        dashboard_test_files=("dashboard/tests/api_contract_parity.test.js",),
+        route_snippet="/api/observability/conversion",
+    ),
 )
 
 

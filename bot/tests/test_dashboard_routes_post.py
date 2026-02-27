@@ -232,3 +232,19 @@ class TestDashboardRoutesPost(unittest.TestCase):
             },
             status_code=400,
         )
+
+    @patch("bot.dashboard_server_routes_post._revenue_engine")
+    def test_handle_revenue_conversion_success(self, mock_engine):
+        self.handler.path = "/api/observability/conversion"
+        self.handler._read_json_payload.return_value = {
+            "channel_id": "test_channel",
+            "event_type": "sub",
+            "revenue_value": 4.99,
+        }
+        mock_engine.process_conversion.return_value = {"id": "conv_123", "event_type": "sub"}
+
+        routes_post.handle_post(self.handler)
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "conversion": {"id": "conv_123", "event_type": "sub"}},
+            status_code=200,
+        )

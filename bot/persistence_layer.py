@@ -9,6 +9,7 @@ from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_channel_identity_repository import ChannelIdentityRepository
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
+from bot.persistence_revenue_attribution_repository import RevenueAttributionRepository
 from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
 from bot.persistence_utils import normalize_channel_id, utc_iso_now
 
@@ -33,6 +34,7 @@ class PersistenceLayer:
         self._observability_channel_history_cache: dict[str, list[dict[str, Any]]] = {}
         self._post_stream_report_cache: dict[str, dict[str, Any]] = {}
         self._semantic_memory_cache: dict[str, list[dict[str, Any]]] = {}
+        self._revenue_cache: dict[str, list[dict[str, Any]]] = {}
 
         if self._url and self._key:
             try:
@@ -73,6 +75,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._semantic_memory_cache,
+        )
+        self._revenue_repo = RevenueAttributionRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._revenue_cache,
         )
 
     @property
@@ -541,6 +548,36 @@ class PersistenceLayer:
             ).execute()
         except Exception:
             pass
+
+    # --- Revenue Attribution ---
+
+    def save_revenue_conversion_sync(
+        self,
+        channel_id: str,
+        conversion: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._revenue_repo.save_conversion_sync(channel_id, conversion)
+
+    async def save_revenue_conversion(
+        self,
+        channel_id: str,
+        conversion: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self.save_revenue_conversion_sync(channel_id, conversion)
+
+    def load_recent_revenue_conversions_sync(
+        self,
+        channel_id: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        return self._revenue_repo.load_recent_conversions_sync(channel_id, limit=limit)
+
+    async def load_recent_revenue_conversions(
+        self,
+        channel_id: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        return self.load_recent_revenue_conversions_sync(channel_id, limit=limit)
 
 
 persistence = PersistenceLayer()
