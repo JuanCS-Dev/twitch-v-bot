@@ -2,7 +2,7 @@ import copy
 import threading
 import time
 from collections import deque
-from typing import Any
+from typing import Any, ClassVar
 
 from bot.control_plane_config_helpers import (
     budget_usage,
@@ -23,6 +23,20 @@ from bot.control_plane_constants import (
 
 
 class ControlPlaneConfigRuntime:
+    _SIMPLE_BOOL_FIELDS: ClassVar[tuple[str, ...]] = (
+        "autonomy_enabled",
+        "clip_pipeline_enabled",
+        "clip_api_enabled",
+    )
+    _INT_FIELD_RULES: ClassVar[dict[str, tuple[int, int]]] = {
+        "heartbeat_interval_seconds": (15, 3600),
+        "min_cooldown_seconds": (15, 3600),
+        "budget_messages_10m": (0, 100),
+        "budget_messages_60m": (0, 600),
+        "budget_messages_daily": (0, 5000),
+        "action_ignore_after_seconds": (60, 86_400),
+    }
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._config: dict[str, Any] = {
@@ -74,6 +88,100 @@ class ControlPlaneConfigRuntime:
         with self._lock:
             return copy.deepcopy(self._config)
 
+    def _apply_simple_bool_fields(
+        self,
+        *,
+        config: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> None:
+        for field_name in self._SIMPLE_BOOL_FIELDS:
+            if field_name in payload:
+                config[field_name] = bool(payload.get(field_name))
+
+    def _apply_agent_suspended_field(
+        self,
+        *,
+        config: dict[str, Any],
+        payload: dict[str, Any],
+        now: float,
+    ) -> None:
+        if "agent_suspended" not in payload:
+            return
+
+        next_suspended = bool(payload.get("agent_suspended"))
+        previous_suspended = bool(self._config.get("agent_suspended", False))
+        config["agent_suspended"] = next_suspended
+        if next_suspended == previous_suspended:
+            return
+        if next_suspended:
+            self._runtime["agent_suspended_at"] = now
+            self._runtime["agent_suspend_reason"] = "config_update"
+            self._runtime["last_heartbeat_at"] = now
+            return
+        self._runtime["agent_suspended_at"] = 0.0
+        self._runtime["agent_suspend_reason"] = ""
+        self._runtime["agent_last_resumed_at"] = now
+        self._runtime["agent_last_resume_reason"] = "config_update"
+        self._runtime["last_heartbeat_at"] = now
+
+    def _apply_clip_mode_default_field(
+        self,
+        *,
+        config: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> None:
+        if "clip_mode_default" not in payload:
+            return
+        clip_mode = str(payload.get("clip_mode_default") or "live").strip().lower()
+        if clip_mode in {"live", "vod"}:
+            config["clip_mode_default"] = clip_mode
+
+    def _apply_int_fields(
+        self,
+        *,
+        config: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> None:
+        for field_name, (minimum, maximum) in self._INT_FIELD_RULES.items():
+            if field_name not in payload:
+                continue
+            config[field_name] = to_int(
+                payload.get(field_name),
+                minimum=minimum,
+                maximum=maximum,
+                fallback=config[field_name],
+            )
+
+    def _goal_session_results_by_id(self) -> dict[str, dict[str, Any]]:
+        return {
+            str(item.get("id", "") or ""): copy.deepcopy(item.get("session_result") or {})
+            for item in self._config.get("goals", [])
+            if isinstance(item, dict)
+        }
+
+    def _apply_goals_field(
+        self,
+        *,
+        config: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> None:
+        if "goals" not in payload:
+            return
+
+        previous_results = self._goal_session_results_by_id()
+        normalized_goals = normalize_goals(payload.get("goals"))
+        for goal in normalized_goals:
+            goal_id = str(goal.get("id", "") or "")
+            if not goal.get("session_result") and goal_id in previous_results:
+                goal["session_result"] = previous_results[goal_id]
+        config["goals"] = normalized_goals
+        active_goal_ids = {goal["id"] for goal in config["goals"]}
+        self._next_goal_due_at = {
+            goal_id: due_at
+            for goal_id, due_at in self._next_goal_due_at.items()
+            if goal_id in active_goal_ids
+        }
+
     def update_config(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
             raise ValueError("Payload de configuracao invalido.")
@@ -81,102 +189,11 @@ class ControlPlaneConfigRuntime:
         now = time.time()
         with self._lock:
             config = copy.deepcopy(self._config)
-
-            if "autonomy_enabled" in payload:
-                config["autonomy_enabled"] = bool(payload.get("autonomy_enabled"))
-
-            if "agent_suspended" in payload:
-                next_suspended = bool(payload.get("agent_suspended"))
-                previous_suspended = bool(self._config.get("agent_suspended", False))
-                config["agent_suspended"] = next_suspended
-                if next_suspended and not previous_suspended:
-                    self._runtime["agent_suspended_at"] = now
-                    self._runtime["agent_suspend_reason"] = "config_update"
-                    self._runtime["last_heartbeat_at"] = now
-                if not next_suspended and previous_suspended:
-                    self._runtime["agent_suspended_at"] = 0.0
-                    self._runtime["agent_suspend_reason"] = ""
-                    self._runtime["agent_last_resumed_at"] = now
-                    self._runtime["agent_last_resume_reason"] = "config_update"
-                    self._runtime["last_heartbeat_at"] = now
-
-            if "clip_pipeline_enabled" in payload:
-                config["clip_pipeline_enabled"] = bool(payload.get("clip_pipeline_enabled"))
-
-            if "clip_api_enabled" in payload:
-                config["clip_api_enabled"] = bool(payload.get("clip_api_enabled"))
-
-            if "clip_mode_default" in payload:
-                val = str(payload.get("clip_mode_default") or "live").strip().lower()
-                if val in ("live", "vod"):
-                    config["clip_mode_default"] = val
-
-            if "heartbeat_interval_seconds" in payload:
-                config["heartbeat_interval_seconds"] = to_int(
-                    payload.get("heartbeat_interval_seconds"),
-                    minimum=15,
-                    maximum=3600,
-                    fallback=config["heartbeat_interval_seconds"],
-                )
-
-            if "min_cooldown_seconds" in payload:
-                config["min_cooldown_seconds"] = to_int(
-                    payload.get("min_cooldown_seconds"),
-                    minimum=15,
-                    maximum=3600,
-                    fallback=config["min_cooldown_seconds"],
-                )
-
-            if "budget_messages_10m" in payload:
-                config["budget_messages_10m"] = to_int(
-                    payload.get("budget_messages_10m"),
-                    minimum=0,
-                    maximum=100,
-                    fallback=config["budget_messages_10m"],
-                )
-
-            if "budget_messages_60m" in payload:
-                config["budget_messages_60m"] = to_int(
-                    payload.get("budget_messages_60m"),
-                    minimum=0,
-                    maximum=600,
-                    fallback=config["budget_messages_60m"],
-                )
-
-            if "budget_messages_daily" in payload:
-                config["budget_messages_daily"] = to_int(
-                    payload.get("budget_messages_daily"),
-                    minimum=0,
-                    maximum=5000,
-                    fallback=config["budget_messages_daily"],
-                )
-
-            if "action_ignore_after_seconds" in payload:
-                config["action_ignore_after_seconds"] = to_int(
-                    payload.get("action_ignore_after_seconds"),
-                    minimum=60,
-                    maximum=86_400,
-                    fallback=config["action_ignore_after_seconds"],
-                )
-
-            if "goals" in payload:
-                previous_results = {
-                    str(item.get("id", "") or ""): copy.deepcopy(item.get("session_result") or {})
-                    for item in self._config.get("goals", [])
-                    if isinstance(item, dict)
-                }
-                normalized_goals = normalize_goals(payload.get("goals"))
-                for goal in normalized_goals:
-                    goal_id = str(goal.get("id", "") or "")
-                    if not goal.get("session_result") and goal_id in previous_results:
-                        goal["session_result"] = previous_results[goal_id]
-                config["goals"] = normalized_goals
-                active_goal_ids = {goal["id"] for goal in config["goals"]}
-                self._next_goal_due_at = {
-                    goal_id: due_at
-                    for goal_id, due_at in self._next_goal_due_at.items()
-                    if goal_id in active_goal_ids
-                }
+            self._apply_simple_bool_fields(config=config, payload=payload)
+            self._apply_agent_suspended_field(config=config, payload=payload, now=now)
+            self._apply_clip_mode_default_field(config=config, payload=payload)
+            self._apply_int_fields(config=config, payload=payload)
+            self._apply_goals_field(config=config, payload=payload)
 
             config["updated_at"] = utc_iso(now)
             self._config = config
