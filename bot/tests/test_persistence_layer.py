@@ -405,6 +405,21 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(loaded[0]["metrics"]["chat_messages_total"], 11)
         self.assertEqual(latest[0]["channel_id"], "canal_a")
 
+    def test_observability_channel_history_uses_timestamp_fallback_when_captured_at_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        saved = layer.save_observability_channel_history_sync(
+            "Canal_A",
+            {
+                "timestamp": "2026-02-27T17:05:00Z",
+                "metrics": {"chat_messages_total": 3},
+            },
+        )
+
+        self.assertEqual(saved["captured_at"], "2026-02-27T17:05:00Z")
+        self.assertEqual(saved["channel_id"], "canal_a")
+
     def test_observability_channel_history_supabase_roundtrip(self):
         mock_client = MagicMock()
         table = mock_client.table.return_value

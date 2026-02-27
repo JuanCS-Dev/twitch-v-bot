@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.15
+**Versão:** 1.16
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO)
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1 CONCLUÍDA, PRÓXIMA: 10.2)
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -131,13 +131,61 @@
 - Documento de implementação atualizado com o status de paridade por capability.
 - Evidência de discovery do layout atual anexada ao ciclo (mapa de encaixe visual por capability).
 
+### Fase 10: Saneamento Estrutural (Anti-Espaguete + Anti-Duplicação) 🚧 Em andamento
+
+**Diagnóstico atual (evidência objetiva)**
+
+- `ruff check bot --select C901` apontou funções com complexidade acima do orçamento, incluindo:
+  - `bot/dashboard_server_routes.py:292` (`handle_get`, complexidade 20);
+  - `bot/control_plane_config.py:66` (`update_config`, complexidade 17);
+  - `bot/irc_management.py:42` (`_handle_channel_management_prompt`, complexidade 17);
+  - `bot/byte_semantics_quality.py:170` (`is_low_quality_answer`, complexidade 16).
+- `pylint --enable=R0801` apontou duplicação relevante:
+  - serialização de histórico de observabilidade duplicada entre
+    `bot/dashboard_server_routes.py:118` e `bot/persistence_layer.py:434`;
+  - padrão repetido de autorização + leitura de payload + erro `invalid_request`
+    entre `bot/dashboard_server_routes.py` e `bot/dashboard_server_routes_post.py`;
+  - montagem repetida do payload de control plane entre rotas GET e POST.
+
+**Fases de correção propostas**
+
+1. **Fase 10.1 - Normalização de contratos de payload** ✅ Concluída
+   - Contrato compartilhado extraído para `bot/observability_history_contract.py`.
+   - Duplicação de shape JSON removida entre camada de persistência e camada HTTP para histórico de observabilidade.
+2. **Fase 10.2 - Refactor do roteamento HTTP**
+   - Introduzir helpers comuns para guardas (`auth required`), parse de payload e respostas de erro padrão.
+   - Reorganizar `handle_get` para dispatch table por rota (reduzir branching encadeado).
+3. **Fase 10.3 - Fatiamento da camada de persistência**
+   - Separar responsabilidades em sub-repositórios (`channel_config`, `agent_notes`, `observability`), mantendo `PersistenceLayer` como facade.
+   - Reduzir acoplamento e tamanho de arquivo em `bot/persistence_layer.py`.
+4. **Fase 10.4 - Gate automatizado de saúde estrutural**
+   - Adicionar checagem de complexidade e duplicação no pipeline (alvos mínimos para `ruff C901` e `pylint R0801` nos módulos críticos).
+   - Bloquear merge de nova capacidade operacional que reintroduza duplicações já removidas.
+
+**Critérios de aceite da fase**
+
+- `bot/dashboard_server_routes.py:292` deixa de ser hotspot de complexidade (quebra por handlers menores).
+- Duplicação entre `bot/dashboard_server_routes.py:118` e `bot/persistence_layer.py:434` removida por contrato único.
+- Fluxos de erro/autorização deixam de repetir blocos idênticos entre GET/PUT/POST.
+- Testes de backend/dashboard mantêm cobertura dos fluxos refatorados sem regressão comportamental.
+
+**Fechamento da Fase 10.1 (ciclo atual)**
+
+- `bot/dashboard_server_routes.py` e `bot/persistence_layer.py` agora usam o mesmo contrato de normalização de histórico (`normalize_observability_history_point`).
+- Testes novos adicionados para o contrato compartilhado em `bot/tests/test_observability_history_contract.py`.
+- Testes de integração funcional da etapa reforçados em:
+  - `bot/tests/test_persistence_layer.py` (fallback via `timestamp` no fluxo real de persistência);
+  - `bot/tests/test_dashboard_routes_v3.py` (serialização HTTP preservada sem fallback implícito de `timestamp`).
+- Validação executada: `pytest -q --no-cov bot/tests/test_observability_history_contract.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py` (`92 passed`).
+
 ---
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
-2. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
-3. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 10.2 (saneamento estrutural):** refactor do roteamento HTTP para reduzir complexidade e remover duplicação de guardas/erros.
+2. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
+3. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
+4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -158,6 +206,7 @@
 | **Histórico persistido + comparativo multi-canal na observabilidade** | ✅ | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
+| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1 concluída, próxima etapa: 10.2) |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
 ---
@@ -174,6 +223,7 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - dashboards históricos multi-canal e comparativo por canal entregues no painel operacional existente;
 - soberania por canal já cobre tuning + notes + pause/silence;
 - contrato formal de paridade backend -> dashboard agora está em execução com discovery de layout aplicado;
+- foi identificado débito estrutural objetivo de complexidade/duplicação e aberta fase dedicada de saneamento (Fase 10);
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual

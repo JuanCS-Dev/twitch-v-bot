@@ -6,6 +6,8 @@ from typing import Any, Optional
 
 from supabase import Client, create_client
 
+from bot.observability_history_contract import normalize_observability_history_point
+
 logger = logging.getLogger("byte.persistence")
 
 
@@ -437,50 +439,13 @@ class PersistenceLayer:
         *,
         captured_at: str = "",
     ) -> dict[str, Any]:
-        safe_payload = dict(payload or {})
-        safe_metrics = dict(safe_payload.get("metrics") or {})
-        safe_chatters = dict(safe_payload.get("chatters") or {})
-        safe_analytics = dict(safe_payload.get("chat_analytics") or {})
-        safe_outcomes = dict(safe_payload.get("agent_outcomes") or {})
-        safe_context = dict(safe_payload.get("context") or {})
-        safe_captured_at = (
-            str(captured_at or "")
-            or str(safe_payload.get("captured_at") or "")
-            or str(safe_payload.get("timestamp") or "")
-            or _utc_iso_now()
+        return normalize_observability_history_point(
+            payload,
+            channel_id=_normalize_channel_id(channel_id) or "default",
+            captured_at=captured_at,
+            fallback_captured_at=_utc_iso_now(),
+            use_timestamp_fallback=True,
         )
-        return {
-            "channel_id": _normalize_channel_id(channel_id) or "default",
-            "captured_at": safe_captured_at,
-            "metrics": {
-                "chat_messages_total": int(safe_metrics.get("chat_messages_total", 0) or 0),
-                "byte_triggers_total": int(safe_metrics.get("byte_triggers_total", 0) or 0),
-                "replies_total": int(safe_metrics.get("replies_total", 0) or 0),
-                "llm_interactions_total": int(safe_metrics.get("llm_interactions_total", 0) or 0),
-                "errors_total": int(safe_metrics.get("errors_total", 0) or 0),
-            },
-            "chatters": {
-                "unique_total": int(safe_chatters.get("unique_total", 0) or 0),
-                "active_60m": int(safe_chatters.get("active_60m", 0) or 0),
-            },
-            "chat_analytics": {
-                "messages_60m": int(safe_analytics.get("messages_60m", 0) or 0),
-                "byte_triggers_60m": int(safe_analytics.get("byte_triggers_60m", 0) or 0),
-                "messages_per_minute_60m": float(
-                    safe_analytics.get("messages_per_minute_60m", 0.0) or 0.0
-                ),
-            },
-            "agent_outcomes": {
-                "useful_engagement_rate_60m": float(
-                    safe_outcomes.get("useful_engagement_rate_60m", 0.0) or 0.0
-                ),
-                "ignored_rate_60m": float(safe_outcomes.get("ignored_rate_60m", 0.0) or 0.0),
-            },
-            "context": {
-                "last_prompt": str(safe_context.get("last_prompt") or ""),
-                "last_reply": str(safe_context.get("last_reply") or ""),
-            },
-        }
 
     def save_observability_channel_history_sync(
         self,

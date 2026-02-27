@@ -256,6 +256,24 @@ class TestDashboardRoutesV3:
             limit=3
         )
 
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_build_observability_history_payload_does_not_use_timestamp_fallback(
+        self, mock_persistence
+    ):
+        mock_persistence.load_observability_channel_history_sync.return_value = [
+            {
+                "channel_id": "canal_a",
+                "timestamp": "2026-02-27T18:35:00Z",
+                "metrics": {"chat_messages_total": 1},
+            }
+        ]
+        mock_persistence.load_latest_observability_channel_snapshots_sync.return_value = []
+
+        payload = build_observability_history_payload("canal_a", limit=10, compare_limit=3)
+
+        assert payload["timeline"][0]["captured_at"] == ""
+        assert payload["timeline"][0]["channel_id"] == "canal_a"
+
     @patch("bot.dashboard_server_routes.control_plane")
     def test_handle_get_api_control_plane(self, mock_cp):
         mock_cp.get_config.return_value = {"cfg": 1}
