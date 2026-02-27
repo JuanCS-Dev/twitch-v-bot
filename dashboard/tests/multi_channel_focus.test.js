@@ -33,6 +33,7 @@ import {
   renderAgentNotes,
 } from "../features/control-plane/view.js";
 import { createHudController } from "../features/hud/controller.js";
+import { renderHudMessages } from "../features/hud/view.js";
 
 class MockClassList {
   constructor(element) {
@@ -346,6 +347,30 @@ function createObservabilityElements(document) {
     intStreamHealthBand: document.registerElement(
       "intStreamHealthBand",
       new MockElement("dd", document),
+    ),
+    intCoachingRiskChip: document.registerElement(
+      "intCoachingRiskChip",
+      new MockElement("span", document),
+    ),
+    intCoachingHudStatus: document.registerElement(
+      "intCoachingHudStatus",
+      new MockElement("p", document),
+    ),
+    intCoachingRiskScore: document.registerElement(
+      "intCoachingRiskScore",
+      new MockElement("dd", document),
+    ),
+    intCoachingLastEmission: document.registerElement(
+      "intCoachingLastEmission",
+      new MockElement("dd", document),
+    ),
+    intCoachingHint: document.registerElement(
+      "intCoachingHint",
+      new MockElement("p", document),
+    ),
+    intCoachingAlerts: document.registerElement(
+      "intCoachingAlerts",
+      new MockElement("ul", document),
     ),
     sentimentProgressBar: document.registerElement(
       "sentimentProgressBar",
@@ -674,6 +699,25 @@ test("observability views render focused channel and persisted context state", (
         score: 40,
         band: "critical",
       },
+      coaching: {
+        risk_score: 72,
+        risk_band: "high",
+        has_alerts: true,
+        alerts: [
+          {
+            id: "chat_velocity_drop",
+            severity: "critical",
+            title: "Queda de ritmo no chat",
+            message: "Ritmo em 10m caiu para 0.06 msg/min.",
+            tactic: "Dispare CTA curto com resposta em ate 20s.",
+          },
+        ],
+        hud: {
+          emitted: true,
+          suppressed: false,
+          last_emitted_at: "2026-02-27T14:00:10Z",
+        },
+      },
     },
     els,
     {
@@ -836,6 +880,14 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.ctxStreamHealthBand.textContent, "Excellent");
   assert.equal(els.intStreamHealthScore.textContent, "91/100");
   assert.equal(els.intStreamHealthBand.textContent, "Excellent");
+  assert.equal(els.intCoachingRiskChip.textContent, "CHURN HIGH");
+  assert.match(els.intCoachingRiskChip.className, /warn/);
+  assert.equal(els.intCoachingRiskScore.textContent, "72/100");
+  assert.equal(els.intCoachingLastEmission.textContent, "2026-02-27T14:00:10Z");
+  assert.match(els.intCoachingHudStatus.textContent, /emitido/i);
+  assert.equal(els.intCoachingHint.className, "panel-hint event-level-warn");
+  assert.equal(els.intCoachingAlerts.children.length, 1);
+  assert.match(els.intCoachingAlerts.children[0].textContent, /\[CRITICAL\]/);
   assert.equal(els.ctxPersistedGame.textContent, "Celeste");
   assert.equal(
     els.ctxPersistedNotes.textContent,
@@ -1792,4 +1844,17 @@ test("hud controller syncs overlay url with the active admin token", () => {
     hudEls.overlayLink.href,
     "http://localhost:8000/dashboard/hud?auth=server-token",
   );
+});
+
+test("hud view renders coaching source with warn chip", () => {
+  const { document } = installBrowserEnv();
+  const hudEls = createHudElements(document);
+
+  renderHudMessages(
+    [{ ts: 1_770_000_000, source: "coaching", text: "Ative CTA no proximo bloco." }],
+    hudEls,
+  );
+
+  assert.equal(hudEls.messageCount.textContent, "1");
+  assert.match(hudEls.messagesList.innerHTML, /chip warn/i);
 });

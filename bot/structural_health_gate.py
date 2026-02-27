@@ -26,6 +26,8 @@ DUPLICATION_TARGETS = (
     "bot/persistence_channel_identity_repository.py",
     "bot/persistence_observability_history_repository.py",
     "bot/persistence_cached_channel_repository.py",
+    "bot/coaching_churn_risk.py",
+    "bot/coaching_runtime.py",
 )
 
 

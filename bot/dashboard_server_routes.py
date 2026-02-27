@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from bot.clip_jobs_runtime import clip_jobs
+from bot.coaching_runtime import coaching_runtime
 from bot.control_plane import control_plane
 from bot.dashboard_http_helpers import (
     build_control_plane_state_payload,
@@ -222,6 +223,10 @@ def build_observability_payload(channel_id: str | None = None) -> dict[str, Any]
         **(snapshot.get("context") or {}),
         "channel_id": selected_channel,
     }
+    snapshot["coaching"] = coaching_runtime.evaluate_and_emit(
+        snapshot,
+        channel_id=selected_channel,
+    )
     snapshot["ok"] = True
     return snapshot
 

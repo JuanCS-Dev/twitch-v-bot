@@ -182,6 +182,42 @@
         gap: var(--spacing-3);
       "
     >
+      <span id="intCoachingRiskChip" class="chip pending">CHURN LOW</span>
+      <span id="intCoachingHudStatus" class="panel-hint">HUD idle</span>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>Viewer Churn Risk</dt>
+        <dd id="intCoachingRiskScore">0/100</dd>
+      </div>
+      <div>
+        <dt>Last HUD Emission</dt>
+        <dd id="intCoachingLastEmission">-</dd>
+      </div>
+    </dl>
+
+    <p id="intCoachingHint" class="panel-hint">
+      Sem sinais de churn no momento. O coach tatico atualiza neste painel sem
+      abrir dashboard paralela.
+    </p>
+
+    <ul id="intCoachingAlerts" class="events-list" style="max-height: 180px">
+      <li style="font-style: italic; color: var(--text-muted)">
+        Sem alertas taticos agora.
+      </li>
+    </ul>
+
+    <hr style="border: none; border-top: 1px solid var(--border-default)" />
+
+    <div
+      class="form-row"
+      style="
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-3);
+      "
+    >
       <span id="intPostStreamStatusChip" class="chip pending">NO REPORT</span>
       <button
         id="intPostStreamGenerateBtn"

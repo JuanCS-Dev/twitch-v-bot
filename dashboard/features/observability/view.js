@@ -42,6 +42,39 @@ function formatStreamHealthCell(source) {
   return `${formatStreamHealthScore(streamHealth.score)} (${formatStreamHealthBandLabel(streamHealth.band)})`;
 }
 
+function normalizeCoachingRiskBand(band) {
+  const normalized = String(band || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "critical") return "critical";
+  if (normalized === "high") return "high";
+  if (normalized === "watch") return "watch";
+  return "low";
+}
+
+function formatCoachingRiskBandLabel(band) {
+  const normalized = normalizeCoachingRiskBand(band);
+  if (normalized === "critical") return "Critical";
+  if (normalized === "high") return "High";
+  if (normalized === "watch") return "Watch";
+  return "Low";
+}
+
+function coachingRiskChipClass(band) {
+  const normalized = normalizeCoachingRiskBand(band);
+  if (normalized === "critical") return "error";
+  if (normalized === "high") return "warn";
+  if (normalized === "watch") return "pending";
+  return "ok";
+}
+
+function formatCoachingRiskScore(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "0";
+  const clamped = Math.max(0, Math.min(100, parsed));
+  return String(Math.round(clamped));
+}
+
 export function getObservabilityElements() {
   return {
     botIdentity: document.getElementById("botIdentity"),
@@ -148,6 +181,12 @@ export function getObservabilityElements() {
     intSentimentNegative: document.getElementById("intSentimentNegative"),
     intStreamHealthScore: document.getElementById("intStreamHealthScore"),
     intStreamHealthBand: document.getElementById("intStreamHealthBand"),
+    intCoachingRiskChip: document.getElementById("intCoachingRiskChip"),
+    intCoachingHudStatus: document.getElementById("intCoachingHudStatus"),
+    intCoachingRiskScore: document.getElementById("intCoachingRiskScore"),
+    intCoachingLastEmission: document.getElementById("intCoachingLastEmission"),
+    intCoachingHint: document.getElementById("intCoachingHint"),
+    intCoachingAlerts: document.getElementById("intCoachingAlerts"),
     sentimentProgressBar: document.getElementById("sentimentProgressBar"),
     intPostStreamStatusChip: document.getElementById("intPostStreamStatusChip"),
     intPostStreamGeneratedAt: document.getElementById(
@@ -293,6 +332,34 @@ function renderStringList(items, targetBody, emptyMessage) {
   safeItems.forEach((item) => {
     const li = document.createElement("li");
     li.textContent = String(item || "-");
+    targetBody.appendChild(li);
+  });
+}
+
+function renderCoachingAlerts(alerts, targetBody) {
+  if (!targetBody) return;
+  targetBody.innerHTML = "";
+  const safeAlerts = asArray(alerts);
+  if (!safeAlerts.length) {
+    const li = document.createElement("li");
+    li.style.fontStyle = "italic";
+    li.style.color = "var(--text-muted)";
+    li.textContent = "Sem alertas taticos agora.";
+    targetBody.appendChild(li);
+    return;
+  }
+
+  safeAlerts.slice(0, 4).forEach((item) => {
+    const li = document.createElement("li");
+    const severity = String(item?.severity || "info")
+      .trim()
+      .toLowerCase();
+    const severityLabel =
+      severity === "critical" ? "CRITICAL" : severity === "warn" ? "WARN" : "INFO";
+    const title = String(item?.title || "Sinal tatico").trim() || "Sinal tatico";
+    const message = String(item?.message || "").trim();
+    const tactic = String(item?.tactic || "").trim();
+    li.textContent = `[${severityLabel}] ${title}: ${message}${tactic ? ` | Acao: ${tactic}` : ""}`;
     targetBody.appendChild(li);
   });
 }
@@ -475,6 +542,7 @@ export function renderObservabilitySnapshot(
     Object.keys(streamHealthFromScores).length > 0
       ? streamHealthFromScores
       : safeData.stream_health || {};
+  const coaching = safeData.coaching || {};
 
   setText(els.botIdentity, `${bot.brand || "Byte"} v${bot.version || "-"}`);
   setText(els.mChatMessages, formatNumber(metrics.chat_messages_total));
@@ -652,6 +720,60 @@ export function renderObservabilitySnapshot(
     els.intStreamHealthBand,
     formatStreamHealthBandLabel(streamHealth.band),
   );
+  const coachingBand = normalizeCoachingRiskBand(coaching.risk_band);
+  const coachingRiskScore = formatCoachingRiskScore(coaching.risk_score);
+  const coachingHud = coaching.hud || {};
+
+  if (els.intCoachingRiskChip) {
+    els.intCoachingRiskChip.classList.remove("ok", "warn", "error", "pending");
+    setText(
+      els.intCoachingRiskChip,
+      `CHURN ${formatCoachingRiskBandLabel(coachingBand).toUpperCase()}`,
+    );
+    els.intCoachingRiskChip.classList.add(coachingRiskChipClass(coachingBand));
+  }
+  setText(els.intCoachingRiskScore, `${coachingRiskScore}/100`);
+  setText(
+    els.intCoachingLastEmission,
+    coachingHud.last_emitted_at || "-",
+  );
+  if (els.intCoachingHudStatus) {
+    if (coachingHud.emitted) {
+      setText(els.intCoachingHudStatus, "HUD push emitido nesta atualizacao.");
+      els.intCoachingHudStatus.className = "panel-hint event-level-info";
+    } else if (coachingHud.suppressed) {
+      setText(
+        els.intCoachingHudStatus,
+        "HUD em cooldown antirruido para evitar spam.",
+      );
+      els.intCoachingHudStatus.className = "panel-hint event-level-warn";
+    } else {
+      setText(els.intCoachingHudStatus, "HUD idle");
+      els.intCoachingHudStatus.className = "panel-hint";
+    }
+  }
+  if (els.intCoachingHint) {
+    if (coachingBand === "critical" || coachingBand === "high") {
+      setText(
+        els.intCoachingHint,
+        "Risco elevado de churn detectado. Priorize acao tatico-operacional imediata.",
+      );
+      els.intCoachingHint.className = "panel-hint event-level-warn";
+    } else if (coachingBand === "watch") {
+      setText(
+        els.intCoachingHint,
+        "Sinais de oscilacao no engajamento. Ajuste ritmo e valide resposta do chat.",
+      );
+      els.intCoachingHint.className = "panel-hint event-level-info";
+    } else {
+      setText(
+        els.intCoachingHint,
+        "Sem sinais de churn no momento. O coach tatico segue monitorando em tempo real.",
+      );
+      els.intCoachingHint.className = "panel-hint";
+    }
+  }
+  renderCoachingAlerts(coaching.alerts || [], els.intCoachingAlerts);
 
   if (els.sentimentProgressBar) {
     const totalSentiments =

@@ -77,24 +77,40 @@ class TestDashboardRoutesV3:
         handler.reset_mock()
         assert _dashboard_asset_route(handler, "/api/something") is False
 
+    @patch("bot.dashboard_server_routes.coaching_runtime")
     @patch("bot.dashboard_server_routes._get_context_sync")
     @patch("bot.dashboard_server_routes.observability")
     @patch("bot.dashboard_server_routes.control_plane")
-    def test_build_observability_payload(self, mock_cp, mock_obs, mock_get_context):
+    def test_build_observability_payload(
+        self,
+        mock_cp,
+        mock_obs,
+        mock_get_context,
+        mock_coaching_runtime,
+    ):
         from bot.dashboard_server_routes import build_observability_payload
 
         mock_get_context.return_value = MagicMock(channel_id="canal_a")
         mock_obs.snapshot.return_value = {"agent_outcomes": {}}
         mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {"ignored": 5}}
         mock_cp.build_capabilities.return_value = {"cap": 1}
+        mock_coaching_runtime.evaluate_and_emit.return_value = {
+            "risk_band": "watch",
+            "risk_score": 42,
+            "hud": {"emitted": False},
+        }
 
         res = build_observability_payload("canal_a")
         mock_get_context.assert_called_with("canal_a")
         assert mock_obs.snapshot.call_args.kwargs["channel_id"] == "canal_a"
+        mock_coaching_runtime.evaluate_and_emit.assert_called_once()
+        assert mock_coaching_runtime.evaluate_and_emit.call_args.kwargs["channel_id"] == "canal_a"
         assert res["ok"] is True
         assert res["selected_channel"] == "canal_a"
         assert res["agent_outcomes"]["ignored_total_60m"] == 5
+        assert res["coaching"]["risk_band"] == "watch"
 
+    @patch("bot.dashboard_server_routes.coaching_runtime")
     @patch("bot.dashboard_server_routes._get_context_sync")
     @patch("bot.dashboard_server_routes.observability")
     @patch("bot.dashboard_server_routes.control_plane")
@@ -103,6 +119,7 @@ class TestDashboardRoutesV3:
         mock_cp,
         mock_obs,
         mock_get_context,
+        mock_coaching_runtime,
     ):
         from bot.dashboard_server_routes import build_observability_payload
 
@@ -110,13 +127,20 @@ class TestDashboardRoutesV3:
         mock_obs.snapshot.return_value = {"agent_outcomes": {}}
         mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {}}
         mock_cp.build_capabilities.return_value = {"cap": 1}
+        mock_coaching_runtime.evaluate_and_emit.return_value = {
+            "risk_band": "low",
+            "risk_score": 12,
+            "hud": {"emitted": False},
+        }
 
         res = build_observability_payload(None)
 
         mock_get_context.assert_called_with(None)
         assert mock_obs.snapshot.call_args.kwargs["channel_id"] == "canal_ctx"
+        assert mock_coaching_runtime.evaluate_and_emit.call_args.kwargs["channel_id"] == "canal_ctx"
         assert res["selected_channel"] == "canal_ctx"
         assert res["context"]["channel_id"] == "canal_ctx"
+        assert res["coaching"]["risk_band"] == "low"
 
     @patch("bot.dashboard_server_routes.persistence")
     @patch("bot.dashboard_server_routes.context_manager")

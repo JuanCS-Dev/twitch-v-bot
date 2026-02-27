@@ -34,11 +34,15 @@ export function renderHudMessages(messages, els) {
     .reverse()
     .map((msg) => {
       const time = new Date(msg.ts * 1000).toLocaleTimeString();
-      const sourceClass = msg.source === "vision" ? "pending" : "ok";
+      const source = String(msg.source || "autonomy")
+        .trim()
+        .toLowerCase();
+      const sourceClass =
+        source === "vision" ? "pending" : source === "coaching" ? "warn" : "ok";
       return `<li>
                 <div class="event-meta">
                     <span>${escapeHtml(time)}</span>
-                    <span class="chip ${sourceClass}">${escapeHtml(msg.source)}</span>
+                    <span class="chip ${sourceClass}">${escapeHtml(source)}</span>
                 </div>
                 <div>${escapeHtml(msg.text)}</div>
             </li>`;
