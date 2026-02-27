@@ -664,6 +664,23 @@ def _handle_get_revenue_conversions(handler: Any, query: dict[str, list[str]]) -
     )
 
 
+def _handle_get_webhooks(handler: Any, query: dict[str, list[str]]) -> None:
+    try:
+        channel_id = _resolve_channel_id(query)
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+    webhooks = persistence.load_webhooks_sync(channel_id)
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "webhooks": webhooks,
+        },
+        status_code=200,
+    )
+
+
 def _handle_get_dashboard_config(handler: Any, _query: dict[str, list[str]]) -> None:
     handle_get_config_js(handler)
 
@@ -684,6 +701,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/ops-playbooks": _handle_get_ops_playbooks,
     "/api/vision/status": _handle_get_vision_status,
     "/api/observability/conversions": _handle_get_revenue_conversions,
+    "/api/webhooks": _handle_get_webhooks,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
 
@@ -848,11 +866,34 @@ def _handle_put_semantic_memory(
     )
 
 
+def _handle_put_webhooks(
+    handler: Any,
+    query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        channel_id = _resolve_channel_id(query, payload)
+        webhook = persistence.save_webhook_sync(channel_id, payload)
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "webhook": webhook,
+        },
+        status_code=200,
+    )
+
+
 _PUT_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]], dict[str, Any]], None]] = {
     "/api/control-plane": _handle_put_control_plane,
     "/api/channel-config": _handle_put_channel_config,
     "/api/agent-notes": _handle_put_agent_notes,
     "/api/semantic-memory": _handle_put_semantic_memory,
+    "/api/webhooks": _handle_put_webhooks,
 }
 
 

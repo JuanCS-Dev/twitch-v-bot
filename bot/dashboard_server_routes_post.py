@@ -224,10 +224,35 @@ def _handle_ops_playbook_trigger(handler: Any) -> None:
     )
 
 
+from bot.outbound_webhooks import webhook_engine
 from bot.persistence_layer import persistence
 from bot.revenue_attribution_engine import RevenueAttributionEngine
 
 _revenue_engine = RevenueAttributionEngine(persistence)
+
+
+def _handle_test_webhook(handler: Any) -> None:
+    payload = require_auth_and_read_payload(handler)
+    if payload is None:
+        return
+
+    channel_id = str(payload.get("channel_id", "") or "").strip().lower()
+    if not channel_id:
+        send_invalid_request(handler, "channel_id obrigatorio.")
+        return
+
+    try:
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        test_payload = {"event": "ping", "message": "Byte Bot Webhook Test"}
+        loop.create_task(webhook_engine.emit_event(channel_id, "ping", test_payload))
+        handler._send_json({"ok": True, "message": "Test webhook dispatched."}, status_code=200)
+    except Exception as error:
+        handler._send_json(
+            {"ok": False, "error": "webhook_dispatch_failed", "message": str(error)},
+            status_code=500,
+        )
 
 
 def _handle_revenue_conversion(handler: Any) -> None:
@@ -273,4 +298,5 @@ _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/ops-playbooks/trigger": _handle_ops_playbook_trigger,
     "/api/vision/ingest": _handle_vision_ingest,
     "/api/observability/conversion": _handle_revenue_conversion,
+    "/api/webhooks/test": _handle_test_webhook,
 }

@@ -424,6 +424,19 @@ class TestDashboardRoutesV3:
         handler._send_json.assert_called_once()
         assert handler._send_json.call_args[0][0]["conversions"] == [{"id": "conv_1"}]
 
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_get_webhooks(self, mock_persistence):
+        from bot.dashboard_server_routes import _handle_get_webhooks
+
+        mock_persistence.load_webhooks_sync.return_value = [{"id": "wh_1"}]
+        handler = MagicMock(path="/api/webhooks?channel=Canal_A")
+        handler._dashboard_authorized.return_value = True
+        _handle_get_webhooks(handler, {"channel": ["Canal_A"]})
+
+        mock_persistence.load_webhooks_sync.assert_called_with("canal_a")
+        handler._send_json.assert_called_once()
+        assert handler._send_json.call_args[0][0]["webhooks"] == [{"id": "wh_1"}]
+
     def test_handle_get_api_channel_context_defaults_to_default(self):
         handler = MagicMock(path="/api/channel-context")
         handler._dashboard_authorized.return_value = True

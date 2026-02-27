@@ -11,6 +11,9 @@ import {
   updateAgentNotes,
   updateChannelConfig,
   updateControlPlaneConfig,
+  getWebhooks,
+  updateWebhook,
+  testWebhook,
 } from "../features/control-plane/api.js";
 import {
   getActionQueue,
@@ -110,6 +113,9 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   await updateAgentNotes({ channel_id: "canal_a", notes: "anotacao" });
   await suspendAgent({ reason: "panic_button" });
   await resumeAgent({ reason: "manual_dashboard" });
+  await getWebhooks("Canal_A");
+  await updateWebhook({ channel_id: "canal_a", url: "http://test", is_active: true });
+  await testWebhook({ channel_id: "canal_a" });
 
   assert.ok(findCall(calls, "/api/control-plane", "GET"));
   const updateControlPlaneCall = findCall(calls, "/api/control-plane", "PUT");
@@ -140,6 +146,13 @@ test("control-plane and channel directives APIs keep backend contract", async ()
 
   assert.ok(findCall(calls, "/api/agent/suspend", "POST"));
   assert.ok(findCall(calls, "/api/agent/resume", "POST"));
+
+  assert.ok(findCall(calls, "/api/webhooks?channel=canal_a", "GET"));
+  const updateWebhookCall = findCall(calls, "/api/webhooks", "PUT");
+  assert.ok(updateWebhookCall);
+  assert.equal(JSON.parse(String(updateWebhookCall.options.body)).url, "http://test");
+
+  assert.ok(findCall(calls, "/api/webhooks/test", "POST"));
 });
 
 test("operational runtime APIs keep backend contract", async () => {

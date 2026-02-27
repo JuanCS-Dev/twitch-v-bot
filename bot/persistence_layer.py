@@ -12,6 +12,7 @@ from bot.persistence_post_stream_report_repository import PostStreamReportReposi
 from bot.persistence_revenue_attribution_repository import RevenueAttributionRepository
 from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
 from bot.persistence_utils import normalize_channel_id, utc_iso_now
+from bot.persistence_webhook_repository import WebhookRepository
 
 logger = logging.getLogger("byte.persistence")
 
@@ -35,6 +36,7 @@ class PersistenceLayer:
         self._post_stream_report_cache: dict[str, dict[str, Any]] = {}
         self._semantic_memory_cache: dict[str, list[dict[str, Any]]] = {}
         self._revenue_cache: dict[str, list[dict[str, Any]]] = {}
+        self._webhook_cache: dict[str, list[dict[str, Any]]] = {}
 
         if self._url and self._key:
             try:
@@ -80,6 +82,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._revenue_cache,
+        )
+        self._webhook_repo = WebhookRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._webhook_cache,
         )
 
     @property
@@ -578,6 +585,50 @@ class PersistenceLayer:
         limit: int = 20,
     ) -> list[dict[str, Any]]:
         return self.load_recent_revenue_conversions_sync(channel_id, limit=limit)
+
+    # --- Webhooks ---
+
+    def save_webhook_sync(
+        self,
+        channel_id: str,
+        webhook: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._webhook_repo.save_webhook_sync(channel_id, webhook)
+
+    async def save_webhook(
+        self,
+        channel_id: str,
+        webhook: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self.save_webhook_sync(channel_id, webhook)
+
+    def load_webhooks_sync(
+        self,
+        channel_id: str,
+    ) -> list[dict[str, Any]]:
+        return self._webhook_repo.load_webhooks_sync(channel_id)
+
+    async def load_webhooks(
+        self,
+        channel_id: str,
+    ) -> list[dict[str, Any]]:
+        return self.load_webhooks_sync(channel_id)
+
+    def save_webhook_delivery_sync(
+        self,
+        webhook_id: str,
+        channel_id: str,
+        delivery: dict[str, Any],
+    ) -> None:
+        self._webhook_repo.save_delivery_sync(webhook_id, channel_id, delivery)
+
+    async def save_webhook_delivery(
+        self,
+        webhook_id: str,
+        channel_id: str,
+        delivery: dict[str, Any],
+    ) -> None:
+        self.save_webhook_delivery_sync(webhook_id, channel_id, delivery)
 
 
 persistence = PersistenceLayer()

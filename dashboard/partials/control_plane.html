@@ -334,6 +334,43 @@
             />
           </div>
         </div>
+
+        <div style="margin-top: var(--spacing-4); border-top: 1px solid var(--border-default); padding-top: var(--spacing-4);">
+          <h4 style="margin: 0 0 var(--spacing-2) 0; font-size: 0.9rem; color: var(--text-primary);">Outbound Webhooks</h4>
+          <p class="panel-hint" style="margin-bottom: var(--spacing-3);">
+            Configure um endpoint para receber eventos do agente (Fase 18).
+          </p>
+          <div class="form-row" style="flex-wrap: wrap; margin-bottom: var(--spacing-2);">
+            <div class="form-group" style="min-width: 220px; flex: 2">
+              <label for="cpWebhookUrl">Webhook URL</label>
+              <input
+                id="cpWebhookUrl"
+                class="form-control"
+                type="url"
+                placeholder="https://api.exemplo.com/webhooks/byte"
+              />
+            </div>
+            <div class="form-group" style="min-width: 180px; flex: 1">
+              <label for="cpWebhookSecret">HMAC Secret (opcional)</label>
+              <input
+                id="cpWebhookSecret"
+                class="form-control"
+                type="password"
+                placeholder="Segredo para assinatura sha256"
+              />
+            </div>
+          </div>
+          <div class="form-row" style="align-items: center; justify-content: space-between; gap: var(--spacing-3);">
+            <label class="toggle-switch">
+              <input id="cpWebhookActive" type="checkbox" checked />
+              <span class="toggle-slider"></span>
+              Ativar Envios
+            </label>
+            <button id="cpWebhookTestBtn" class="btn btn-secondary" type="button">
+              Testar Webhook
+            </button>
+          </div>
+        </div>
       </div>
     </details>
 

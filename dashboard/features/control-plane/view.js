@@ -581,6 +581,10 @@ export function getControlPlaneElements() {
     reloadBtn: document.getElementById("cpReloadBtn"),
     suspendBtn: document.getElementById("cpSuspendBtn"),
     resumeBtn: document.getElementById("cpResumeBtn"),
+    cpWebhookUrl: document.getElementById("cpWebhookUrl"),
+    cpWebhookSecret: document.getElementById("cpWebhookSecret"),
+    cpWebhookActive: document.getElementById("cpWebhookActive"),
+    cpWebhookTestBtn: document.getElementById("cpWebhookTestBtn"),
     currentSuspendedState: false,
   };
 }

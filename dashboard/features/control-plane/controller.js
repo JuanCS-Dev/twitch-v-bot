@@ -7,6 +7,9 @@ import {
   updateAgentNotes,
   updateChannelConfig,
   updateControlPlaneConfig,
+  getWebhooks,
+  updateWebhook,
+  testWebhook,
 } from "./api.js";
 import {
   appendGoalCard,
@@ -79,12 +82,26 @@ export function createControlPlaneController({
       );
     }
     try {
-      const [response, notesResponse] = await Promise.all([
+      const [response, notesResponse, webhooksResponse] = await Promise.all([
         getChannelConfig(payload.channel_id),
         getAgentNotes(payload.channel_id),
+        getWebhooks(payload.channel_id).catch(() => null),
       ]);
       renderChannelConfig(response?.channel || {}, cpEls);
       renderAgentNotes(notesResponse?.note || {}, cpEls);
+
+      const whList = webhooksResponse?.webhooks || [];
+      if (whList.length > 0) {
+        const wh = whList[0];
+        if (cpEls.cpWebhookUrl) cpEls.cpWebhookUrl.value = wh.url || "";
+        if (cpEls.cpWebhookSecret) cpEls.cpWebhookSecret.value = wh.secret || "";
+        if (cpEls.cpWebhookActive) cpEls.cpWebhookActive.checked = Boolean(wh.is_active);
+      } else {
+        if (cpEls.cpWebhookUrl) cpEls.cpWebhookUrl.value = "";
+        if (cpEls.cpWebhookSecret) cpEls.cpWebhookSecret.value = "";
+        if (cpEls.cpWebhookActive) cpEls.cpWebhookActive.checked = true;
+      }
+
       if (showFeedback) {
         showControlPlaneFeedback(
           cpEls,
@@ -141,10 +158,26 @@ export function createControlPlaneController({
     try {
       const payload = collectChannelConfigPayload(cpEls);
       const notesPayload = collectAgentNotesPayload(cpEls);
-      const [updated, updatedNotes] = await Promise.all([
+
+      const promises = [
         updateChannelConfig(payload),
         updateAgentNotes(notesPayload),
-      ]);
+      ];
+
+      const url = String(cpEls.cpWebhookUrl?.value || "").trim();
+      if (url) {
+        promises.push(
+          updateWebhook({
+            channel_id: payload.channel_id,
+            url: url,
+            secret: String(cpEls.cpWebhookSecret?.value || "").trim(),
+            event_types: [], // empty list means all events
+            is_active: Boolean(cpEls.cpWebhookActive?.checked)
+          })
+        );
+      }
+
+      const [updated, updatedNotes] = await Promise.all(promises);
       renderChannelConfig(updated?.channel || {}, cpEls);
       renderAgentNotes(updatedNotes?.note || {}, cpEls);
       showControlPlaneFeedback(
@@ -158,6 +191,26 @@ export function createControlPlaneController({
         cpEls,
         `Erro: ${getErrorMessage(error, "Falha ao salvar directives do canal.")}`,
         "error",
+      );
+    } finally {
+      setControlPlaneBusy(cpEls, false);
+    }
+  }
+
+  async function triggerTestWebhook() {
+    if (!cpEls) return;
+    const payload = collectChannelConfigPayload(cpEls);
+    setControlPlaneBusy(cpEls, true);
+    showControlPlaneFeedback(cpEls, "Disparando webhook de teste...", "warn");
+    try {
+      await testWebhook({ channel_id: payload.channel_id });
+      showControlPlaneFeedback(cpEls, "Webhook de teste enfileirado com sucesso.", "ok");
+    } catch (error) {
+      console.error("Webhook test error", error);
+      showControlPlaneFeedback(
+        cpEls,
+        `Erro: ${getErrorMessage(error, "Falha ao disparar webhook.")}`,
+        "error"
       );
     } finally {
       setControlPlaneBusy(cpEls, false);
@@ -239,6 +292,11 @@ export function createControlPlaneController({
     if (cpEls.resumeBtn) {
       cpEls.resumeBtn.addEventListener("click", () => {
         updateAgentSuspension(false);
+      });
+    }
+    if (cpEls.cpWebhookTestBtn) {
+      cpEls.cpWebhookTestBtn.addEventListener("click", () => {
+        triggerTestWebhook();
       });
     }
   }

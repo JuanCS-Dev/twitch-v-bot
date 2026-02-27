@@ -248,3 +248,19 @@ class TestDashboardRoutesPost(unittest.TestCase):
             {"ok": True, "conversion": {"id": "conv_123", "event_type": "sub"}},
             status_code=200,
         )
+
+    @patch("bot.dashboard_server_routes_post.webhook_engine")
+    @patch("asyncio.get_running_loop")
+    def test_handle_test_webhook_success(self, mock_get_loop, mock_engine):
+        self.handler.path = "/api/webhooks/test"
+        self.handler._read_json_payload.return_value = {"channel_id": "test_channel"}
+        mock_loop = MagicMock()
+        mock_get_loop.return_value = mock_loop
+
+        routes_post.handle_post(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "message": "Test webhook dispatched."},
+            status_code=200,
+        )
+        mock_loop.create_task.assert_called_once()

@@ -7,6 +7,8 @@ const CHANNEL_CONFIG_ENDPOINT = "./api/channel-config";
 const AGENT_NOTES_ENDPOINT = "./api/agent-notes";
 const AGENT_SUSPEND_ENDPOINT = "./api/agent/suspend";
 const AGENT_RESUME_ENDPOINT = "./api/agent/resume";
+const WEBHOOKS_ENDPOINT = "./api/webhooks";
+const WEBHOOKS_TEST_ENDPOINT = "./api/webhooks/test";
 const REQUEST_TIMEOUT_MS = 12000;
 
 function authHeaders() {
@@ -121,6 +123,43 @@ export async function resumeAgent(
 ) {
   return await fetchWithTimeout(
     AGENT_RESUME_ENDPOINT,
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload || {}),
+    },
+    timeoutMs,
+  );
+}
+
+export async function getWebhooks(channelId, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const safeChannelId = encodeURIComponent(
+    String(channelId || "")
+      .trim()
+      .toLowerCase(),
+  );
+  return await fetchWithTimeout(
+    `${WEBHOOKS_ENDPOINT}?channel=${safeChannelId}`,
+    { method: "GET", headers: authHeaders() },
+    timeoutMs,
+  );
+}
+
+export async function updateWebhook(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return await fetchWithTimeout(
+    WEBHOOKS_ENDPOINT,
+    {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify(payload || {}),
+    },
+    timeoutMs,
+  );
+}
+
+export async function testWebhook(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return await fetchWithTimeout(
+    WEBHOOKS_TEST_ENDPOINT,
     {
       method: "POST",
       headers: authHeaders(),

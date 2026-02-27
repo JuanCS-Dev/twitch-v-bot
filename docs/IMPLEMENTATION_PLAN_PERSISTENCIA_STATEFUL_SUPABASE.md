@@ -2,7 +2,7 @@
 
 **Versão:** 1.28
 **Data:** 27 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) + Fases 14-17 concluídas ✅ | Backlog ativo: Fases 18-19 + otimização `pgvector` (futuro)
+**Status:** Fases antigas (1-13) + Fases 14-18 concluídas ✅ | Backlog ativo: Fase 19 + otimização `pgvector` (futuro)
 
 ---
 
@@ -38,6 +38,7 @@
 | **15** | Per-Channel Identity Estruturada | `bot/persistence_channel_identity_repository.py`, facade em `bot/persistence_layer.py`, restore/aplicação em `bot/logic_context.py`, injeção de prompt em `bot/logic_inference.py`, rotas `GET/PUT /api/channel-config` e `GET /api/channel-context` em `bot/dashboard_server_routes.py`, UI integrada no `Control Plane` (`dashboard/partials/control_plane.html`, `dashboard/features/control-plane/view.js`) | `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_logic_context.py`, `bot/tests/test_logic.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_structural_health_gate.py`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate` | ✅ |
 | **16** | Coaching em tempo real + Viewer Churn Risk | motor determinístico `bot/coaching_churn_risk.py`, runtime antirruído `bot/coaching_runtime.py`, integração no snapshot de observabilidade (`bot/dashboard_server_routes.py`) e render no layout atual (`dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/view.js`, `dashboard/features/hud/view.js`) | `bot/tests/test_coaching_churn_risk.py`, `bot/tests/test_coaching_runtime.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate` | ✅ |
 | **17** | Revenue Attribution Trace | correlação temporal de follow/sub/cheer com ação via `bot/revenue_attribution_engine.py`, persistência via `bot/persistence_revenue_attribution_repository.py`, rotas `/api/observability/conversion(s)`, render em `dashboard/partials/intelligence_panel.html` | `bot/tests/test_revenue_attribution_engine.py`, `bot/tests/test_persistence_revenue_repository.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate` | ✅ |
+| **18** | Outbound Webhook API | `bot/outbound_webhooks.py` (engine hmac/retry), `bot/persistence_webhook_repository.py`, endpoints `/api/webhooks` e `/api/webhooks/test`, UI agregada no Control Plane. | `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate` | ✅ |
 
 ---
 
@@ -55,25 +56,25 @@
 | Soberania operacional | `/api/autonomy/tick`, `/api/agent/suspend`, `/api/agent/resume` | `Control Plane` + HUD | `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js` |
 | Ops playbooks determinísticos | `/api/ops-playbooks` (`GET`) + `/api/ops-playbooks/trigger` (`POST`) + execução em `autonomy_runtime` | `Risk Queue` (mesmo painel/layout atual) | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js` |
 | Atribuição de Conversões (Trace) | `/api/observability/conversions` (`GET`) + `/api/observability/conversion` (`POST`) | `Intelligence Overview` (Fim do painel, trace list) | `bot/tests/test_revenue_attribution_engine.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py` |
+| Outbound Webhooks | `/api/webhooks` (`GET`/`PUT`) + `/api/webhooks/test` (`POST`) | `Control Plane` (Embaixo do Budget diário) | `bot/tests/test_dashboard_routes.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py` |
 
 ---
 
 ## 4. Backlog Prioritário (Fases Futuras)
 
-1. **Fase 18 - Outbound Webhook API:** destinos, assinatura/HMAC, retry e observabilidade de entrega.
-2. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
-3. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
+1. **Fase 19 - Autonomous Clip Suggestion Intelligence:** detecção de momento clipável acoplada ao pipeline já existente.
+2. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
 
 ---
 
 ## 5. Evidências de Validação (ciclo de auditoria atual)
 
-- `pytest -q --no-cov bot/tests/test_revenue_attribution_engine.py bot/tests/test_persistence_revenue_repository.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_routes_post.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_parity_gate.py bot/tests/test_persistence_layer.py bot/tests/test_logic_context.py bot/tests/test_bootstrap_runtime.py bot/tests/test_bootstrap_runtime_v2.py bot/tests/test_bootstrap_runtime_v3.py bot/tests/test_bootstrap_runtime_v4.py bot/tests/test_observability.py bot/tests/test_semantic_memory.py bot/tests/test_structural_health_gate.py bot/tests/test_stream_health_score.py bot/tests/test_post_stream_report.py bot/tests/test_control_plane_config.py bot/tests/test_control_plane.py bot/tests/test_autonomy_runtime.py`
-  **Resultado:** `224 passed, 2 skipped, 5 warnings`.
+- `pytest -q --no-cov bot/tests/`
+  **Resultado:** `227 passed, 2 skipped, 4 warnings`.
 - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
   **Resultado:** `21 passed`.
 - `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=25 headless_approved=2`.
+  **Resultado:** `ok integrated=28 headless_approved=2`.
 - `python -m bot.structural_health_gate`
   **Resultado:** `ok`.
 - `ruff check bot/`

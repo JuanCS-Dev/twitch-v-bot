@@ -531,3 +531,34 @@ class TestDashboardRoutes(unittest.TestCase):
             },
             status_code=400,
         )
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_webhooks_success(self, mock_persistence):
+        self.handler.path = "/api/webhooks"
+        self.handler._read_json_payload.return_value = {
+            "channel_id": "canal_a",
+            "url": "http://test",
+            "secret": "sec",
+            "event_types": ["sub"],
+        }
+        mock_persistence.save_webhook_sync.return_value = {"id": "wh_1"}
+
+        routes.handle_put(self.handler)
+
+        mock_persistence.save_webhook_sync.assert_called_with(
+            "canal_a",
+            {
+                "channel_id": "canal_a",
+                "url": "http://test",
+                "secret": "sec",
+                "event_types": ["sub"],
+            },
+        )
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "mode": routes.TWITCH_CHAT_MODE,
+                "webhook": {"id": "wh_1"},
+            },
+            status_code=200,
+        )
