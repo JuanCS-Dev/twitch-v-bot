@@ -6,12 +6,21 @@ RISK_AUTO_CHAT = "auto_chat"
 RISK_SUGGEST_STREAMER = "suggest_streamer"
 RISK_MODERATION_ACTION = "moderation_action"
 RISK_CLIP_CANDIDATE = "clip_candidate"
+GOAL_KPI_AUTO_CHAT_SENT = "auto_chat_sent"
+GOAL_KPI_ACTION_QUEUED = "action_queued"
+GOAL_KPI_CLIP_CANDIDATE_QUEUED = "clip_candidate_queued"
 SUPPORTED_RISK_LEVELS = {
     RISK_AUTO_CHAT,
     RISK_SUGGEST_STREAMER,
     RISK_MODERATION_ACTION,
     RISK_CLIP_CANDIDATE,
 }
+SUPPORTED_GOAL_KPI_NAMES = {
+    GOAL_KPI_AUTO_CHAT_SENT,
+    GOAL_KPI_ACTION_QUEUED,
+    GOAL_KPI_CLIP_CANDIDATE_QUEUED,
+}
+SUPPORTED_GOAL_KPI_COMPARISONS = {"gte", "lte", "eq"}
 SUPPORTED_DECISIONS = {"approve", "reject"}
 
 DEFAULT_GOALS = [
@@ -22,6 +31,11 @@ DEFAULT_GOALS = [
         "risk": RISK_AUTO_CHAT,
         "interval_seconds": 900,
         "enabled": True,
+        "kpi_name": GOAL_KPI_AUTO_CHAT_SENT,
+        "target_value": 1.0,
+        "window_minutes": 60,
+        "comparison": "gte",
+        "session_result": {},
     },
     {
         "id": "streamer_hint",
@@ -30,6 +44,11 @@ DEFAULT_GOALS = [
         "risk": RISK_SUGGEST_STREAMER,
         "interval_seconds": 600,
         "enabled": True,
+        "kpi_name": GOAL_KPI_ACTION_QUEUED,
+        "target_value": 1.0,
+        "window_minutes": 60,
+        "comparison": "gte",
+        "session_result": {},
     },
     {
         "id": "safety_watch",
@@ -38,6 +57,11 @@ DEFAULT_GOALS = [
         "risk": RISK_MODERATION_ACTION,
         "interval_seconds": 300,
         "enabled": True,
+        "kpi_name": GOAL_KPI_ACTION_QUEUED,
+        "target_value": 1.0,
+        "window_minutes": 60,
+        "comparison": "gte",
+        "session_result": {},
     },
     {
         "id": "detect_clip",
@@ -46,6 +70,11 @@ DEFAULT_GOALS = [
         "risk": RISK_CLIP_CANDIDATE,
         "interval_seconds": 600,
         "enabled": False,
+        "kpi_name": GOAL_KPI_CLIP_CANDIDATE_QUEUED,
+        "target_value": 1.0,
+        "window_minutes": 60,
+        "comparison": "gte",
+        "session_result": {},
     },
 ]
 
@@ -71,6 +100,22 @@ def to_int(value: Any, *, minimum: int, maximum: int, fallback: int) -> int:
     except (TypeError, ValueError):
         return fallback
     return max(minimum, min(maximum, parsed))
+
+
+def to_float(value: Any, *, minimum: float, maximum: float, fallback: float) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(minimum, min(maximum, parsed))
+
+
+def default_goal_kpi_name(risk: str) -> str:
+    if risk == RISK_AUTO_CHAT:
+        return GOAL_KPI_AUTO_CHAT_SENT
+    if risk == RISK_CLIP_CANDIDATE:
+        return GOAL_KPI_CLIP_CANDIDATE_QUEUED
+    return GOAL_KPI_ACTION_QUEUED
 
 
 def default_goals_copy() -> list[dict[str, Any]]:

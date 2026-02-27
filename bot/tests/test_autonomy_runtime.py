@@ -34,6 +34,29 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
         # Deve agora incluir o channel_id
         mock_process.assert_called_once_with("goal1", None, channel_id="default")
 
+    @patch("bot.autonomy_runtime.observability")
+    @patch("bot.autonomy_runtime.control_plane")
+    @patch("bot.autonomy_runtime.process_autonomy_goal", new_callable=AsyncMock)
+    async def test_run_tick_registers_goal_session_kpi(self, mock_process, mock_cp, mock_obs):
+        runtime = autonomy_runtime.AutonomyRuntime()
+        mock_cp.consume_due_goals.return_value = [{"id": "g1", "risk": "suggest_streamer"}]
+        mock_cp.get_config.return_value = {"twitch_channel_login": "default"}
+        mock_cp.register_goal_session_result.return_value = {"met": True}
+        mock_process.return_value = {
+            "goal_id": "g1",
+            "risk": "suggest_streamer",
+            "outcome": "queued",
+        }
+
+        result = await runtime._run_tick(force=True, reason="test")
+
+        mock_cp.register_goal_session_result.assert_called_once_with(
+            goal_id="g1",
+            outcome="queued",
+        )
+        self.assertTrue(result["processed"][0]["session_kpi"]["met"])
+        mock_obs.record_autonomy_goal.assert_called_once()
+
     @patch("bot.autonomy_runtime.control_plane")
     @patch("bot.autonomy_runtime.asyncio.sleep", new_callable=AsyncMock)
     async def test_heartbeat_loop(self, mock_sleep, mock_cp):

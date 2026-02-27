@@ -128,9 +128,32 @@ class AutonomyRuntime:
 
             dispatcher = self._get_auto_chat_dispatcher()
             for goal in due_goals:
-                processed.append(
-                    await process_autonomy_goal(goal, dispatcher, channel_id=channel_id)
+                result = await process_autonomy_goal(goal, dispatcher, channel_id=channel_id)
+                safe_goal = goal if isinstance(goal, dict) else {}
+                goal_id = str(safe_goal.get("id", "") or result.get("goal_id", "") or "").strip()
+                goal_risk = (
+                    str(safe_goal.get("risk", "") or result.get("risk", "") or "unknown")
+                    .strip()
+                    .lower()
                 )
+                outcome = str(result.get("outcome", "") or "").strip().lower()
+                evaluation = (
+                    control_plane.register_goal_session_result(
+                        goal_id=goal_id,
+                        outcome=outcome,
+                    )
+                    if goal_id
+                    else None
+                )
+                if isinstance(evaluation, dict) and evaluation:
+                    observability.record_autonomy_goal(
+                        risk=goal_risk,
+                        outcome="kpi_met" if bool(evaluation.get("met")) else "kpi_missed",
+                        details=goal_id,
+                        channel_id=channel_id,
+                    )
+                    result["session_kpi"] = evaluation
+                processed.append(result)
 
             return {
                 "ok": True,

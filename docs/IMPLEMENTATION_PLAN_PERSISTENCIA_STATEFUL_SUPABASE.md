@@ -325,14 +325,13 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
-2. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
-3. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
-4. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
-5. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
-6. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
-7. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
-8. **Otimização `pgvector` para memória semântica (fase futura):** indexação ANN para escala, mantendo o fluxo operacional já entregue na Fase 8.
+1. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+2. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+3. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+4. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+5. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+6. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+7. **Otimização `pgvector` para memória semântica (fase futura):** indexação ANN para escala, mantendo o fluxo operacional já entregue na Fase 8.
 
 ---
 
@@ -347,7 +346,7 @@
 | **F3 Per-Channel Identity**            | ⚠️ Parcial: `agent_notes` e config por canal existem, mas sem identidade estruturada.                       | Entrou como **Fase 15** (evolução).                          |
 | **F4 Post-Stream Intelligence Report** | ✅ Implementado na Fase 12 com geração determinística, persistência e integração ao painel existente.       | Concluído sem UI paralela e com cobertura backend/dashboard. |
 | **F5 Viewer Churn Risk Signal**        | ❌ Não existe sinal explícito de risco de churn por viewer.                                                 | Entrou como **Fase 16** (nova, junto com coaching HUD).      |
-| **F6 Goal-Driven Autonomy Session**    | ⚠️ Parcial: goals no control plane já existem, mas sem contrato KPI por sessão.                             | Entrou como **Fase 13** (evolução, sem retrabalho).          |
+| **F6 Goal-Driven Autonomy Session**    | ✅ Implementado na Fase 13 com contrato KPI por sessão, avaliação automática e telemetria de cumprimento.    | Concluído sem tela paralela, evoluindo editor existente.      |
 | **F7 Revenue Attribution Trace**       | ❌ Não existe correlação de ações com follow/sub/cheer; EventSub hoje está centrado em chat message.        | Entrou como **Fase 17** (nova).                              |
 | **F8 Outbound Webhook API**            | ❌ Não existem rotas/config de webhook outbound.                                                            | Entrou como **Fase 18** (nova).                              |
 | **F9 Streamer Coaching Mode**          | ⚠️ Parcial: HUD já existe (`/dashboard/hud` + painel principal), mas sem camada de coaching tático.         | Entrou como **Fase 16** (evolução sobre HUD existente).      |
@@ -371,6 +370,7 @@
 
 #### Fase 13: Goal-Driven Autonomy 2.0
 
+- **Status atual:** ✅ Concluída no ciclo atual.
 - **Escopo backend:** evoluir goals para contrato com KPI/target/janela/resultado da sessão.
 - **Escopo dashboard:** ampliar editor de goals no control plane existente (incluindo riscos hoje não expostos na UI, como `clip_candidate`).
 - **DoD:** objetivos avaliáveis no fim da sessão, telemetria de cumprimento, testes de lógica/autonomia/UI.
@@ -440,6 +440,7 @@
 | **Saneamento anti-espaguete/anti-duplicação**                                                   | ✅               | Fase 10 concluída (10.1-10.4) com gate automatizado ativo no pipeline CI                                           |
 | **Stream Health Score multi-canal (score + banda + histórico persistido)**                     | ✅               | Fase 11 concluída com endpoint por canal (`/api/sentiment/scores`) e render no layout atual                        |
 | **Post-Stream Intelligence Report (manual + auto-part + persistência + painel existente)**     | ✅               | Fase 12 concluída com `/api/observability/post-stream-report` e integração no `Intelligence Overview`              |
+| **Goal-Driven Autonomy 2.0 (KPI por sessão + telemetria + editor de goals no layout atual)**  | ✅               | Fase 13 concluída com avaliação por sessão no runtime e edição KPI/target/janela no painel `Control Plane`         |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
 | **Vector Memory (busca + edição + persistência por canal)**                                    | ✅               | Fase 8 concluída com `/api/semantic-memory` (`GET/PUT`) + integração no `Intelligence Overview`                   |
 
@@ -460,30 +461,33 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - saneamento estrutural foi concluído (Fase 10) com gate automatizado de complexidade/duplicação no pipeline;
 - stream health score multi-canal foi concluído (Fase 11) com contrato versionado e exposição no layout operacional existente;
 - post-stream intelligence report foi concluído (Fase 12) com geração determinística, persistência dedicada e integração no painel `Intelligence Overview`;
+- goal-driven autonomy 2.0 foi concluída (Fase 13) com contrato KPI por sessão, avaliação automática no runtime e telemetria de cumprimento;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória semântica operacional (Fase 8) concluída no backend/dashboard, com otimização ANN/`pgvector` planejada como evolução futura.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: Fase 12 (Post-Stream Intelligence Report) concluída sem regressão funcional.
+- Etapa entregue: Fase 13 (Goal-Driven Autonomy 2.0) concluída sem regressão funcional.
 - Backend/infra de qualidade:
-  - `bot/post_stream_report.py` implementa geração determinística de relatório pós-live sem dependência de LLM;
-  - `bot/persistence_post_stream_report_repository.py` adiciona persistência dedicada para relatórios;
-  - `bot/dashboard_server_routes.py` expõe `GET /api/observability/post-stream-report?channel=&generate=1`;
-  - `bot/dashboard_server.py` aciona geração automática em `part` com sucesso;
-  - `bot/dashboard_parity_gate.py` classifica `/api/observability/post-stream-report` como `integrated`.
+  - `bot/control_plane_constants.py` + `bot/control_plane_config_helpers.py` passaram a normalizar contrato KPI por goal (`kpi_name`, `target_value`, `comparison`, `window_minutes`, `session_result`);
+  - `bot/control_plane_config.py` passou a registrar resultado por sessão (`register_goal_session_result`) e telemetria de cumprimento (`met/missed`) no runtime;
+  - `bot/autonomy_runtime.py` passou a avaliar KPI ao fim de cada execução de goal e registrar eventos observáveis (`kpi_met`/`kpi_missed`);
+  - `bot/control_plane.py` expõe a facade de registro de resultado de sessão para uso consistente no runtime.
+- Dashboard (layout atual preservado):
+  - `dashboard/features/control-plane/view.js` passou a editar contrato KPI de cada goal no painel existente, incluindo risco `clip_candidate`;
+  - o card de goal agora exibe a última avaliação de sessão (met/miss, observado, target, comparação e timestamp), sem criação de UI paralela.
 - Pipeline:
   - gates de `ruff` + `pytest` + `node --test` + `python -m bot.dashboard_parity_gate` executados e verdes no ciclo;
-  - contrato visual manteve o encaixe no layout existente (`metrics_health`, `agent context`, `intelligence`) sem tela paralela.
-- Escopo validado: relatório pós-live flui de histórico/persistência até UI por canal com geração manual e automática.
+  - contrato visual manteve o encaixe no layout existente (`control plane`, `agent context`, `intelligence`) sem tela paralela.
+- Escopo validado: objetivo da autonomia passou a ser mensurável por sessão no backend e editável/inspecionável no painel operacional atual.
 - Testes da etapa:
-  - novos: `bot/tests/test_post_stream_report.py`;
-  - backend ajustado: `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_server_extra.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_dashboard_parity_gate.py`;
-  - dashboard ajustado: `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`.
+  - backend (novos cenários): `bot/tests/test_control_plane_config.py`, `bot/tests/test_control_plane.py`, `bot/tests/test_autonomy_runtime.py`;
+  - dashboard (novos cenários): `dashboard/tests/multi_channel_focus.test.js`;
+  - regressão/paridade preservada: `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_dashboard_parity_gate.py`.
 - Evidências de validação:
-  - `pytest -q --no-cov bot/tests/test_post_stream_report.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_server.py bot/tests/test_dashboard_server_extra.py bot/tests/test_dashboard_parity_gate.py` (`105 passed`);
-  - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js` (`17 passed`);
-  - `python -m bot.dashboard_parity_gate` (`ok integrated=19 headless_approved=2`).
-- Planejamento: backlog priorizado passa a iniciar na Fase 13, com Fases 9-12 fechadas.
+  - `pytest -q --no-cov bot/tests/test_control_plane_config.py bot/tests/test_control_plane.py bot/tests/test_autonomy_runtime.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_parity_gate.py` (`99 passed`);
+  - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js` (`20 passed`);
+  - `python -m bot.dashboard_parity_gate` (`ok integrated=21 headless_approved=2`).
+- Planejamento: backlog priorizado passa a iniciar na Fase 14, com Fases 9-13 fechadas.
 
 _Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._

@@ -26,6 +26,7 @@ import {
 import { createObservabilityController } from "../features/observability/controller.js";
 import { createControlPlaneController } from "../features/control-plane/controller.js";
 import {
+  collectControlPlanePayload,
   getControlPlaneElements,
   renderAgentNotes,
 } from "../features/control-plane/view.js";
@@ -149,6 +150,21 @@ class MockStorage {
   removeItem(key) {
     this.store.delete(key);
   }
+}
+
+function createGoalFieldStub({ value = "", checked = false } = {}) {
+  return { value: String(value), checked: Boolean(checked) };
+}
+
+function createGoalCardStub(fieldValues = {}) {
+  return {
+    querySelector(selector) {
+      const match = String(selector || "").match(/\[data-goal-field="([^"]+)"\]/);
+      if (!match) return null;
+      const fieldName = match[1];
+      return fieldValues[fieldName] || null;
+    },
+  };
 }
 
 function installBrowserEnv(initialStorage = {}) {
@@ -1450,6 +1466,64 @@ test("control plane controller surfaces directive save errors", async () => {
 
   assert.match(cpEls.feedback.textContent, /save notes failed/i);
   assert.equal(cpEls.feedback.className, "panel-hint event-level-error");
+});
+
+test("control plane payload includes KPI contract and clip_candidate risk", () => {
+  const { document } = installBrowserEnv();
+  const cpEls = createControlPlaneElements(document);
+
+  const goalCard = createGoalCardStub({
+    enabled: createGoalFieldStub({ checked: true }),
+    id: createGoalFieldStub({ value: "Goal Clip" }),
+    name: createGoalFieldStub({ value: "Clip Radar" }),
+    prompt: createGoalFieldStub({ value: "Detecte momentos clipaveis." }),
+    risk: createGoalFieldStub({ value: "clip_candidate" }),
+    interval_seconds: createGoalFieldStub({ value: "480" }),
+    kpi_name: createGoalFieldStub({ value: "clip_candidate_queued" }),
+    target_value: createGoalFieldStub({ value: "2.5" }),
+    window_minutes: createGoalFieldStub({ value: "45" }),
+    comparison: createGoalFieldStub({ value: "gte" }),
+  });
+  cpEls.goalsList.querySelectorAll = () => [goalCard];
+
+  const payload = collectControlPlanePayload(cpEls);
+  const [goal] = payload.goals;
+
+  assert.equal(goal.id, "goal_clip");
+  assert.equal(goal.risk, "clip_candidate");
+  assert.equal(goal.kpi_name, "clip_candidate_queued");
+  assert.equal(goal.target_value, 2.5);
+  assert.equal(goal.window_minutes, 45);
+  assert.equal(goal.comparison, "gte");
+});
+
+test("control plane payload normalizes invalid KPI contract values", () => {
+  const { document } = installBrowserEnv();
+  const cpEls = createControlPlaneElements(document);
+
+  const goalCard = createGoalCardStub({
+    enabled: createGoalFieldStub({ checked: true }),
+    id: createGoalFieldStub({ value: "goal auto" }),
+    name: createGoalFieldStub({ value: "Auto Goal" }),
+    prompt: createGoalFieldStub({ value: "Atue no chat." }),
+    risk: createGoalFieldStub({ value: "auto_chat" }),
+    interval_seconds: createGoalFieldStub({ value: "15" }),
+    kpi_name: createGoalFieldStub({ value: "unknown_metric" }),
+    target_value: createGoalFieldStub({ value: "-10" }),
+    window_minutes: createGoalFieldStub({ value: "5000" }),
+    comparison: createGoalFieldStub({ value: "invalid" }),
+  });
+  cpEls.goalsList.querySelectorAll = () => [goalCard];
+
+  const payload = collectControlPlanePayload(cpEls);
+  const [goal] = payload.goals;
+
+  assert.equal(goal.risk, "auto_chat");
+  assert.equal(goal.kpi_name, "auto_chat_sent");
+  assert.equal(goal.target_value, 0);
+  assert.equal(goal.window_minutes, 1440);
+  assert.equal(goal.interval_seconds, 60);
+  assert.equal(goal.comparison, "gte");
 });
 
 test("control plane view renders cleared agent notes state", () => {

@@ -6,6 +6,8 @@ from typing import Any
 
 from bot.control_plane_config_helpers import (
     budget_usage,
+    goal_target_met,
+    infer_goal_observed_value,
     normalize_goals,
 )
 from bot.control_plane_config_helpers import (
@@ -14,6 +16,7 @@ from bot.control_plane_config_helpers import (
 from bot.control_plane_constants import (
     clip_text,
     default_goals_copy,
+    to_float,
     to_int,
     utc_iso,
 )
@@ -54,6 +57,14 @@ class ControlPlaneConfigRuntime:
             "autonomy_budget_blocked_total": 0,
             "autonomy_dispatch_failures_total": 0,
             "autonomy_auto_chat_sent_total": 0,
+            "autonomy_goal_kpi_met_total": 0,
+            "autonomy_goal_kpi_missed_total": 0,
+            "autonomy_last_goal_kpi_status": "",
+            "autonomy_last_goal_kpi_goal_id": "",
+            "autonomy_last_goal_kpi_name": "",
+            "autonomy_last_goal_kpi_observed_value": 0.0,
+            "autonomy_last_goal_kpi_target_value": 0.0,
+            "autonomy_last_goal_kpi_comparison": "",
             "autonomy_last_block_reason": "",
         }
         self._auto_chat_sent_timestamps: deque[float] = deque(maxlen=3000)
@@ -149,7 +160,17 @@ class ControlPlaneConfigRuntime:
                 )
 
             if "goals" in payload:
-                config["goals"] = normalize_goals(payload.get("goals"))
+                previous_results = {
+                    str(item.get("id", "") or ""): copy.deepcopy(item.get("session_result") or {})
+                    for item in self._config.get("goals", [])
+                    if isinstance(item, dict)
+                }
+                normalized_goals = normalize_goals(payload.get("goals"))
+                for goal in normalized_goals:
+                    goal_id = str(goal.get("id", "") or "")
+                    if not goal.get("session_result") and goal_id in previous_results:
+                        goal["session_result"] = previous_results[goal_id]
+                config["goals"] = normalized_goals
                 active_goal_ids = {goal["id"] for goal in config["goals"]}
                 self._next_goal_due_at = {
                     goal_id: due_at
@@ -237,6 +258,78 @@ class ControlPlaneConfigRuntime:
             self._runtime["autonomy_dispatch_failures_total"] += 1
             self._runtime["autonomy_last_block_reason"] = clip_text(reason, max_chars=80)
             self._runtime["last_heartbeat_at"] = now
+
+    def register_goal_session_result(
+        self,
+        *,
+        goal_id: str,
+        outcome: str,
+        observed_value: float | None = None,
+        details: str = "",
+        timestamp: float | None = None,
+    ) -> dict[str, Any] | None:
+        now = time.time() if timestamp is None else float(timestamp)
+        safe_goal_id = str(goal_id or "").strip()
+        safe_outcome = clip_text(str(outcome or "").strip().lower(), max_chars=80)
+        if not safe_goal_id:
+            return None
+
+        with self._lock:
+            matching_goal: dict[str, Any] | None = None
+            for goal in self._config.get("goals", []):
+                if not isinstance(goal, dict):
+                    continue
+                if str(goal.get("id", "") or "").strip() == safe_goal_id:
+                    matching_goal = goal
+                    break
+            if matching_goal is None:
+                return None
+
+            target_value = to_float(
+                matching_goal.get("target_value", 1.0),
+                minimum=0.0,
+                maximum=10_000.0,
+                fallback=1.0,
+            )
+            comparison = str(matching_goal.get("comparison", "gte") or "gte").strip().lower()
+            observed = (
+                to_float(
+                    observed_value,
+                    minimum=0.0,
+                    maximum=10_000.0,
+                    fallback=0.0,
+                )
+                if observed_value is not None
+                else infer_goal_observed_value(matching_goal, safe_outcome)
+            )
+            met = goal_target_met(observed, target_value, comparison)
+            result = {
+                "kpi_name": str(matching_goal.get("kpi_name", "")),
+                "target_value": target_value,
+                "comparison": comparison,
+                "observed_value": observed,
+                "met": met,
+                "outcome": safe_outcome,
+                "details": clip_text(str(details or "").strip(), max_chars=180),
+                "evaluated_at": utc_iso(now),
+            }
+            matching_goal["session_result"] = result
+            self._config["updated_at"] = utc_iso(now)
+            if met:
+                self._runtime["autonomy_goal_kpi_met_total"] += 1
+            else:
+                self._runtime["autonomy_goal_kpi_missed_total"] += 1
+            self._runtime["autonomy_last_goal_kpi_status"] = "met" if met else "missed"
+            self._runtime["autonomy_last_goal_kpi_goal_id"] = clip_text(safe_goal_id, max_chars=60)
+            self._runtime["autonomy_last_goal_kpi_name"] = clip_text(
+                str(matching_goal.get("kpi_name", "")),
+                max_chars=60,
+            )
+            self._runtime["autonomy_last_goal_kpi_observed_value"] = observed
+            self._runtime["autonomy_last_goal_kpi_target_value"] = target_value
+            self._runtime["autonomy_last_goal_kpi_comparison"] = comparison
+            self._runtime["last_heartbeat_at"] = now
+            return copy.deepcopy(result)
 
     def can_send_auto_chat(
         self, timestamp: float | None = None

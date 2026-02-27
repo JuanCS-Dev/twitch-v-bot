@@ -38,6 +38,11 @@ class TestControlPlaneState(unittest.TestCase):
         self.control_plane.touch_heartbeat(timestamp=100.0)
         self.control_plane.register_tick(reason="manual", timestamp=101.0)
         self.control_plane.register_goal_run(goal_id="g1", risk="suggest_streamer", timestamp=102.0)
+        self.control_plane.register_goal_session_result(
+            goal_id="g1",
+            outcome="queued",
+            timestamp=102.5,
+        )
         self.control_plane.register_budget_block(reason="cooldown_active", timestamp=103.0)
         self.control_plane.register_dispatch_failure(reason="dispatch_error", timestamp=104.0)
 
@@ -68,5 +73,6 @@ class TestControlPlaneState(unittest.TestCase):
         self.assertEqual(decided["status"], "approved")
         self.assertEqual(len(listed["items"]), 1)
         self.assertTrue(runtime["loop_running"])
+        self.assertEqual(runtime["autonomy_goal_kpi_met_total"], 1)
         self.assertIn("queue", runtime)
         self.assertIn("queue_window_60m", runtime)

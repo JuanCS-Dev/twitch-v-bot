@@ -68,6 +68,23 @@ class ControlPlaneState:
     def register_dispatch_failure(self, reason: str, timestamp: float | None = None) -> None:
         self._config_runtime.register_dispatch_failure(reason=reason, timestamp=timestamp)
 
+    def register_goal_session_result(
+        self,
+        *,
+        goal_id: str,
+        outcome: str,
+        observed_value: float | None = None,
+        details: str = "",
+        timestamp: float | None = None,
+    ) -> dict[str, Any] | None:
+        return self._config_runtime.register_goal_session_result(
+            goal_id=goal_id,
+            outcome=outcome,
+            observed_value=observed_value,
+            details=details,
+            timestamp=timestamp,
+        )
+
     def can_send_auto_chat(
         self, timestamp: float | None = None
     ) -> tuple[bool, str, dict[str, int]]:

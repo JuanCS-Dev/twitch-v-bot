@@ -1,6 +1,33 @@
 import { asArray, setText } from "../shared/dom.js";
 
-const SUPPORTED_RISKS = ["auto_chat", "suggest_streamer", "moderation_action"];
+const SUPPORTED_RISKS = [
+  "auto_chat",
+  "suggest_streamer",
+  "moderation_action",
+  "clip_candidate",
+];
+const SUPPORTED_GOAL_KPIS = [
+  "auto_chat_sent",
+  "action_queued",
+  "clip_candidate_queued",
+];
+const SUPPORTED_COMPARISONS = ["gte", "lte", "eq"];
+
+function defaultKpiForRisk(risk) {
+  if (risk === "auto_chat") return "auto_chat_sent";
+  if (risk === "clip_candidate") return "clip_candidate_queued";
+  return "action_queued";
+}
+
+function normalizeGoalComparison(rawValue) {
+  const comparison = String(rawValue || "")
+    .trim()
+    .toLowerCase();
+  if (SUPPORTED_COMPARISONS.includes(comparison)) {
+    return comparison;
+  }
+  return "gte";
+}
 
 function readInt(input, fallbackValue, minValue, maxValue) {
   const parsed = Number.parseInt(String(input?.value || ""), 10);
@@ -23,6 +50,15 @@ function readOptionalFloat(input, minValue, maxValue) {
   return Number(safeValue.toFixed(4));
 }
 
+function readFloat(input, fallbackValue, minValue, maxValue) {
+  const parsed = Number.parseFloat(String(input?.value || "").trim());
+  if (!Number.isFinite(parsed)) {
+    return fallbackValue;
+  }
+  const safeValue = Math.max(minValue, Math.min(maxValue, parsed));
+  return Number(safeValue.toFixed(4));
+}
+
 function normalizeGoalId(rawValue, fallbackIndex) {
   const lowered = String(rawValue || "")
     .trim()
@@ -33,19 +69,36 @@ function normalizeGoalId(rawValue, fallbackIndex) {
   return normalized || `goal_${fallbackIndex + 1}`;
 }
 
-function buildRiskSelect(currentRisk) {
+function buildOptionSelect(values, currentValue) {
   const select = document.createElement("select");
   select.className = "form-control";
-  select.dataset.goalField = "risk";
-  SUPPORTED_RISKS.forEach((riskName) => {
+  values.forEach((name) => {
     const option = document.createElement("option");
-    option.value = riskName;
-    option.textContent = riskName;
-    if (riskName === currentRisk) {
+    option.value = name;
+    option.textContent = name;
+    if (name === currentValue) {
       option.selected = true;
     }
     select.appendChild(option);
   });
+  return select;
+}
+
+function buildRiskSelect(currentRisk) {
+  const select = buildOptionSelect(SUPPORTED_RISKS, currentRisk);
+  select.dataset.goalField = "risk";
+  return select;
+}
+
+function buildKpiSelect(currentKpi) {
+  const select = buildOptionSelect(SUPPORTED_GOAL_KPIS, currentKpi);
+  select.dataset.goalField = "kpi_name";
+  return select;
+}
+
+function buildComparisonSelect(currentComparison) {
+  const select = buildOptionSelect(SUPPORTED_COMPARISONS, currentComparison);
+  select.dataset.goalField = "comparison";
   return select;
 }
 
@@ -63,11 +116,44 @@ function createGoalField(labelText, fieldElement, options = {}) {
   return wrapper;
 }
 
+function formatGoalMetricValue(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "0";
+  if (Number.isInteger(parsed)) return String(parsed);
+  return String(Number(parsed.toFixed(4)));
+}
+
+function formatGoalSessionResult(sessionResult = {}) {
+  const result =
+    sessionResult && typeof sessionResult === "object" ? sessionResult : {};
+  const evaluatedAt = String(result.evaluated_at || "").trim();
+  if (!evaluatedAt) {
+    return "Ultima avaliacao: sem execucao registrada.";
+  }
+  const comparison = normalizeGoalComparison(result.comparison);
+  const comparisonLabel =
+    comparison === "lte" ? "<=" : comparison === "eq" ? "=" : ">=";
+  const met = Boolean(result.met);
+  const outcome = String(result.outcome || "n/a").trim() || "n/a";
+  return (
+    `Ultima avaliacao: ${met ? "MET" : "MISS"} | ` +
+    `${formatGoalMetricValue(result.observed_value)} ` +
+    `${comparisonLabel} ${formatGoalMetricValue(result.target_value)} | ` +
+    `outcome: ${outcome} | ${evaluatedAt}`
+  );
+}
+
 function createGoalCard(goal = {}, index = 0) {
   const card = document.createElement("li");
   card.className = "card";
   card.dataset.goalItem = "1";
   card.style.listStyle = "none";
+  const goalRiskRaw = String(goal.risk || "")
+    .trim()
+    .toLowerCase();
+  const safeRisk = SUPPORTED_RISKS.includes(goalRiskRaw)
+    ? goalRiskRaw
+    : "suggest_streamer";
 
   const headerRow = document.createElement("div");
   headerRow.style.display = "flex";
@@ -111,7 +197,7 @@ function createGoalCard(goal = {}, index = 0) {
   idInput.dataset.goalField = "id";
   firstRow.appendChild(createGoalField("ID", idInput, { minWidth: "170px" }));
 
-  const riskSelect = buildRiskSelect(String(goal.risk || "suggest_streamer"));
+  const riskSelect = buildRiskSelect(safeRisk);
   firstRow.appendChild(
     createGoalField("Risco", riskSelect, { minWidth: "190px" }),
   );
@@ -129,6 +215,52 @@ function createGoalCard(goal = {}, index = 0) {
   );
   card.appendChild(firstRow);
 
+  const secondRow = document.createElement("div");
+  secondRow.className = "form-row";
+  secondRow.style.flexWrap = "wrap";
+  secondRow.style.marginTop = "var(--spacing-2)";
+
+  const goalKpiNameRaw = String(goal.kpi_name || "")
+    .trim()
+    .toLowerCase();
+  const safeKpiName = SUPPORTED_GOAL_KPIS.includes(goalKpiNameRaw)
+    ? goalKpiNameRaw
+    : defaultKpiForRisk(safeRisk);
+  const kpiSelect = buildKpiSelect(safeKpiName);
+  secondRow.appendChild(createGoalField("KPI", kpiSelect, { minWidth: "190px" }));
+
+  const targetInput = document.createElement("input");
+  targetInput.type = "number";
+  targetInput.className = "form-control";
+  targetInput.min = "0";
+  targetInput.max = "10000";
+  targetInput.step = "0.1";
+  targetInput.value = String(goal.target_value ?? 1);
+  targetInput.dataset.goalField = "target_value";
+  secondRow.appendChild(
+    createGoalField("Target", targetInput, { minWidth: "120px" }),
+  );
+
+  const comparisonSelect = buildComparisonSelect(
+    normalizeGoalComparison(goal.comparison),
+  );
+  secondRow.appendChild(
+    createGoalField("Comparacao", comparisonSelect, { minWidth: "120px" }),
+  );
+
+  const windowInput = document.createElement("input");
+  windowInput.type = "number";
+  windowInput.className = "form-control";
+  windowInput.min = "1";
+  windowInput.max = "1440";
+  windowInput.step = "1";
+  windowInput.value = String(goal.window_minutes ?? 60);
+  windowInput.dataset.goalField = "window_minutes";
+  secondRow.appendChild(
+    createGoalField("Janela (min)", windowInput, { minWidth: "140px" }),
+  );
+  card.appendChild(secondRow);
+
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.className = "form-control";
@@ -143,6 +275,12 @@ function createGoalCard(goal = {}, index = 0) {
   promptInput.dataset.goalField = "prompt";
   card.appendChild(createGoalField("Prompt", promptInput));
 
+  const sessionResultHint = document.createElement("p");
+  sessionResultHint.className = "panel-hint";
+  sessionResultHint.style.margin = "var(--spacing-2) 0 0 0";
+  sessionResultHint.textContent = formatGoalSessionResult(goal.session_result);
+  card.appendChild(sessionResultHint);
+
   return card;
 }
 
@@ -155,6 +293,12 @@ function parseGoalFromCard(card, index) {
   const safeRisk = SUPPORTED_RISKS.includes(riskRaw)
     ? riskRaw
     : "suggest_streamer";
+  const kpiRaw = String(getField("kpi_name")?.value || "")
+    .trim()
+    .toLowerCase();
+  const safeKpi = SUPPORTED_GOAL_KPIS.includes(kpiRaw)
+    ? kpiRaw
+    : defaultKpiForRisk(safeRisk);
   const safeName =
     String(getField("name")?.value || "").trim() || `Goal ${index + 1}`;
   const safePrompt =
@@ -167,6 +311,10 @@ function parseGoalFromCard(card, index) {
     risk: safeRisk,
     interval_seconds: readInt(getField("interval_seconds"), 600, 60, 86400),
     enabled: Boolean(getField("enabled")?.checked),
+    kpi_name: safeKpi,
+    target_value: readFloat(getField("target_value"), 1, 0, 10000),
+    window_minutes: readInt(getField("window_minutes"), 60, 1, 1440),
+    comparison: normalizeGoalComparison(getField("comparison")?.value),
   };
 }
 

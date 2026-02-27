@@ -32,7 +32,7 @@ class TestControlPlaneConfig(unittest.TestCase):
         # Record a send 30s ago
         self.cpc.register_auto_chat_sent(timestamp=now - 30)
 
-        allowed, reason, usage = self.cpc.can_send_auto_chat(timestamp=now)
+        allowed, reason, _usage = self.cpc.can_send_auto_chat(timestamp=now)
         self.assertFalse(allowed)
         self.assertEqual(reason, "cooldown_active")
 
@@ -43,7 +43,7 @@ class TestControlPlaneConfig(unittest.TestCase):
         # Record a send 100s ago (passes cooldown but uses budget)
         self.cpc.register_auto_chat_sent(timestamp=now - 100)
 
-        allowed, reason, usage = self.cpc.can_send_auto_chat(timestamp=now)
+        allowed, reason, _usage = self.cpc.can_send_auto_chat(timestamp=now)
         self.assertFalse(allowed)
         self.assertEqual(reason, "budget_10m_exceeded")
 
@@ -126,6 +126,123 @@ class TestControlPlaneConfig(unittest.TestCase):
         self.assertFalse(resumed_snap["suspended"])
         self.assertEqual(resumed_snap["last_resume_reason"], "config_update")
         self.assertEqual(resumed_snap["last_resumed_epoch"], 456.0)
+
+    def test_update_config_normalizes_goal_kpi_contract(self):
+        self.cpc.update_config(
+            {
+                "goals": [
+                    {
+                        "id": "clip_goal",
+                        "risk": "clip_candidate",
+                        "interval_seconds": 120,
+                        "kpi_name": "invalid_name",
+                        "target_value": "2.5",
+                        "window_minutes": 10,
+                        "comparison": "lte",
+                    }
+                ]
+            }
+        )
+        goal = self.cpc.get_config()["goals"][0]
+        self.assertEqual(goal["kpi_name"], "clip_candidate_queued")
+        self.assertEqual(goal["target_value"], 2.5)
+        self.assertEqual(goal["window_minutes"], 10)
+        self.assertEqual(goal["comparison"], "lte")
+
+    def test_register_goal_session_result_updates_goal_and_runtime(self):
+        self.cpc.update_config(
+            {
+                "goals": [
+                    {
+                        "id": "g1",
+                        "risk": "auto_chat",
+                        "kpi_name": "auto_chat_sent",
+                        "target_value": 1.0,
+                        "comparison": "gte",
+                        "window_minutes": 30,
+                    }
+                ]
+            }
+        )
+        result = self.cpc.register_goal_session_result(
+            goal_id="g1",
+            outcome="auto_chat_sent",
+            timestamp=100.0,
+        )
+        self.assertIsNotNone(result)
+        self.assertTrue(result["met"])
+        self.assertEqual(result["observed_value"], 1.0)
+        self.assertEqual(result["target_value"], 1.0)
+        self.assertEqual(result["comparison"], "gte")
+        self.assertTrue(result["evaluated_at"])
+
+        goal = self.cpc.get_config()["goals"][0]
+        self.assertTrue(goal["session_result"]["met"])
+        runtime = self.cpc.runtime_base_snapshot(timestamp=101.0)
+        self.assertEqual(runtime["autonomy_goal_kpi_met_total"], 1)
+        self.assertEqual(runtime["autonomy_goal_kpi_missed_total"], 0)
+        self.assertEqual(runtime["autonomy_last_goal_kpi_goal_id"], "g1")
+        self.assertEqual(runtime["autonomy_last_goal_kpi_status"], "met")
+
+    def test_register_goal_session_result_uses_comparison_logic(self):
+        self.cpc.update_config(
+            {
+                "goals": [
+                    {
+                        "id": "g1",
+                        "risk": "suggest_streamer",
+                        "kpi_name": "action_queued",
+                        "target_value": 1.0,
+                        "comparison": "eq",
+                    }
+                ]
+            }
+        )
+        result = self.cpc.register_goal_session_result(
+            goal_id="g1",
+            outcome="budget_blocked",
+            timestamp=100.0,
+        )
+        self.assertIsNotNone(result)
+        self.assertFalse(result["met"])
+        runtime = self.cpc.runtime_base_snapshot(timestamp=101.0)
+        self.assertEqual(runtime["autonomy_goal_kpi_met_total"], 0)
+        self.assertEqual(runtime["autonomy_goal_kpi_missed_total"], 1)
+        self.assertEqual(runtime["autonomy_last_goal_kpi_status"], "missed")
+
+    def test_update_config_preserves_goal_session_result_for_same_goal_id(self):
+        self.cpc.update_config(
+            {
+                "goals": [
+                    {
+                        "id": "g1",
+                        "risk": "auto_chat",
+                        "kpi_name": "auto_chat_sent",
+                    }
+                ]
+            }
+        )
+        self.cpc.register_goal_session_result(
+            goal_id="g1",
+            outcome="auto_chat_sent",
+            timestamp=100.0,
+        )
+
+        self.cpc.update_config(
+            {
+                "goals": [
+                    {
+                        "id": "g1",
+                        "name": "Atualizado",
+                        "risk": "auto_chat",
+                        "kpi_name": "auto_chat_sent",
+                    }
+                ]
+            }
+        )
+        goal = self.cpc.get_config()["goals"][0]
+        self.assertTrue(goal["session_result"]["met"])
+        self.assertEqual(goal["session_result"]["outcome"], "auto_chat_sent")
 
     def test_runtime_registration(self):
         self.cpc.register_tick(reason="test")
