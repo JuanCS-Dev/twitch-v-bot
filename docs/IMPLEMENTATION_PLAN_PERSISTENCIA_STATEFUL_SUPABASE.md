@@ -1,56 +1,57 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.2
+**Versão:** 1.4
 **Data:** 26 de Fevereiro de 2026
-**Status:** PLANEJADO (Com Cláusulas de Segurança)
-**Objetivo:** Transicionar o Byte Bot para um modelo stateful com resiliência de elite.
+**Status:** FASES 1-3 CONCLUÍDAS ✅ | FASES 4-8 PLANEJADAS
+**Objetivo:** Transicionar o Byte Bot para um modelo stateful, resiliente e totalmente controlável (Soberania do Agente).
 
 ---
 
-## 1. Arquitetura: Write-Through Cache com Fallback
+## 1. Arquitetura: Stateful & Command-Driven [CONSOLIDADO]
 
-1.  **Leitura:** Preferencialmente em RAM.
-2.  **Lazy Load (Async):** Busca no Supabase se não estiver em RAM.
-3.  **Escrita (Non-blocking):** Disparada via `asyncio.create_task` ou `run_coroutine_threadsafe`.
-4.  **Resiliência:** Em caso de queda do Supabase, o bot utiliza variáveis de ambiente como fallback para lista de canais.
-
----
-
-## 2. Roteiro de Implementação Atualizado
-
-### Fase 1: Camada de Persistência e Fallback [CONCLUÍDA ✅]
-*   Criar `PersistenceLayer` com suporte a timeouts curtos. [OK]
-*   Implementar lógica de boot: `get_active_channels()` -> `try Supabase else Env`. [OK]
-*   Unificar telemetria do `supabase_client.py`. [OK]
-*   **Auditoria de Lógica**: Validada integridade cronológica do histórico e resiliência fire-and-forget. [OK]
-*   **Segurança de Dados**: Implementado truncation preventivo de strings longas. [OK]
-
-### Fase 2: ContextManager Assíncrono e Thread-Safe [CONCLUÍDA ✅]
-*   Refatoração: `async def get(channel_id)` com Lazy Load do Supabase. [OK]
-*   Mapeamento de Callers (IRC, EventSub, Prompt) para `await`. [OK]
-*   Acesso ao Dashboard via `run_coroutine_threadsafe`. [OK]
-*   Substituição por `asyncio.Lock`. [OK]
-
-### Fase 3: Hooks de Auto-Salvamento Robustos [CONCLUÍDA ✅]
-*   Implementação do `_touch()` em `StreamContext`. [OK]
-*   Guardião de loop para chamadas cross-thread (Dashboard). [OK]
-*   Persistência de histórico de chat em tempo real (`channel_history`). [OK]
+1.  **RAM:** Cache de alta performance.
+2.  **Supabase:** Fonte de verdade para Memória, Vibe e Configurações.
+3.  **Command Flow:** Dashboard -> Persistence Layer -> Agente (via Reactive Polling ou Injeção).
 
 ---
 
-## 3. Matriz de Riscos e Mitigação
+## 2. Roteiro de Implementação (Fases 4-8)
 
-| Risco | Impacto | Mitigação |
+### Fase 4: Canais Dinâmicos e Boot Sequence [PRÓXIMA]
+*   **Ação:** Implementar comando `byte join` salvando em `channels_config`.
+*   **Refatoração:** `resolve_irc_channel_logins` passa a ler do banco.
+
+### Fase 5: Observabilidade Stateful (Métricas Globais)
+*   Persistência de contadores e métricas acumuladas.
+
+### Fase 6: Dashboard Integrada (Multi-Channel UI)
+*   Seletor de canal e visualização de histórico persistente.
+
+### Fase 7: Soberania e Comando (Controle de Elite) [NOVO]
+*   **Panic Button:** Rota `/api/agent/suspend` para silenciar o bot globalmente em 100ms.
+*   **Override de Parâmetros:** Controle deslizante na Dashboard para `Temperature` e `Top_P` por canal.
+*   **Thought Injection:** Tabela `agent_notes` no Supabase. O bot lerá "notas do Juan" antes de cada inferência para alinhar o tom.
+*   **Manual Tick:** Botão para disparar o loop de autonomia instantaneamente.
+
+### Fase 8: Gestão de Memória Semântica (Vector Memory) [NOVO]
+*   **Integração pgvector:** Salvar fatos marcantes como embeddings.
+*   **Interface de Memória:** Dashboard permite apagar ou editar "memórias" que o bot criou, evitando que ele repita erros passados.
+
+---
+
+## 3. Matriz de Controles do Agente (Dashboard)
+
+| Controle | Ação | Destino |
 | :--- | :--- | :--- |
-| Supabase Offline no Boot | Bot não entra em canais | Fallback automático para `TWITCH_CHANNEL_LOGINS`. |
-| Latência no Supabase | Atraso na resposta do chat | Escritas são 100% assíncronas (fire-and-forget). |
-| Race Condition no Dashboard | Dados inconsistentes na UI | Uso de Lock assíncrono e `run_coroutine_threadsafe`. |
+| **Silence Mode** | Pausa todas as respostas | RAM (Flags de Voo) |
+| **Reset Context** | Limpa memória recente | RAM + DB |
+| **Inject Instruction** | Adiciona contexto temporário | Tabela `agent_notes` |
+| **Model Switch** | Troca entre Flash/Pro/Reasoning | Tabela `channels_config` |
 
 ---
 
-## 4. Validação Científica (Durabilidade e Resiliência)
-*   **Teste de Queda:** Simular banco offline e garantir que o bot entra no canal via ENV.
-*   **Teste de Cross-Thread:** Atualizar contexto via Dashboard e validar se o save foi disparado corretamente no loop principal.
+## 4. Conclusão da Auditoria de Controle
+A arquitetura multi-tenant criada nas Fases 1-3 foi o alicerce. Agora, as Fases 4-7 darão o "volante" do bot para você. O bot deixará de ser apenas "isolado" e passará a ser **governança-ready**.
 
 ---
-*Plano revisado e validado contra regressões de concorrência.*
+*Plano de Soberania do Agente consolidado para execução.*
