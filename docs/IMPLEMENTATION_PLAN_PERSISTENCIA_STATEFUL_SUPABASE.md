@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.13
+**Versão:** 1.14
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-5 CONCLUÍDAS ✅ | FASE 6 PARCIAL (HISTÓRICO PERSISTIDO E COMPARAÇÃO MULTI-TENANT PENDENTES) COM DASHBOARD FOCUSED CHANNEL + HUD + SNAPSHOT PER-CHANNEL ENTREGUES | FASE 7 CONCLUÍDA COM PANIC CONTROL, CHANNEL TUNING, AGENT NOTES E PAUSE/SILENCE POR CANAL | FASE 8 PLANEJADA
+**Status:** FASES 1-5 CONCLUÍDAS ✅ | FASE 6 PARCIAL (HISTÓRICO PERSISTIDO E COMPARAÇÃO MULTI-TENANT PENDENTES) COM DASHBOARD FOCUSED CHANNEL + HUD + SNAPSHOT PER-CHANNEL ENTREGUES | FASE 7 CONCLUÍDA COM PANIC CONTROL, CHANNEL TUNING, AGENT NOTES E PAUSE/SILENCE POR CANAL | FASE 8 PLANEJADA | FASE 9 PLANEJADA (CONTRATO DE PARIDADE BACKEND -> DASHBOARD)
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -92,13 +92,39 @@
 - Não existe interface de dashboard para inspeção/edição de memória semântica.
 - Deve permanecer como fase futura, separada do escopo operacional imediato.
 
+### Fase 9: Paridade Backend -> Dashboard (Contrato de Integração Visual) 🆕 Planejada
+
+**Objetivo da fase**
+
+- Garantir que toda capacidade operacional implementada no backend tenha previsão e trilha explícita de integração visual na dashboard.
+- Evitar backlog invisível de features backend sem superfície de operação para streamer/admin.
+
+**Definição de pronto (DoD da paridade)**
+
+- Toda entrega backend que altera operação (`/api/*`, state runtime, governança por canal, observabilidade, autonomia) deve mapear pelo menos um ponto de visualização/controle na dashboard.
+- Se não houver UI no mesmo ciclo, o item só pode ser aceito com justificativa explícita de endpoint interno e plano de exposição visual com prioridade definida.
+- O plano deve ser atualizado na mesma PR com a linha de paridade (backend -> painel UI -> teste).
+
+**Entregáveis da fase**
+
+- Matriz de paridade backend/dashboard por domínio: Observability, Control Plane, Channel Governance, Clips, Prompt/Inference Runtime.
+- Gate de revisão: mudança backend operacional exige teste de rota/API e teste da dashboard correspondente.
+- Checklist de release para impedir merge de capacidade operacional "headless" sem decisão explícita.
+
+**Critérios de aceite**
+
+- 100% dos endpoints operacionais críticos mapeados para painel existente ou card planejado com prioridade.
+- Testes de backend e dashboard verdes para os fluxos alterados no ciclo.
+- Documento de implementação atualizado com o status de paridade por capability.
+
 ---
 
 ## 3. Backlog Prioritário Real
 
 1. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
 2. **Visão comparativa multi-tenant:** renderizar comparação lado a lado por canal no dashboard.
-3. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+3. **Fase 9 (paridade backend -> dashboard):** implantar matriz de cobertura visual obrigatória por capability operacional.
+4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -117,6 +143,7 @@
 | **Pause/Silence por canal (`agent_paused`)** | ✅ | Persistido em `channels_config`, aplicado no runtime e respeitado no prompt/autonomia |
 | **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
+| **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
 ---
@@ -132,6 +159,7 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - observabilidade per-channel real entregue no backend da dashboard operacional;
 - soberania por canal já cobre tuning + notes + pause/silence;
 - dashboards históricos multi-canal ainda pendentes;
+- contrato formal de paridade backend -> dashboard agora está definido como etapa dedicada (Fase 9);
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
