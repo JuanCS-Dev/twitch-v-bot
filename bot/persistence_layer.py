@@ -1,74 +1,15 @@
-import asyncio
 import logging
 import os
-import time
-from typing import Any, Optional
+from typing import Any
 
 from supabase import Client, create_client
 
-from bot.observability_history_contract import normalize_observability_history_point
+from bot.persistence_agent_notes_repository import AgentNotesRepository
+from bot.persistence_channel_config_repository import ChannelConfigRepository
+from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
+from bot.persistence_utils import normalize_channel_id, utc_iso_now
 
 logger = logging.getLogger("byte.persistence")
-
-
-def _normalize_channel_id(channel_id: str) -> str:
-    return str(channel_id or "").strip().lower()
-
-
-def _utc_iso_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-
-
-def _normalize_optional_float(
-    value: Any,
-    *,
-    minimum: float,
-    maximum: float,
-    field_name: str,
-) -> float | None:
-    if value in (None, ""):
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"{field_name} invalido.") from error
-    if parsed < minimum or parsed > maximum:
-        raise ValueError(f"{field_name} fora do intervalo permitido.")
-    return round(parsed, 4)
-
-
-def _normalize_optional_text(
-    value: Any,
-    *,
-    field_name: str,
-    max_length: int,
-) -> str:
-    if value in (None, ""):
-        return ""
-    normalized = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
-    trimmed_lines = [line.rstrip() for line in normalized.split("\n")]
-    cleaned = "\n".join(trimmed_lines).strip()
-    if len(cleaned) > max_length:
-        raise ValueError(f"{field_name} excede o tamanho permitido.")
-    return cleaned
-
-
-def _normalize_bool(value: Any, *, field_name: str) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        if value in (0, 0.0):
-            return False
-        if value in (1, 1.0):
-            return True
-    if value in (None, ""):
-        return False
-    normalized = str(value).strip().lower()
-    if normalized in {"1", "true", "t", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "f", "no", "n", "off"}:
-        return False
-    raise ValueError(f"{field_name} invalido.")
 
 
 class PersistenceLayer:
@@ -97,37 +38,25 @@ class PersistenceLayer:
         else:
             logger.info("PersistenceLayer: Supabase não configurado. Operando em modo volátil.")
 
+        self._channel_config_repo = ChannelConfigRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._channel_config_cache,
+        )
+        self._agent_notes_repo = AgentNotesRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._agent_notes_cache,
+        )
+        self._observability_history_repo = ObservabilityHistoryRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._observability_channel_history_cache,
+        )
+
     @property
     def is_enabled(self) -> bool:
         return self._enabled
-
-    def _default_channel_config(self, channel_id: str) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id) or "default"
-        cached = self._channel_config_cache.get(normalized, {})
-        temperature = cached.get("temperature")
-        top_p = cached.get("top_p")
-        agent_paused = bool(cached.get("agent_paused", False))
-        return {
-            "channel_id": normalized,
-            "temperature": temperature,
-            "top_p": top_p,
-            "agent_paused": agent_paused,
-            "has_override": temperature is not None or top_p is not None or agent_paused,
-            "updated_at": cached.get("updated_at", ""),
-            "source": cached.get("source", "memory"),
-        }
-
-    def _default_agent_notes(self, channel_id: str) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id) or "default"
-        cached = self._agent_notes_cache.get(normalized, {})
-        notes = str(cached.get("notes", "") or "")
-        return {
-            "channel_id": normalized,
-            "notes": notes,
-            "has_notes": bool(notes.strip()),
-            "updated_at": cached.get("updated_at", ""),
-            "source": cached.get("source", "memory"),
-        }
 
     # --- Lógica de Boot e Canais ---
 
@@ -156,38 +85,7 @@ class PersistenceLayer:
             return []
 
     def load_channel_config_sync(self, channel_id: str) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id) or "default"
-        if not self._enabled or not self._client:
-            return self._default_channel_config(normalized)
-
-        try:
-            result = (
-                self._client.table("channels_config")
-                .select("channel_id, temperature, top_p, agent_paused, updated_at")
-                .eq("channel_id", normalized)
-                .maybe_single()
-                .execute()
-            )
-            row = result.data or {}
-            safe_agent_paused = bool(row.get("agent_paused", False))
-            payload = {
-                "channel_id": normalized,
-                "temperature": row.get("temperature"),
-                "top_p": row.get("top_p"),
-                "agent_paused": safe_agent_paused,
-                "has_override": (
-                    row.get("temperature") is not None
-                    or row.get("top_p") is not None
-                    or safe_agent_paused
-                ),
-                "updated_at": str(row.get("updated_at") or ""),
-                "source": "supabase",
-            }
-            self._channel_config_cache[normalized] = payload
-            return payload
-        except Exception as e:
-            logger.error("PersistenceLayer: Erro ao carregar config de %s: %s", normalized, e)
-            return self._default_channel_config(normalized)
+        return self._channel_config_repo.load_sync(channel_id)
 
     async def load_channel_config(self, channel_id: str) -> dict[str, Any]:
         return self.load_channel_config_sync(channel_id)
@@ -200,57 +98,12 @@ class PersistenceLayer:
         top_p: Any = None,
         agent_paused: Any = False,
     ) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id)
-        if not normalized:
-            raise ValueError("channel_id obrigatorio.")
-
-        safe_temperature = _normalize_optional_float(
-            temperature,
-            minimum=0.0,
-            maximum=2.0,
-            field_name="temperature",
+        return self._channel_config_repo.save_sync(
+            channel_id,
+            temperature=temperature,
+            top_p=top_p,
+            agent_paused=agent_paused,
         )
-        safe_top_p = _normalize_optional_float(
-            top_p,
-            minimum=0.0,
-            maximum=1.0,
-            field_name="top_p",
-        )
-        safe_agent_paused = _normalize_bool(agent_paused, field_name="agent_paused")
-
-        payload = {
-            "channel_id": normalized,
-            "temperature": safe_temperature,
-            "top_p": safe_top_p,
-            "agent_paused": safe_agent_paused,
-            "has_override": safe_temperature is not None
-            or safe_top_p is not None
-            or safe_agent_paused,
-            "updated_at": _utc_iso_now(),
-            "source": "memory",
-        }
-        self._channel_config_cache[normalized] = payload
-
-        if not self._enabled or not self._client:
-            return payload
-
-        try:
-            self._client.table("channels_config").upsert(
-                {
-                    "channel_id": normalized,
-                    "temperature": safe_temperature,
-                    "top_p": safe_top_p,
-                    "agent_paused": safe_agent_paused,
-                    "updated_at": "now()",
-                }
-            ).execute()
-            persisted = self.load_channel_config_sync(normalized)
-            persisted["source"] = "supabase"
-            self._channel_config_cache[normalized] = persisted
-            return persisted
-        except Exception as e:
-            logger.error("PersistenceLayer: Erro ao salvar config de %s: %s", normalized, e)
-            return payload
 
     async def save_channel_config(
         self,
@@ -268,73 +121,13 @@ class PersistenceLayer:
         )
 
     def load_agent_notes_sync(self, channel_id: str) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id) or "default"
-        if not self._enabled or not self._client:
-            return self._default_agent_notes(normalized)
-
-        try:
-            result = (
-                self._client.table("agent_notes")
-                .select("channel_id, notes, updated_at")
-                .eq("channel_id", normalized)
-                .maybe_single()
-                .execute()
-            )
-            row = result.data or {}
-            notes = str(row.get("notes") or "")
-            payload = {
-                "channel_id": normalized,
-                "notes": notes,
-                "has_notes": bool(notes.strip()),
-                "updated_at": str(row.get("updated_at") or ""),
-                "source": "supabase",
-            }
-            self._agent_notes_cache[normalized] = payload
-            return payload
-        except Exception as e:
-            logger.error("PersistenceLayer: Erro ao carregar agent_notes de %s: %s", normalized, e)
-            return self._default_agent_notes(normalized)
+        return self._agent_notes_repo.load_sync(channel_id)
 
     async def load_agent_notes(self, channel_id: str) -> dict[str, Any]:
         return self.load_agent_notes_sync(channel_id)
 
     def save_agent_notes_sync(self, channel_id: str, *, notes: Any = None) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id)
-        if not normalized:
-            raise ValueError("channel_id obrigatorio.")
-
-        safe_notes = _normalize_optional_text(
-            notes,
-            field_name="agent_notes",
-            max_length=2000,
-        )
-        payload = {
-            "channel_id": normalized,
-            "notes": safe_notes,
-            "has_notes": bool(safe_notes.strip()),
-            "updated_at": _utc_iso_now(),
-            "source": "memory",
-        }
-        self._agent_notes_cache[normalized] = payload
-
-        if not self._enabled or not self._client:
-            return payload
-
-        try:
-            self._client.table("agent_notes").upsert(
-                {
-                    "channel_id": normalized,
-                    "notes": safe_notes,
-                    "updated_at": "now()",
-                }
-            ).execute()
-            persisted = self.load_agent_notes_sync(normalized)
-            persisted["source"] = "supabase"
-            self._agent_notes_cache[normalized] = persisted
-            return persisted
-        except Exception as e:
-            logger.error("PersistenceLayer: Erro ao salvar agent_notes de %s: %s", normalized, e)
-            return payload
+        return self._agent_notes_repo.save_sync(channel_id, notes=notes)
 
     async def save_agent_notes(self, channel_id: str, *, notes: Any = None) -> dict[str, Any]:
         return self.save_agent_notes_sync(channel_id, notes=notes)
@@ -345,7 +138,7 @@ class PersistenceLayer:
         """Busca o snapshot do StreamContext do Supabase."""
         if not self._enabled or not self._client:
             return None
-        normalized = _normalize_channel_id(channel_id) or channel_id
+        normalized = normalize_channel_id(channel_id) or channel_id
         try:
             result = (
                 self._client.table("channel_state")
@@ -401,7 +194,7 @@ class PersistenceLayer:
         """Recupera histórico para reconstruir o StreamContext."""
         if not self._enabled or not self._client:
             return []
-        normalized = _normalize_channel_id(channel_id) or channel_id
+        normalized = normalize_channel_id(channel_id) or channel_id
         try:
             result = (
                 self._client.table("channel_history")
@@ -422,64 +215,12 @@ class PersistenceLayer:
 
     # --- Telemetria (Absorvendo supabase_client.py) ---
 
-    @staticmethod
-    def _coerce_history_limit(limit: Any, *, default: int, maximum: int) -> int:
-        try:
-            parsed = int(limit)
-        except (TypeError, ValueError):
-            return default
-        if parsed < 1:
-            return 1
-        return min(parsed, maximum)
-
-    @staticmethod
-    def _normalize_observability_history_point(
-        channel_id: str,
-        payload: dict[str, Any] | None,
-        *,
-        captured_at: str = "",
-    ) -> dict[str, Any]:
-        return normalize_observability_history_point(
-            payload,
-            channel_id=_normalize_channel_id(channel_id) or "default",
-            captured_at=captured_at,
-            fallback_captured_at=_utc_iso_now(),
-            use_timestamp_fallback=True,
-        )
-
     def save_observability_channel_history_sync(
         self,
         channel_id: str,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
-        normalized = _normalize_channel_id(channel_id)
-        if not normalized:
-            raise ValueError("channel_id obrigatorio.")
-
-        point = self._normalize_observability_history_point(normalized, payload)
-        cached_points = list(self._observability_channel_history_cache.get(normalized, []))
-        cached_points.append(point)
-        self._observability_channel_history_cache[normalized] = cached_points[-360:]
-
-        if not self._enabled or not self._client:
-            return {**point, "source": "memory"}
-
-        try:
-            self._client.table("observability_channel_history").insert(
-                {
-                    "channel_id": normalized,
-                    "snapshot": point,
-                    "captured_at": "now()",
-                }
-            ).execute()
-            return {**point, "source": "supabase"}
-        except Exception as e:
-            logger.error(
-                "PersistenceLayer: Erro ao salvar histórico de observability para %s: %s",
-                normalized,
-                e,
-            )
-            return {**point, "source": "memory"}
+        return self._observability_history_repo.save_channel_history_sync(channel_id, payload)
 
     async def save_observability_channel_history(
         self,
@@ -494,40 +235,7 @@ class PersistenceLayer:
         *,
         limit: int = 24,
     ) -> list[dict[str, Any]]:
-        normalized = _normalize_channel_id(channel_id) or "default"
-        safe_limit = self._coerce_history_limit(limit, default=24, maximum=240)
-        cached_points = list(self._observability_channel_history_cache.get(normalized, []))
-
-        if not self._enabled or not self._client:
-            return list(reversed(cached_points[-safe_limit:]))
-
-        try:
-            result = (
-                self._client.table("observability_channel_history")
-                .select("channel_id, snapshot, captured_at")
-                .eq("channel_id", normalized)
-                .order("captured_at", desc=True)
-                .limit(safe_limit)
-                .execute()
-            )
-            rows = result.data or []
-            points = [
-                self._normalize_observability_history_point(
-                    str(row.get("channel_id") or normalized),
-                    dict(row.get("snapshot") or {}),
-                    captured_at=str(row.get("captured_at") or ""),
-                )
-                for row in rows
-            ]
-            self._observability_channel_history_cache[normalized] = list(reversed(points))
-            return points
-        except Exception as e:
-            logger.error(
-                "PersistenceLayer: Erro ao carregar histórico de observability para %s: %s",
-                normalized,
-                e,
-            )
-            return list(reversed(cached_points[-safe_limit:]))
+        return self._observability_history_repo.load_channel_history_sync(channel_id, limit=limit)
 
     async def load_observability_channel_history(
         self,
@@ -542,56 +250,7 @@ class PersistenceLayer:
         *,
         limit: int = 6,
     ) -> list[dict[str, Any]]:
-        safe_limit = self._coerce_history_limit(limit, default=6, maximum=24)
-
-        if not self._enabled or not self._client:
-            latest_points = []
-            for channel_id, rows in self._observability_channel_history_cache.items():
-                if not rows:
-                    continue
-                latest_points.append(
-                    self._normalize_observability_history_point(channel_id, dict(rows[-1] or {}))
-                )
-            latest_points.sort(key=lambda item: str(item.get("captured_at") or ""), reverse=True)
-            return latest_points[:safe_limit]
-
-        scan_limit = max(48, safe_limit * 20)
-        try:
-            result = (
-                self._client.table("observability_channel_history")
-                .select("channel_id, snapshot, captured_at")
-                .order("captured_at", desc=True)
-                .limit(scan_limit)
-                .execute()
-            )
-            rows = result.data or []
-            by_channel: dict[str, dict[str, Any]] = {}
-            for row in rows:
-                channel_id = _normalize_channel_id(str(row.get("channel_id") or ""))
-                if not channel_id or channel_id in by_channel:
-                    continue
-                by_channel[channel_id] = self._normalize_observability_history_point(
-                    channel_id,
-                    dict(row.get("snapshot") or {}),
-                    captured_at=str(row.get("captured_at") or ""),
-                )
-                if len(by_channel) >= safe_limit:
-                    break
-            return list(by_channel.values())
-        except Exception as e:
-            logger.error(
-                "PersistenceLayer: Erro ao carregar comparação multi-canal de observability: %s",
-                e,
-            )
-            latest_points = []
-            for channel_id, rows in self._observability_channel_history_cache.items():
-                if not rows:
-                    continue
-                latest_points.append(
-                    self._normalize_observability_history_point(channel_id, dict(rows[-1] or {}))
-                )
-            latest_points.sort(key=lambda item: str(item.get("captured_at") or ""), reverse=True)
-            return latest_points[:safe_limit]
+        return self._observability_history_repo.load_latest_snapshots_sync(limit=limit)
 
     async def load_latest_observability_channel_snapshots(
         self,
@@ -631,7 +290,7 @@ class PersistenceLayer:
         payload = {
             "rollup_key": "global",
             "state": dict(state or {}),
-            "updated_at": _utc_iso_now(),
+            "updated_at": utc_iso_now(),
             "source": "memory",
         }
         self._observability_rollup_cache = payload

@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.17
+**Versão:** 1.18
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.2 CONCLUÍDAS, PRÓXIMA: 10.3)
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.3 CONCLUÍDAS, PRÓXIMA: 10.4)
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -155,7 +155,7 @@
 2. **Fase 10.2 - Refactor do roteamento HTTP** ✅ Concluída
    - Introduzir helpers comuns para guardas (`auth required`), parse de payload e respostas de erro padrão.
    - Reorganizar `handle_get` para dispatch table por rota (reduzir branching encadeado).
-3. **Fase 10.3 - Fatiamento da camada de persistência**
+3. **Fase 10.3 - Fatiamento da camada de persistência** ✅ Concluída
    - Separar responsabilidades em sub-repositórios (`channel_config`, `agent_notes`, `observability`), mantendo `PersistenceLayer` como facade.
    - Reduzir acoplamento e tamanho de arquivo em `bot/persistence_layer.py`.
 4. **Fase 10.4 - Gate automatizado de saúde estrutural**
@@ -195,11 +195,27 @@
   - `ruff format --check bot/dashboard_http_helpers.py bot/dashboard_server_routes.py bot/dashboard_server_routes_post.py bot/tests/test_dashboard_http_helpers.py` (verde);
   - `PYLINTHOME=/tmp/pylint-cache pylint --disable=all --enable=R0801 bot/dashboard_server_routes.py bot/dashboard_server_routes_post.py` (verde).
 
+**Fechamento da Fase 10.3 (ciclo atual)**
+
+- Camada de persistência fatiada em módulos dedicados:
+  - `bot/persistence_channel_config_repository.py`;
+  - `bot/persistence_agent_notes_repository.py`;
+  - `bot/persistence_observability_history_repository.py`;
+  - `bot/persistence_cached_channel_repository.py` (base comum para reduzir duplicação);
+  - `bot/persistence_utils.py` (normalização/validação compartilhada).
+- `bot/persistence_layer.py` passou a atuar como facade enxuta, delegando para repositórios especializados sem alterar o contrato público (`load_*`, `save_*` síncrono/assíncrono).
+- Novos testes da etapa em `bot/tests/test_persistence_repositories.py` cobrindo roundtrip de memória, sanitização de notas, timeline/comparativo e consistência de cache entre facade e repositórios.
+- Validação executada:
+  - `pytest -q --no-cov bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py` (`93 passed`);
+  - `ruff check bot/persistence_cached_channel_repository.py bot/persistence_channel_config_repository.py bot/persistence_agent_notes_repository.py bot/persistence_observability_history_repository.py bot/persistence_layer.py bot/tests/test_persistence_repositories.py` (verde);
+  - `ruff format --check bot/persistence_cached_channel_repository.py bot/persistence_channel_config_repository.py bot/persistence_agent_notes_repository.py bot/persistence_observability_history_repository.py bot/persistence_layer.py bot/tests/test_persistence_repositories.py` (verde);
+  - `PYLINTHOME=/tmp/pylint-cache pylint --disable=all --enable=R0801 bot/persistence_layer.py bot/persistence_channel_config_repository.py bot/persistence_agent_notes_repository.py bot/persistence_observability_history_repository.py bot/persistence_cached_channel_repository.py` (verde).
+
 ---
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 10.3 (saneamento estrutural):** fatiamento da camada de persistência para reduzir acoplamento e tamanho do módulo.
+1. **Fase 10.4 (saneamento estrutural):** automatizar gate de complexidade/duplicação no pipeline para impedir regressão estrutural.
 2. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
 3. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
 4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
@@ -223,7 +239,7 @@
 | **Histórico persistido + comparativo multi-canal na observabilidade** | ✅ | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
-| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1-10.2 concluídas, próxima etapa: 10.3) |
+| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1-10.3 concluídas, próxima etapa: 10.4) |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
 ---
@@ -245,12 +261,10 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: visão histórica/multi-canal na dashboard (timeline persistida por canal + comparativo lado a lado).
-- Discovery de layout: integração planejada e executada no painel `Agent Context & Internals`, preservando layout e componentes atuais.
-- Backend (`observability_state.py` + `persistence_layer.py`): flush agora grava snapshots históricos por canal; novo suporte de leitura/consulta para histórico persistido.
-- API (`dashboard_server_routes.py`): novo `GET /api/observability/history` com timeline por canal focado e comparação entre canais.
-- Dashboard (`dashboard/features/observability/*` + `dashboard/partials/analytics_logs.html`): novas tabelas de timeline/comparação renderizadas no fluxo existente, sem UI paralela.
-- Escopo validado: backlog de histórico persistido e comparação multi-canal da fase 6 foi concluído.
-- Testes da etapa: suíte focal Python verde (`95 passed`, `--no-cov`) e suíte `node:test` da dashboard verde para o fluxo multi-channel.
+- Etapa entregue: Fase 10.3 (fatiamento da camada de persistência) concluída sem regressão funcional.
+- Backend (`persistence_layer.py` + novos repositórios): responsabilidades segregadas por domínio (`channels_config`, `agent_notes`, histórico de observabilidade) com facade estável.
+- Saneamento estrutural: duplicação entre repositórios de configuração/notas removida via base comum (`CachedChannelRepository`) e utilitários compartilhados.
+- Escopo validado: comportamento operacional e contratos HTTP existentes preservados.
+- Testes da etapa: suíte focal Python verde (`93 passed`, `--no-cov`) + lint/format/duplicação (`ruff` + `pylint R0801`) verdes.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*
