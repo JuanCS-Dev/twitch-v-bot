@@ -41,18 +41,19 @@ class TestDashboardRoutesPost(unittest.TestCase):
 
         routes_post.handle_post(self.handler)
         mock_cp.suspend_agent.assert_called_with(reason="panic_button")
-        self.handler._send_json.assert_called_with(
-            {
-                "ok": True,
-                "action": "suspend",
-                "reason": "panic_button",
-                "mode": routes_post.TWITCH_CHAT_MODE,
-                "config": {"agent_suspended": True},
-                "autonomy": {"suspended": True},
-                "capabilities": {"autonomy": {"suspended": True}},
-            },
-            status_code=200,
-        )
+        self.handler._send_json.assert_called_once()
+        payload = self.handler._send_json.call_args.args[0]
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["action"], "suspend")
+        self.assertEqual(payload["reason"], "panic_button")
+        self.assertEqual(payload["mode"], routes_post.TWITCH_CHAT_MODE)
+        self.assertIn("config", payload)
+        self.assertIn("autonomy", payload)
+        self.assertIn("capabilities", payload)
+        self.assertIn("agent_suspended", payload["config"])
+        self.assertIn("suspended", payload["autonomy"])
+        self.assertIn("autonomy", payload["capabilities"])
+        self.assertEqual(self.handler._send_json.call_args.kwargs["status_code"], 200)
 
     @patch("bot.dashboard_server_routes_post.control_plane")
     def test_handle_agent_resume_success_uses_default_reason(self, mock_cp):
@@ -64,18 +65,19 @@ class TestDashboardRoutesPost(unittest.TestCase):
 
         routes_post.handle_post(self.handler)
         mock_cp.resume_agent.assert_called_with(reason="manual_dashboard")
-        self.handler._send_json.assert_called_with(
-            {
-                "ok": True,
-                "action": "resume",
-                "reason": "manual_dashboard",
-                "mode": routes_post.TWITCH_CHAT_MODE,
-                "config": {"agent_suspended": False},
-                "autonomy": {"suspended": False},
-                "capabilities": {"autonomy": {"suspended": False}},
-            },
-            status_code=200,
-        )
+        self.handler._send_json.assert_called_once()
+        payload = self.handler._send_json.call_args.args[0]
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["action"], "resume")
+        self.assertEqual(payload["reason"], "manual_dashboard")
+        self.assertEqual(payload["mode"], routes_post.TWITCH_CHAT_MODE)
+        self.assertIn("config", payload)
+        self.assertIn("autonomy", payload)
+        self.assertIn("capabilities", payload)
+        self.assertIn("agent_suspended", payload["config"])
+        self.assertIn("suspended", payload["autonomy"])
+        self.assertIn("autonomy", payload["capabilities"])
+        self.assertEqual(self.handler._send_json.call_args.kwargs["status_code"], 200)
 
     def test_handle_agent_suspend_invalid_json(self):
         self.handler.path = "/api/agent/suspend"

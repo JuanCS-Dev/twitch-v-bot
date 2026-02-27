@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.20
+**Versão:** 1.21
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 CONCLUÍDA ✅ (GATE FORMAL BACKEND -> DASHBOARD + CHECKLIST DE RELEASE ATIVO NA CI) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -97,7 +97,7 @@
 - Não existe interface de dashboard para inspeção/edição de memória semântica.
 - Deve permanecer como fase futura, separada do escopo operacional imediato.
 
-### Fase 9: Paridade Backend -> Dashboard (Contrato de Integração Visual) 🆕 Planejada
+### Fase 9: Paridade Backend -> Dashboard (Contrato de Integração Visual) ✅ Concluída
 
 **Objetivo da fase**
 
@@ -131,7 +131,25 @@
 - Documento de implementação atualizado com o status de paridade por capability.
 - Evidência de discovery do layout atual anexada ao ciclo (mapa de encaixe visual por capability).
 
-### Fase 10: Saneamento Estrutural (Anti-Espaguete + Anti-Duplicação) 🚧 Em andamento
+**Fechamento da Fase 9 (ciclo atual)**
+
+- Gate formal executável implementado em `bot/dashboard_parity_gate.py` com validação automática de:
+  - inventário de rotas operacionais (`GET/PUT/POST`) via parsing dos dispatch tables reais;
+  - matriz de paridade por capability/domínio com decisão obrigatória por endpoint (`integrated` ou `headless_approved`);
+  - presença de evidência de testes backend e dashboard por endpoint integrado.
+- Dashboard test de contrato de API criado em `dashboard/tests/api_contract_parity.test.js`, cobrindo os fluxos operacionais reais:
+  - control plane/config/notes/suspend/resume;
+  - channel control, action queue (incluindo `decision`), autonomy tick;
+  - clips, HUD, observability, channel context e history.
+- CI atualizada em `.github/workflows/ci.yml`:
+  - execução de testes da dashboard (`node --test ...`);
+  - execução do gate formal de paridade (`python -m bot.dashboard_parity_gate`) no job de lint.
+- Exceções headless agora são explícitas e versionadas no gate:
+  - `/api/sentiment/scores` com exposição planejada na **Fase 11** (Stream Health Score);
+  - `/api/vision/status` e `/api/vision/ingest` com exposição planejada na **Fase 19** (Clip Suggestion Intelligence).
+- Preservação de layout: o contrato mantém o encaixe das capacidades no layout existente (`control_plane`, `risk_queue`, `agent context`, `clips`, `hud`) sem dashboard paralela.
+
+### Fase 10: Saneamento Estrutural (Anti-Espaguete + Anti-Duplicação) ✅ Concluída
 
 **Diagnóstico atual (evidência objetiva)**
 
@@ -235,17 +253,16 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
-2. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
-3. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
-4. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
-5. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
-6. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
-7. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
-8. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
-9. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
-10. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
-11. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
+2. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
+3. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
+4. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+5. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+6. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+7. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+8. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+9. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+10. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -347,7 +364,7 @@
 | **Dashboard focused channel + persisted context**                                               | ✅               | Selector persistido, `/api/observability?channel=` e `/api/channel-context`                                        |
 | **Histórico persistido + comparativo multi-canal na observabilidade**                           | ✅               | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals`     |
 | **Thought Injection (`agent_notes`)**                                                           | ✅               | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
-| **Contrato backend -> dashboard (paridade visual por capability)**                              | ⚠️               | Fase 9 planejada para virar gate obrigatório de entrega operacional                                                |
+| **Contrato backend -> dashboard (paridade visual por capability)**                              | ✅               | Fase 9 concluída com gate obrigatório (`bot/dashboard_parity_gate.py`) e checklist de release ativo na CI          |
 | **Saneamento anti-espaguete/anti-duplicação**                                                   | ✅               | Fase 10 concluída (10.1-10.4) com gate automatizado ativo no pipeline CI                                           |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
 | **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
@@ -365,18 +382,22 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - observabilidade per-channel real entregue no backend da dashboard operacional;
 - dashboards históricos multi-canal e comparativo por canal entregues no painel operacional existente;
 - soberania por canal já cobre tuning + notes + pause/silence;
-- contrato formal de paridade backend -> dashboard agora está em execução com discovery de layout aplicado;
+- contrato formal de paridade backend -> dashboard concluído, com gate de release/CI ativo e discovery de layout aplicado;
 - saneamento estrutural foi concluído (Fase 10) com gate automatizado de complexidade/duplicação no pipeline;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: Fase 10.4 (gate automatizado de saúde estrutural) concluída sem regressão funcional.
-- Backend/infra de qualidade: `bot/structural_health_gate.py` centraliza e executa os gates `ruff C901` (budget 17) e `pylint R0801`.
-- Pipeline: job `lint` da CI agora instala `pylint` e roda o gate estrutural antes do MyPy.
-- Escopo validado: gate falha quando houver regressão estrutural e preserva os contratos operacionais existentes.
-- Testes da etapa: suíte nova (`4 passed`) + regressão de dashboard/persistência (`71 passed`) + execução real do gate verde.
-- Planejamento: trilha F11-F19 adicionada com dependências, DoD e gate visual obrigatório sem criar backlog duplicado.
+- Etapa entregue: Fase 9 (gate formal de paridade backend -> dashboard) concluída sem regressão funcional.
+- Backend/infra de qualidade:
+  - `bot/dashboard_parity_gate.py` valida cobertura por endpoint operacional (integrado ou headless aprovado com fase definida);
+  - `dashboard/tests/api_contract_parity.test.js` valida chamadas reais de API dos módulos de dashboard.
+- Pipeline:
+  - job `lint` da CI agora executa testes Node da dashboard;
+  - job `lint` executa `python -m bot.dashboard_parity_gate` antes do MyPy.
+- Escopo validado: merge é bloqueado quando surgir endpoint operacional sem decisão de paridade/testes.
+- Testes da etapa: suíte nova Python do gate + suíte nova Node de contrato + regressão backend/dashboard preservada.
+- Planejamento: backlog priorizado passa a iniciar na Fase 11, com Fase 9 e Fase 10 fechadas.
 
 _Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._

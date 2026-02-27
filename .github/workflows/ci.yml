@@ -26,7 +26,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -44,6 +49,15 @@ jobs:
 
       - name: Structural Health Gate (C901 + R0801)
         run: python -m bot.structural_health_gate
+
+      - name: Dashboard API Contract Tests
+        run: |
+          node --test \
+            dashboard/tests/multi_channel_focus.test.js \
+            dashboard/tests/api_contract_parity.test.js
+
+      - name: Backend-Dashboard Parity Gate
+        run: python -m bot.dashboard_parity_gate
 
       - name: Run MyPy
         run: |
@@ -65,7 +79,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -115,7 +129,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install ruff
@@ -138,7 +152,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install pre-commit
         run: pip install pre-commit
