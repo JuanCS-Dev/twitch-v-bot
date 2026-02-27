@@ -29,7 +29,7 @@ def is_retryable_error(
     """
     if retryable_predicate is not None:
         return retryable_predicate(error)
-    return isinstance(error, (RetryableError, asyncio.TimeoutError))
+    return isinstance(error, RetryableError | asyncio.TimeoutError)
 
 
 def with_retry(

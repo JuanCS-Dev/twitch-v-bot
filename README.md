@@ -6,9 +6,9 @@ colorFrom: purple
 colorTo: blue
 ---
 
-# Byte - Twitch AI Chat Agent 2026
+# Byte - AI Agent Runtime para Operações de Streaming
 
-![Byte Banner](assets/hero-banner-byte.png)
+![Byte Banner](assets/hero-banner-novo.png)
 
 [![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-blue)](https://huggingface.co/spaces/JuanCS-Dev/twitch-byte-bot)
 [![Nebius Inference](https://img.shields.io/badge/Inference-Nebius%20AI-green)](https://nebius.ai/)
@@ -17,9 +17,18 @@ colorTo: blue
 
 `Byte` é um agente de chat para Twitch de próxima geração, agora totalmente migrado para a stack soberana de 2026: **Nebius AI** para inferência MoE e **Supabase** para persistência de dados em tempo real.
 
+## ✅ Posicionamento Certo
+
+**"AI Agent Runtime para Operações de Streaming"**
+
+- **Categoria:** infraestrutura de operações de streaming.
+- **Alternativa comparada:** gerenciar manualmente, contratar stream manager ou cobrir a operação com 5 ferramentas.
+- **Resultado:** Byte é o único produto nessa categoria.
+- **Diferencial operacional:** `action queue` como controle operacional profissional.
+
 ## 🏗️ Arquitetura
 
-![Byte Architecture](assets/architecture-byte-flow.png)
+![Byte Architecture](assets/architecture-byte-flow-novo.png)
 
 O sistema opera como um "ML Operating System" distribuído:
 - **Runtime:** Hugging Face Spaces (Docker)
@@ -82,4 +91,3 @@ Open source sob a licença **MIT**. Veja `LICENSE` para detalhes.
 
 ---
 *Desenvolvido por Juan Carlos (VÉRTICE Core Analytics x BYTE AI)*
-# Test commit for CI

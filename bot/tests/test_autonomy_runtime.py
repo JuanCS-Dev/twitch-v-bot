@@ -121,7 +121,12 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
     def test_run_manual_tick_no_loop(self, mock_run):
         runtime = autonomy_runtime.AutonomyRuntime()
         runtime._loop = None  # Ensure no loop
-        mock_run.return_value = {"ok": True}
+
+        def run_side_effect(coroutine):
+            coroutine.close()
+            return {"ok": True}
+
+        mock_run.side_effect = run_side_effect
 
         result = runtime.run_manual_tick(force=True)
         self.assertTrue(result["ok"])
@@ -137,7 +142,12 @@ class TestAutonomyRuntime(unittest.IsolatedAsyncioTestCase):
 
         mock_future = MagicMock()
         mock_future.result.return_value = {"ok": True}
-        mock_run.return_value = mock_future
+
+        def submit_side_effect(coroutine, _loop):
+            coroutine.close()
+            return mock_future
+
+        mock_run.side_effect = submit_side_effect
 
         result = runtime.run_manual_tick(force=True)
         self.assertTrue(result["ok"])

@@ -81,7 +81,12 @@ class TestIrcStateV3:
     @pytest.mark.asyncio
     async def test_admin_join_channel(self):
         state = DummyState()
-        with patch("asyncio.create_task"):
+
+        def create_task_side_effect(coroutine):
+            coroutine.close()
+            return MagicMock()
+
+        with patch("asyncio.create_task", side_effect=create_task_side_effect):
             res, msg, channels = await state.admin_join_channel("channel2")
             assert res is True
             assert "channel2" in state.joined_channels
@@ -91,7 +96,12 @@ class TestIrcStateV3:
         state = DummyState()
         state.joined_channels.add("channel2")
         state.channel_logins.append("channel2")
-        with patch("asyncio.create_task"):
+
+        def create_task_side_effect(coroutine):
+            coroutine.close()
+            return MagicMock()
+
+        with patch("asyncio.create_task", side_effect=create_task_side_effect):
             res, msg, channels = await state.admin_part_channel("channel2")
             assert res is True
             assert "channel2" not in state.joined_channels

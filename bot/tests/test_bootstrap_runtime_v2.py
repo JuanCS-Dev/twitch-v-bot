@@ -12,6 +12,10 @@ class TestBootstrapExecution(unittest.IsolatedAsyncioTestCase):
     @patch("bot.bootstrap_runtime.resolve_irc_channel_logins")
     @patch("bot.bootstrap_runtime.asyncio.run")
     def test_run_irc_mode_full_path(self, mock_run, mock_resolve, mock_btm, mock_bot_class):
+        def run_side_effect(coroutine):
+            coroutine.close()
+
+        mock_run.side_effect = run_side_effect
         mock_resolve.return_value = ["chan"]
         mock_tm = MagicMock()
         mock_btm.return_value = mock_tm

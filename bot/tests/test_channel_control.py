@@ -61,21 +61,16 @@ class TestChannelControl(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"], "runtime_unavailable")
 
-    @patch("bot.channel_control.asyncio.run_coroutine_threadsafe")
-    def test_irc_channel_control_bridge_execute_list(self, mock_run):
+    @patch.object(channel_control.IrcChannelControlBridge, "_submit")
+    def test_irc_channel_control_bridge_execute_list(self, mock_submit):
         """Should return channel list from bot."""
-        loop = MagicMock()
-        loop.is_closed.return_value = False
-        loop.is_running.return_value = True
-        bot = MagicMock()
-
         bridge = channel_control.IrcChannelControlBridge()
-        bridge.bind(loop=loop, bot=bot)
 
-        # Mock future result
-        future = MagicMock()
-        future.result.return_value = ["chan1", "chan2"]
-        mock_run.return_value = future
+        def submit_side_effect(coroutine):
+            coroutine.close()
+            return ["chan1", "chan2"]
+
+        mock_submit.side_effect = submit_side_effect
 
         result = bridge.execute(action="list")
         self.assertTrue(result["ok"])
@@ -99,23 +94,17 @@ class TestChannelControl(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"], "missing_channel")
 
-    @patch("bot.channel_control.asyncio.run_coroutine_threadsafe")
-    def test_irc_channel_control_bridge_timeout(self, mock_run):
+    @patch.object(channel_control.IrcChannelControlBridge, "_submit")
+    def test_irc_channel_control_bridge_timeout(self, mock_submit):
         """Should handle future timeout."""
-        loop = MagicMock(is_closed=False, is_running=True)
-        bot = MagicMock()
         bridge = channel_control.IrcChannelControlBridge(timeout_seconds=0.1)
-        bridge.bind(loop=loop, bot=bot)
 
-        future = MagicMock()
-        from concurrent.futures import TimeoutError as FutureTimeoutError
+        def submit_side_effect(coroutine):
+            coroutine.close()
+            raise TimeoutError("timeout")
 
-        future.result.side_effect = FutureTimeoutError()
-        mock_run.return_value = future
+        mock_submit.side_effect = submit_side_effect
 
         result = bridge.execute(action="list")
         self.assertFalse(result["ok"])
-        # According to logs, it returns 'runtime_error' instead of 'timeout'.
-        # This is because IrcChannelControlBridge._submit raises TimeoutError (BUILTIN),
-        # but execute() might be catching it as generic Exception if it's not imported correctly.
         self.assertIn(result["error"], ["timeout", "runtime_error"])

@@ -24,7 +24,12 @@ class TestClipJobsRuntimeV3:
     def test_start_stop(self, runtime):
         loop = MagicMock()
         mock_task = MagicMock()
-        loop.create_task.return_value = mock_task
+
+        def create_task_side_effect(coroutine):
+            coroutine.close()
+            return mock_task
+
+        loop.create_task.side_effect = create_task_side_effect
         runtime.start(loop)
         assert runtime._running is True
         loop.create_task.assert_called_once()

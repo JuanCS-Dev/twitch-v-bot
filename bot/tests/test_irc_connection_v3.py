@@ -40,14 +40,15 @@ class TestIrcConnectionV3:
     @pytest.mark.asyncio
     async def test_send_raw(self):
         conn = DummyConnection()
-        conn.writer = AsyncMock()
+        conn.writer = MagicMock()
+        conn.writer.drain = AsyncMock()
         await conn._send_raw("PING")
         conn.writer.write.assert_called_with(b"PING\r\n")
 
     @pytest.mark.asyncio
     async def test_await_login_confirmation_timeout(self):
         conn = DummyConnection()
-        conn.reader = AsyncMock()
+        conn.reader = MagicMock()
         # Sleep to simulate timeout
         conn.reader.readline = AsyncMock(side_effect=TimeoutError())
         with pytest.raises(TimeoutError):
@@ -56,7 +57,8 @@ class TestIrcConnectionV3:
     @pytest.mark.asyncio
     async def test_await_login_confirmation_success(self):
         conn = DummyConnection()
-        conn.reader = AsyncMock()
+        conn.reader = MagicMock()
+        conn.reader.readline = AsyncMock()
         conn.reader.readline.side_effect = [b":tmi.twitch.tv 001 testbot :Welcome, GLHF!\r\n"]
         await conn._await_login_confirmation(timeout_seconds=1.0)
         # Should return without exception
@@ -68,7 +70,9 @@ class TestIrcConnectionV3:
         conn._await_login_confirmation = AsyncMock()
 
         with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_open:
-            mock_open.return_value = (AsyncMock(), AsyncMock())
+            mock_writer = MagicMock()
+            mock_writer.drain = AsyncMock()
+            mock_open.return_value = (AsyncMock(), mock_writer)
             await conn._connect()
             mock_open.assert_called_once()
             conn.writer.write.assert_called()  # Sent CAP, PASS, NICK, JOIN
@@ -76,7 +80,9 @@ class TestIrcConnectionV3:
     @pytest.mark.asyncio
     async def test_close(self):
         conn = DummyConnection()
-        writer_mock = AsyncMock()
+        writer_mock = MagicMock()
+        writer_mock.close = MagicMock()
+        writer_mock.wait_closed = AsyncMock()
         conn.writer = writer_mock
         await conn._close()
         writer_mock.close.assert_called_once()

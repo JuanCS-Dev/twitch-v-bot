@@ -93,9 +93,14 @@ class IrcChannelControlBridge:
     def _submit(self, coroutine: Coroutine[Any, Any, Any]) -> Any:
         bot, loop = self._snapshot()
         if bot is None or loop is None or loop.is_closed() or not loop.is_running():
+            coroutine.close()
             raise RuntimeError("IRC runtime is not connected yet.")
 
-        future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+        try:
+            future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+        except Exception:
+            coroutine.close()
+            raise
         try:
             return future.result(timeout=self._timeout_seconds)
         except FutureTimeoutError as error:

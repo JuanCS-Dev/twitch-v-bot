@@ -47,7 +47,7 @@ def normalize_optional_text(
 def normalize_bool(value: Any, *, field_name: str) -> bool:
     if isinstance(value, bool):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         if value in (0, 0.0):
             return False
         if value in (1, 1.0):

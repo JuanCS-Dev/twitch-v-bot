@@ -5,7 +5,7 @@ from bot.autonomy_logic import process_autonomy_goal
 from bot.logic import context_manager
 
 
-class TestAutonomyIsolationScientific(unittest.TestCase):
+class TestAutonomyIsolationScientific(unittest.IsolatedAsyncioTestCase):
     @patch("bot.autonomy_logic.agent_inference", new_callable=AsyncMock)
     async def test_autonomy_uses_isolated_context(self, mock_inference):
         """Valida que a autonomia lê o contexto do canal correto."""

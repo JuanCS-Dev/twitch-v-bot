@@ -1,11 +1,13 @@
 #!/bin/bash
 echo "Iniciando auditoria completa do plano contra o código..."
+errors=0
 
 check_file() {
     if [ -f "$1" ]; then
         echo "[OK] Arquivo $1 existe."
     else
         echo "[ERRO] Arquivo $1 NÃO encontrado."
+        errors=$((errors + 1))
     fi
 }
 
@@ -14,6 +16,7 @@ check_grep() {
         echo "[OK] String '$1' encontrada em $2."
     else
         echo "[ERRO] String '$1' NÃO encontrada em $2."
+        errors=$((errors + 1))
     fi
 }
 
@@ -21,7 +24,7 @@ echo "=== Fases 1-3: Persistência base ==="
 check_file "bot/persistence_layer.py"
 check_file "bot/logic_context.py"
 check_grep "def load_channel_config_sync" "bot/persistence_layer.py"
-check_grep "def restore_state" "bot/logic_context.py"
+check_grep "def _trigger_lazy_load" "bot/logic_context.py"
 
 echo "=== Fase 4: Canais dinâmicos ==="
 check_file "bot/bootstrap_runtime.py"
@@ -95,3 +98,10 @@ check_file "dashboard/partials/control_plane.html"
 check_file "dashboard/partials/risk_queue.html"
 check_file "bot/tests/test_coaching_churn_risk.py"
 check_file "dashboard/tests/multi_channel_focus.test.js"
+
+if [ "$errors" -gt 0 ]; then
+    echo "Auditoria concluída com $errors erro(s)."
+    exit 1
+fi
+
+echo "Auditoria concluída sem inconsistências."

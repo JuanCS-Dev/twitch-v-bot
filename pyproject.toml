@@ -139,9 +139,11 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
   "ignore::DeprecationWarning",
   "ignore::PendingDeprecationWarning",
+  "ignore:Inheritance class AiohttpAdapter from web.Application is discouraged:DeprecationWarning",
 ]
 
 [tool.coverage.run]

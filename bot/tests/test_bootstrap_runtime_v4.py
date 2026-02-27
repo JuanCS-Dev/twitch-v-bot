@@ -80,6 +80,10 @@ class TestBootstrapRuntimeV4:
     @patch("bot.bootstrap_runtime.resolve_irc_channel_logins")
     @patch("bot.bootstrap_runtime.asyncio.run")
     def test_run_irc_mode(self, mock_run, mock_resolve, mock_build, mock_bot_cls):
+        def run_side_effect(coroutine):
+            coroutine.close()
+
+        mock_run.side_effect = run_side_effect
         mock_resolve.return_value = ["test"]
         mock_mgr = MagicMock()
         mock_build.return_value = mock_mgr

@@ -35,6 +35,10 @@ class TestBootstrapRuntime(unittest.IsolatedAsyncioTestCase):
     @patch("bot.bootstrap_runtime.IrcByteBot")
     @patch("bot.bootstrap_runtime.build_irc_token_manager")
     def test_run_irc_mode_orchestration(self, mock_build_token, mock_bot, mock_run):
+        def side_effect(coro):
+            coro.close()
+
+        mock_run.side_effect = side_effect
         # Apenas valida que o asyncio.run é chamado (o que dispara o loop interno)
         bootstrap.run_irc_mode()
         self.assertTrue(mock_run.called)
@@ -42,6 +46,10 @@ class TestBootstrapRuntime(unittest.IsolatedAsyncioTestCase):
     @patch("bot.bootstrap_runtime.asyncio.run")
     @patch("bot.bootstrap_runtime.ByteBot")
     def test_run_eventsub_mode(self, mock_bot, mock_run):
+        def side_effect(coro):
+            coro.close()
+
+        mock_run.side_effect = side_effect
         bootstrap.run_eventsub_mode()
         self.assertTrue(mock_run.called)
 

@@ -1,6 +1,6 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.28
+**Versão:** 1.29
 **Data:** 27 de Fevereiro de 2026
 **Status:** Fases antigas (1-13) + Fases 14-19 concluídas ✅ | Backlog ativo: Otimização `pgvector` (futuro)
 
@@ -71,13 +71,17 @@
 ## 5. Evidências de Validação (ciclo de auditoria atual)
 
 - `pytest -q --no-cov bot/tests/`
-  **Resultado:** `927 passed, 4 skipped, 20 warnings`.
+  **Resultado:** `927 passed, 4 skipped, 0 warnings`.
 - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
   **Resultado:** `23 passed`.
 - `python -m bot.dashboard_parity_gate`
   **Resultado:** `ok integrated=30 headless_approved=0`.
 - `python -m bot.structural_health_gate`
   **Resultado:** `ok`.
+- `bash validate_plan.sh`
+  **Resultado:** `Auditoria concluída sem inconsistências`.
+- `pre-commit run --all-files`
+  **Resultado:** todos os hooks passaram (`black`, `ruff`, `ruff-format`, checks auxiliares).
 
 ---
 

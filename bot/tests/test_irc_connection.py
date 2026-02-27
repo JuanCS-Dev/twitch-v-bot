@@ -45,7 +45,8 @@ class TestIrcConnection(unittest.IsolatedAsyncioTestCase):
 
     async def test_send_raw_success(self):
         bot = MockBot()
-        bot.writer = AsyncMock()
+        bot.writer = MagicMock()
+        bot.writer.drain = AsyncMock()
         await bot._send_raw("PING")
         bot.writer.write.assert_called_with(b"PING\r\n")
         bot.writer.drain.assert_called_once()
@@ -54,7 +55,8 @@ class TestIrcConnection(unittest.IsolatedAsyncioTestCase):
     async def test_await_login_confirmation_success(self, mock_pattern):
         bot = MockBot()
         bot.reader = MagicMock()
-        bot.writer = AsyncMock()
+        bot.writer = MagicMock()
+        bot.writer.drain = AsyncMock()
 
         # Setup responses
         responses = [b"PING :123\r\n", b":tmi.twitch.tv 001 testbot :Welcome\r\n"]
@@ -94,7 +96,8 @@ class TestIrcConnection(unittest.IsolatedAsyncioTestCase):
         bot.token_manager.ensure_token_for_connection.return_value = "fake-token"
 
         mock_reader = AsyncMock()
-        mock_writer = AsyncMock()
+        mock_writer = MagicMock()
+        mock_writer.drain = AsyncMock()
         mock_open.return_value = (mock_reader, mock_writer)
 
         await bot._connect()
