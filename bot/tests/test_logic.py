@@ -2,7 +2,12 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot.logic import agent_inference, build_dynamic_prompt, context_manager, enforce_reply_limits
-from bot.logic_inference import _execute_inference, _resolve_generation_params
+from bot.logic_inference import (
+    _build_agent_notes_instruction,
+    _build_messages,
+    _execute_inference,
+    _resolve_generation_params,
+)
 
 
 class TestBotLogic(unittest.IsolatedAsyncioTestCase):
@@ -85,6 +90,48 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(temperature, 0.15)
         self.assertIsNone(top_p)
+
+    def test_build_agent_notes_instruction_returns_empty_for_blank_notes(self):
+        ctx = MagicMock(agent_notes=" \n ")
+
+        instruction = _build_agent_notes_instruction(ctx)
+
+        self.assertEqual(instruction, "")
+
+    def test_build_messages_injects_agent_notes_into_system_prompt(self):
+        ctx = context_manager.get("notes_channel")
+        ctx.agent_notes = (
+            "Priorize contexto do streamer.\nEvite backseat agressivo.\nFoque em perguntas curtas."
+        )
+
+        messages = _build_messages("oque rolou", "viewer", ctx, True, [])
+
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertIn("Diretrizes operacionais do canal", messages[0]["content"])
+        self.assertIn("- Priorize contexto do streamer.", messages[0]["content"])
+        self.assertIn("- Evite backseat agressivo.", messages[0]["content"])
+        self.assertEqual(messages[1]["role"], "user")
+
+    def test_build_agent_notes_instruction_limits_and_compacts_lines(self):
+        ctx = MagicMock(
+            agent_notes="\n".join(
+                [
+                    "  Linha   1  ",
+                    "Linha 2",
+                    "Linha 3",
+                    "Linha 4",
+                    "Linha 5",
+                    "Linha 6",
+                    "Linha 7",
+                ]
+            )
+        )
+
+        instruction = _build_agent_notes_instruction(ctx)
+
+        self.assertIn("- Linha 1", instruction)
+        self.assertIn("- Linha 6", instruction)
+        self.assertNotIn("Linha 7", instruction)
 
 
 if __name__ == "__main__":

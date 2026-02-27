@@ -40,6 +40,7 @@ class StreamContext:
         self.style_profile = DEFAULT_STYLE_PROFILE
         self.inference_temperature: float | None = None
         self.inference_top_p: float | None = None
+        self.agent_notes = ""
         self.live_observability: dict[str, str] = {
             "game": "",
             "movie": "",
@@ -204,6 +205,9 @@ class ContextManager:
             ctx.inference_temperature = channel_config.get("temperature")
             ctx.inference_top_p = channel_config.get("top_p")
 
+            agent_notes = await persistence.load_agent_notes(channel_id)
+            ctx.agent_notes = str(agent_notes.get("notes") or "")
+
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(_load_task())
@@ -229,6 +233,14 @@ class ContextManager:
             return
         ctx.inference_temperature = temperature
         ctx.inference_top_p = top_p
+
+    def apply_agent_notes(self, channel_id: str, *, notes: str) -> None:
+        key = (channel_id or "default").strip().lower()
+        with self._lock:
+            ctx = self._contexts.get(key)
+        if ctx is None:
+            return
+        ctx.agent_notes = str(notes or "")
 
     async def cleanup(self, channel_id: str) -> None:
         """Remove contexto da RAM (Async para manter assinatura onde esperado)."""

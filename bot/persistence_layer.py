@@ -35,6 +35,22 @@ def _normalize_optional_float(
     return round(parsed, 4)
 
 
+def _normalize_optional_text(
+    value: Any,
+    *,
+    field_name: str,
+    max_length: int,
+) -> str:
+    if value in (None, ""):
+        return ""
+    normalized = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+    trimmed_lines = [line.rstrip() for line in normalized.split("\n")]
+    cleaned = "\n".join(trimmed_lines).strip()
+    if len(cleaned) > max_length:
+        raise ValueError(f"{field_name} excede o tamanho permitido.")
+    return cleaned
+
+
 class PersistenceLayer:
     """
     Camada unificada de persistência para o Byte Bot.
@@ -47,6 +63,7 @@ class PersistenceLayer:
         self._client: Client | None = None
         self._enabled = False
         self._channel_config_cache: dict[str, dict[str, Any]] = {}
+        self._agent_notes_cache: dict[str, dict[str, Any]] = {}
         self._observability_rollup_cache: dict[str, Any] | None = None
 
         if self._url and self._key:
@@ -73,6 +90,18 @@ class PersistenceLayer:
             "temperature": temperature,
             "top_p": top_p,
             "has_override": temperature is not None or top_p is not None,
+            "updated_at": cached.get("updated_at", ""),
+            "source": cached.get("source", "memory"),
+        }
+
+    def _default_agent_notes(self, channel_id: str) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id) or "default"
+        cached = self._agent_notes_cache.get(normalized, {})
+        notes = str(cached.get("notes", "") or "")
+        return {
+            "channel_id": normalized,
+            "notes": notes,
+            "has_notes": bool(notes.strip()),
             "updated_at": cached.get("updated_at", ""),
             "source": cached.get("source", "memory"),
         }
@@ -200,6 +229,78 @@ class PersistenceLayer:
             temperature=temperature,
             top_p=top_p,
         )
+
+    def load_agent_notes_sync(self, channel_id: str) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id) or "default"
+        if not self._enabled or not self._client:
+            return self._default_agent_notes(normalized)
+
+        try:
+            result = (
+                self._client.table("agent_notes")
+                .select("channel_id, notes, updated_at")
+                .eq("channel_id", normalized)
+                .maybe_single()
+                .execute()
+            )
+            row = result.data or {}
+            notes = str(row.get("notes") or "")
+            payload = {
+                "channel_id": normalized,
+                "notes": notes,
+                "has_notes": bool(notes.strip()),
+                "updated_at": str(row.get("updated_at") or ""),
+                "source": "supabase",
+            }
+            self._agent_notes_cache[normalized] = payload
+            return payload
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao carregar agent_notes de %s: %s", normalized, e)
+            return self._default_agent_notes(normalized)
+
+    async def load_agent_notes(self, channel_id: str) -> dict[str, Any]:
+        return self.load_agent_notes_sync(channel_id)
+
+    def save_agent_notes_sync(self, channel_id: str, *, notes: Any = None) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id)
+        if not normalized:
+            raise ValueError("channel_id obrigatorio.")
+
+        safe_notes = _normalize_optional_text(
+            notes,
+            field_name="agent_notes",
+            max_length=2000,
+        )
+        payload = {
+            "channel_id": normalized,
+            "notes": safe_notes,
+            "has_notes": bool(safe_notes.strip()),
+            "updated_at": _utc_iso_now(),
+            "source": "memory",
+        }
+        self._agent_notes_cache[normalized] = payload
+
+        if not self._enabled or not self._client:
+            return payload
+
+        try:
+            self._client.table("agent_notes").upsert(
+                {
+                    "channel_id": normalized,
+                    "notes": safe_notes,
+                    "updated_at": "now()",
+                }
+            ).execute()
+            persisted = self.load_agent_notes_sync(normalized)
+            persisted["source"] = "supabase"
+            self._agent_notes_cache[normalized] = persisted
+            return persisted
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao salvar agent_notes de %s: %s", normalized, e)
+            return payload
+
+    async def save_agent_notes(self, channel_id: str, *, notes: Any = None) -> dict[str, Any]:
+        return self.save_agent_notes_sync(channel_id, notes=notes)
 
     # --- Persistência de Estado (Channel State) ---
 

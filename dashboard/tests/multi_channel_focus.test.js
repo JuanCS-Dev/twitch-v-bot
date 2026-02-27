@@ -17,6 +17,10 @@ import {
 } from "../features/observability/view.js";
 import { createObservabilityController } from "../features/observability/controller.js";
 import { createControlPlaneController } from "../features/control-plane/controller.js";
+import {
+  getControlPlaneElements,
+  renderAgentNotes,
+} from "../features/control-plane/view.js";
 import { createHudController } from "../features/hud/controller.js";
 
 class MockClassList {
@@ -255,6 +259,10 @@ function createObservabilityElements(document) {
       "ctxPersistedReply",
       new MockElement("dd", document),
     ),
+    ctxPersistedNotes: document.registerElement(
+      "ctxPersistedNotes",
+      new MockElement("dd", document),
+    ),
     ctxPersistedUpdatedAt: document.registerElement(
       "ctxPersistedUpdatedAt",
       new MockElement("dd", document),
@@ -279,6 +287,68 @@ function createObservabilityElements(document) {
       "sentimentProgressBar",
       new MockElement("div", document),
     ),
+  };
+}
+
+function createControlPlaneElements(document) {
+  return {
+    feedback: document.registerElement(
+      "cpFeedbackMsg",
+      new MockElement("p", document),
+    ),
+    channelStatusChip: document.registerElement(
+      "cpChannelConfigStatusChip",
+      new MockElement("span", document),
+    ),
+    channelHint: document.registerElement(
+      "cpChannelConfigHint",
+      new MockElement("p", document),
+    ),
+    channelIdInput: document.registerElement(
+      "cpChannelConfigId",
+      new MockElement("input", document),
+    ),
+    channelTemperatureInput: document.registerElement(
+      "cpChannelTemperature",
+      new MockElement("input", document),
+    ),
+    channelTopPInput: document.registerElement(
+      "cpChannelTopP",
+      new MockElement("input", document),
+    ),
+    agentNotesStatusChip: document.registerElement(
+      "cpAgentNotesStatusChip",
+      new MockElement("span", document),
+    ),
+    agentNotesInput: document.registerElement(
+      "cpAgentNotes",
+      new MockElement("textarea", document),
+    ),
+    agentNotesHint: document.registerElement(
+      "cpAgentNotesHint",
+      new MockElement("p", document),
+    ),
+    loadChannelConfigBtn: document.registerElement(
+      "cpLoadChannelConfigBtn",
+      new MockElement("button", document),
+    ),
+    saveChannelConfigBtn: document.registerElement(
+      "cpSaveChannelConfigBtn",
+      new MockElement("button", document),
+    ),
+    goalsList: document.registerElement(
+      "cpGoalsList",
+      new MockElement("ul", document),
+    ),
+    suspendBtn: document.registerElement(
+      "cpSuspendBtn",
+      new MockElement("button", document),
+    ),
+    resumeBtn: document.registerElement(
+      "cpResumeBtn",
+      new MockElement("button", document),
+    ),
+    currentSuspendedState: false,
   };
 }
 
@@ -431,6 +501,9 @@ test("observability views render focused channel and persisted context state", (
           last_reply: "gg",
           updated_at: "2026-02-27T13:59:00Z",
         },
+        persisted_agent_notes: {
+          notes: "Priorize o contexto do streamer.",
+        },
         persisted_recent_history: ["viewer: oi", "byte: salve"],
       },
     },
@@ -442,6 +515,10 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.ctxPersistedStatusChip.textContent, "PERSISTED READY");
   assert.equal(els.ctxRuntimeStatusChip.textContent, "RUNTIME HOT");
   assert.equal(els.ctxPersistedGame.textContent, "Celeste");
+  assert.equal(
+    els.ctxPersistedNotes.textContent,
+    "Priorize o contexto do streamer.",
+  );
   assert.equal(els.ctxPersistedHint.className, "panel-hint event-level-info");
   assert.deepEqual(
     els.persistedHistoryItems.children.map((item) => item.textContent),
@@ -527,6 +604,343 @@ test("control plane controller mirrors the focused channel into channel tuning",
   controller.setSelectedChannel(" Canal_Teste ");
 
   assert.equal(cpEls.channelIdInput.value, "canal_teste");
+});
+
+test("control plane controller warns when loading directives without a channel", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const cpEls = createControlPlaneElements(document);
+  cpEls.channelIdInput = null;
+
+  const controller = createControlPlaneController({
+    cpEls,
+    autEls: null,
+    applyRuntimeCapabilities() {},
+    getErrorMessage(error, fallback) {
+      return error?.message || fallback;
+    },
+  });
+
+  await controller.loadChannelConfig(true);
+
+  assert.match(cpEls.feedback.textContent, /carregar directives/i);
+});
+
+test("control plane controller loads channel directives including agent notes", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const cpEls = createControlPlaneElements(document);
+  cpEls.channelIdInput.value = "Canal_A";
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/api/agent-notes")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            note: {
+              channel_id: "canal_a",
+              notes: "Priorize o host.",
+              has_notes: true,
+              updated_at: "2026-02-27T19:00:00Z",
+            },
+          };
+        },
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          ok: true,
+          channel: {
+            channel_id: "canal_a",
+            temperature: 0.22,
+            top_p: 0.73,
+            has_override: true,
+            updated_at: "2026-02-27T19:00:00Z",
+          },
+        };
+      },
+    };
+  };
+
+  const controller = createControlPlaneController({
+    cpEls,
+    autEls: null,
+    applyRuntimeCapabilities() {},
+    getErrorMessage(error, fallback) {
+      return error?.message || fallback;
+    },
+  });
+
+  await controller.loadChannelConfig(true);
+
+  assert.equal(cpEls.channelTemperatureInput.value, "0.22");
+  assert.equal(cpEls.channelTopPInput.value, "0.73");
+  assert.equal(cpEls.agentNotesInput.value, "Priorize o host.");
+  assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
+  assert.match(cpEls.feedback.textContent, /sincronizados/i);
+});
+
+test("control plane controller surfaces directive load errors", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const cpEls = createControlPlaneElements(document);
+  cpEls.channelIdInput.value = "Canal_C";
+
+  globalThis.fetch = async () => {
+    throw new Error("falha remota");
+  };
+
+  const controller = createControlPlaneController({
+    cpEls,
+    autEls: null,
+    applyRuntimeCapabilities() {},
+    getErrorMessage(error, fallback) {
+      return error?.message || fallback;
+    },
+  });
+
+  await controller.loadChannelConfig(true);
+
+  assert.match(cpEls.feedback.textContent, /falha remota/i);
+  assert.equal(cpEls.feedback.className, "panel-hint event-level-error");
+});
+
+test("control plane controller saves channel directives including agent notes", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const cpEls = createControlPlaneElements(document);
+  cpEls.channelIdInput.value = "Canal_B";
+  cpEls.channelTemperatureInput.value = "0.35";
+  cpEls.channelTopPInput.value = "0.81";
+  cpEls.agentNotesInput.value = "Evite insistir em dica repetida.";
+  const calls = [];
+
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    if (String(url).includes("/api/agent-notes")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            note: {
+              channel_id: "canal_b",
+              notes: "Evite insistir em dica repetida.",
+              has_notes: true,
+              updated_at: "2026-02-27T19:05:00Z",
+            },
+          };
+        },
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          ok: true,
+          channel: {
+            channel_id: "canal_b",
+            temperature: 0.35,
+            top_p: 0.81,
+            has_override: true,
+            updated_at: "2026-02-27T19:05:00Z",
+          },
+        };
+      },
+    };
+  };
+
+  const controller = createControlPlaneController({
+    cpEls,
+    autEls: null,
+    applyRuntimeCapabilities() {},
+    getErrorMessage(error, fallback) {
+      return error?.message || fallback;
+    },
+  });
+
+  controller.bindControlPlaneEvents();
+  cpEls.saveChannelConfigBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(calls.length, 2);
+  assert.ok(calls.some((call) => call.url.includes("/api/channel-config")));
+  assert.ok(calls.some((call) => call.url.includes("/api/agent-notes")));
+  assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
+  assert.match(cpEls.feedback.textContent, /salvos com sucesso/i);
+});
+
+test("control plane controller surfaces directive save errors", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const cpEls = createControlPlaneElements(document);
+  cpEls.channelIdInput.value = "Canal_D";
+  cpEls.agentNotesInput.value = "Segura a ironia.";
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/api/agent-notes")) {
+      throw new Error("save notes failed");
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          ok: true,
+          channel: {
+            channel_id: "canal_d",
+            temperature: null,
+            top_p: null,
+            has_override: false,
+            updated_at: "2026-02-27T19:10:00Z",
+          },
+        };
+      },
+    };
+  };
+
+  const controller = createControlPlaneController({
+    cpEls,
+    autEls: null,
+    applyRuntimeCapabilities() {},
+    getErrorMessage(error, fallback) {
+      return error?.message || fallback;
+    },
+  });
+
+  controller.bindControlPlaneEvents();
+  cpEls.saveChannelConfigBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.match(cpEls.feedback.textContent, /save notes failed/i);
+  assert.equal(cpEls.feedback.className, "panel-hint event-level-error");
+});
+
+test("control plane view renders cleared agent notes state", () => {
+  const { document } = installBrowserEnv();
+  const cpEls = createControlPlaneElements(document);
+
+  renderAgentNotes(
+    {
+      channel_id: "Canal_E",
+      notes: "",
+      has_notes: false,
+      updated_at: "",
+    },
+    cpEls,
+  );
+
+  assert.equal(cpEls.agentNotesInput.value, "");
+  assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES CLEAR");
+  assert.match(
+    cpEls.agentNotesHint.textContent,
+    /sem notes operacionais persistidas/i,
+  );
+});
+
+test("control plane view reads agent note elements from the dashboard DOM", () => {
+  const { document } = installBrowserEnv();
+  document.registerElement("cpPanel", new MockElement("section", document));
+  document.registerElement("cpModeChip", new MockElement("span", document));
+  document.registerElement(
+    "cpAgentStatusChip",
+    new MockElement("span", document),
+  );
+  document.registerElement("cpAgentStatusHint", new MockElement("p", document));
+  document.registerElement(
+    "cpCapabilitiesLine",
+    new MockElement("p", document),
+  );
+  document.registerElement(
+    "cpResponseContract",
+    new MockElement("p", document),
+  );
+  document.registerElement("cpFeedbackMsg", new MockElement("p", document));
+  document.registerElement(
+    "cpChannelConfigStatusChip",
+    new MockElement("span", document),
+  );
+  document.registerElement(
+    "cpChannelConfigHint",
+    new MockElement("p", document),
+  );
+  document.registerElement(
+    "cpChannelConfigId",
+    new MockElement("input", document),
+  );
+  document.registerElement(
+    "cpChannelTemperature",
+    new MockElement("input", document),
+  );
+  document.registerElement("cpChannelTopP", new MockElement("input", document));
+  document.registerElement(
+    "cpAgentNotesStatusChip",
+    new MockElement("span", document),
+  );
+  document.registerElement(
+    "cpAgentNotes",
+    new MockElement("textarea", document),
+  );
+  document.registerElement("cpAgentNotesHint", new MockElement("p", document));
+  document.registerElement(
+    "cpLoadChannelConfigBtn",
+    new MockElement("button", document),
+  );
+  document.registerElement(
+    "cpSaveChannelConfigBtn",
+    new MockElement("button", document),
+  );
+  document.registerElement(
+    "cpAutonomyEnabled",
+    new MockElement("input", document),
+  );
+  document.registerElement(
+    "cpHeartbeatInterval",
+    new MockElement("input", document),
+  );
+  document.registerElement("cpMinCooldown", new MockElement("input", document));
+  document.registerElement("cpBudget10m", new MockElement("input", document));
+  document.registerElement("cpBudget60m", new MockElement("input", document));
+  document.registerElement("cpBudgetDaily", new MockElement("input", document));
+  document.registerElement(
+    "cpActionIgnoreAfter",
+    new MockElement("input", document),
+  );
+  document.registerElement("cpGoalsList", new MockElement("ul", document));
+  document.registerElement("cpAddGoalBtn", new MockElement("button", document));
+  document.registerElement("cpSaveBtn", new MockElement("button", document));
+  document.registerElement("cpReloadBtn", new MockElement("button", document));
+  document.registerElement("cpSuspendBtn", new MockElement("button", document));
+  document.registerElement("cpResumeBtn", new MockElement("button", document));
+
+  const els = getControlPlaneElements();
+
+  assert.equal(els.agentNotesInput?.id, "cpAgentNotes");
+  assert.equal(els.agentNotesStatusChip?.id, "cpAgentNotesStatusChip");
+  assert.equal(els.agentNotesHint?.id, "cpAgentNotesHint");
 });
 
 test("hud controller syncs overlay url with the active admin token", () => {

@@ -1,58 +1,176 @@
 <section class="grid-two" id="controlPlaneSection">
   <article class="panel" id="cpPanel">
     <h2>Control Plane</h2>
-    <p class="panel-hint">Ajustes transacionais da IA em tempo real. Opções avançadas estão ocultas por padrão (Progressive Disclosure).</p>
+    <p class="panel-hint">
+      Ajustes transacionais da IA em tempo real. Opções avançadas estão ocultas
+      por padrão (Progressive Disclosure).
+    </p>
 
-    <div class="form-row" style="align-items:center; margin-bottom:var(--spacing-3);">
+    <div
+      class="form-row"
+      style="align-items: center; margin-bottom: var(--spacing-3)"
+    >
       <span id="cpModeChip" class="chip pending">MODE</span>
-      <span id="cpResponseContract" class="chip">Contrato ativo: 1 mensagem / 4 linhas.</span>
+      <span id="cpResponseContract" class="chip"
+        >Contrato ativo: 1 mensagem / 4 linhas.</span
+      >
     </div>
-    <p id="cpCapabilitiesLine" class="panel-hint" style="margin-bottom: var(--spacing-5);">Carregando capacidades...</p>
+    <p
+      id="cpCapabilitiesLine"
+      class="panel-hint"
+      style="margin-bottom: var(--spacing-5)"
+    >
+      Carregando capacidades...
+    </p>
 
-    <div style="margin-bottom:var(--spacing-4); padding:var(--spacing-4); background:var(--bg-base); border-radius:var(--radius-md); border:1px solid var(--border-default);">
-      <div class="form-row" style="align-items:center; justify-content:space-between; gap:var(--spacing-3); margin-bottom:var(--spacing-2);">
-        <div class="form-row" style="align-items:center; gap:var(--spacing-2); margin:0;">
+    <div
+      style="
+        margin-bottom: var(--spacing-4);
+        padding: var(--spacing-4);
+        background: var(--bg-base);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+      "
+    >
+      <div
+        class="form-row"
+        style="
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--spacing-3);
+          margin-bottom: var(--spacing-2);
+        "
+      >
+        <div
+          class="form-row"
+          style="align-items: center; gap: var(--spacing-2); margin: 0"
+        >
           <span class="chip">Operational Control</span>
           <span id="cpAgentStatusChip" class="chip pending">RUNNING</span>
         </div>
-        <div class="form-row" style="gap:var(--spacing-2); margin:0;">
-          <button id="cpSuspendBtn" class="btn btn-danger" type="button">Panic Suspend</button>
-          <button id="cpResumeBtn" class="btn btn-secondary" type="button">Resume Agent</button>
+        <div class="form-row" style="gap: var(--spacing-2); margin: 0">
+          <button id="cpSuspendBtn" class="btn btn-danger" type="button">
+            Panic Suspend
+          </button>
+          <button id="cpResumeBtn" class="btn btn-secondary" type="button">
+            Resume Agent
+          </button>
         </div>
       </div>
-      <p id="cpAgentStatusHint" class="panel-hint" style="margin:0;">Agente operacional.</p>
+      <p id="cpAgentStatusHint" class="panel-hint" style="margin: 0">
+        Agente operacional.
+      </p>
     </div>
 
-    <div style="margin-bottom:var(--spacing-4); padding:var(--spacing-4); background:var(--bg-base); border-radius:var(--radius-md); border:1px solid var(--border-default);">
-      <div class="form-row" style="align-items:center; justify-content:space-between; gap:var(--spacing-3); margin-bottom:var(--spacing-2);">
-        <div class="form-row" style="align-items:center; gap:var(--spacing-2); margin:0;">
-          <span class="chip">Channel Tuning</span>
-          <span id="cpChannelConfigStatusChip" class="chip pending">MODEL DEFAULT</span>
+    <div
+      style="
+        margin-bottom: var(--spacing-4);
+        padding: var(--spacing-4);
+        background: var(--bg-base);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+      "
+    >
+      <div
+        class="form-row"
+        style="
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--spacing-3);
+          margin-bottom: var(--spacing-2);
+        "
+      >
+        <div
+          class="form-row"
+          style="align-items: center; gap: var(--spacing-2); margin: 0"
+        >
+          <span class="chip">Channel Directives</span>
+          <span id="cpChannelConfigStatusChip" class="chip pending"
+            >MODEL DEFAULT</span
+          >
+          <span id="cpAgentNotesStatusChip" class="chip pending"
+            >NOTES CLEAR</span
+          >
         </div>
-        <div class="form-row" style="gap:var(--spacing-2); margin:0;">
-          <button id="cpLoadChannelConfigBtn" class="btn btn-secondary" type="button">Load Channel</button>
-          <button id="cpSaveChannelConfigBtn" class="btn btn-primary" type="button">Apply Tuning</button>
+        <div class="form-row" style="gap: var(--spacing-2); margin: 0">
+          <button
+            id="cpLoadChannelConfigBtn"
+            class="btn btn-secondary"
+            type="button"
+          >
+            Load Channel
+          </button>
+          <button
+            id="cpSaveChannelConfigBtn"
+            class="btn btn-primary"
+            type="button"
+          >
+            Apply Directives
+          </button>
         </div>
       </div>
-      <div class="form-row" style="flex-wrap:wrap; margin-bottom:var(--spacing-2);">
-        <div class="form-group" style="min-width:170px;">
+      <div
+        class="form-row"
+        style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
+      >
+        <div class="form-group" style="min-width: 170px">
           <label for="cpChannelConfigId">Channel</label>
-          <input id="cpChannelConfigId" class="form-control" type="text" value="default" />
+          <input
+            id="cpChannelConfigId"
+            class="form-control"
+            type="text"
+            value="default"
+          />
         </div>
-        <div class="form-group" style="min-width:150px;">
+        <div class="form-group" style="min-width: 150px">
           <label for="cpChannelTemperature">Temperature</label>
-          <input id="cpChannelTemperature" class="form-control" type="number" min="0" max="2" step="0.01" placeholder="0.15" />
+          <input
+            id="cpChannelTemperature"
+            class="form-control"
+            type="number"
+            min="0"
+            max="2"
+            step="0.01"
+            placeholder="0.15"
+          />
         </div>
-        <div class="form-group" style="min-width:150px;">
+        <div class="form-group" style="min-width: 150px">
           <label for="cpChannelTopP">Top P</label>
-          <input id="cpChannelTopP" class="form-control" type="number" min="0" max="1" step="0.01" placeholder="auto" />
+          <input
+            id="cpChannelTopP"
+            class="form-control"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            placeholder="auto"
+          />
         </div>
       </div>
-      <p id="cpChannelConfigHint" class="panel-hint" style="margin:0;">Overrides persistidos em <code>channels_config</code>.</p>
+      <div class="form-group" style="margin-bottom: var(--spacing-2)">
+        <label for="cpAgentNotes">Operational Notes</label>
+        <textarea
+          id="cpAgentNotes"
+          class="form-control"
+          rows="4"
+          placeholder="Ex.: Priorize lore e contexto do streamer. Evite backseat agressivo."
+        ></textarea>
+      </div>
+      <p
+        id="cpChannelConfigHint"
+        class="panel-hint"
+        style="margin: 0 0 var(--spacing-1) 0"
+      >
+        Overrides persistidos em <code>channels_config</code>.
+      </p>
+      <p id="cpAgentNotesHint" class="panel-hint" style="margin: 0">
+        Notes persistidas em <code>agent_notes</code> e injetadas no system
+        prompt.
+      </p>
     </div>
 
-    <div class="form-row" style="flex-wrap:wrap;">
-      <div class="form-group" style="min-width:170px;">
+    <div class="form-row" style="flex-wrap: wrap">
+      <div class="form-group" style="min-width: 170px">
         <label class="toggle-switch">
           <input id="cpAutonomyEnabled" type="checkbox" />
           <span class="toggle-slider"></span>
@@ -64,113 +182,335 @@
     <details class="advanced-settings">
       <summary>Configurações Avançadas de Budget & Cooldowns</summary>
       <div class="advanced-settings-content">
-        <div class="form-row" style="flex-wrap:wrap; margin-bottom:var(--spacing-4);">
-          <div class="form-group" style="min-width:140px;">
+        <div
+          class="form-row"
+          style="flex-wrap: wrap; margin-bottom: var(--spacing-4)"
+        >
+          <div class="form-group" style="min-width: 140px">
             <label for="cpHeartbeatInterval">Heartbeat (s)</label>
-            <input id="cpHeartbeatInterval" class="form-control" type="number" min="15" max="3600" step="1" />
+            <input
+              id="cpHeartbeatInterval"
+              class="form-control"
+              type="number"
+              min="15"
+              max="3600"
+              step="1"
+            />
           </div>
-          <div class="form-group" style="min-width:140px;">
+          <div class="form-group" style="min-width: 140px">
             <label for="cpMinCooldown">Cooldown (s)</label>
-            <input id="cpMinCooldown" class="form-control" type="number" min="15" max="3600" step="1" />
+            <input
+              id="cpMinCooldown"
+              class="form-control"
+              type="number"
+              min="15"
+              max="3600"
+              step="1"
+            />
           </div>
-          <div class="form-group" style="min-width:140px;">
+          <div class="form-group" style="min-width: 140px">
             <label for="cpActionIgnoreAfter">Auto-ignore (s)</label>
-            <input id="cpActionIgnoreAfter" class="form-control" type="number" min="60" max="86400" step="1" />
+            <input
+              id="cpActionIgnoreAfter"
+              class="form-control"
+              type="number"
+              min="60"
+              max="86400"
+              step="1"
+            />
           </div>
         </div>
 
-        <div class="form-row" style="flex-wrap:wrap;">
-          <div class="form-group" style="min-width:140px;">
+        <div class="form-row" style="flex-wrap: wrap">
+          <div class="form-group" style="min-width: 140px">
             <label for="cpBudget10m">Budget 10m</label>
-            <input id="cpBudget10m" class="form-control" type="number" min="0" max="100" step="1" />
+            <input
+              id="cpBudget10m"
+              class="form-control"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+            />
           </div>
-          <div class="form-group" style="min-width:140px;">
+          <div class="form-group" style="min-width: 140px">
             <label for="cpBudget60m">Budget 60m</label>
-            <input id="cpBudget60m" class="form-control" type="number" min="0" max="600" step="1" />
+            <input
+              id="cpBudget60m"
+              class="form-control"
+              type="number"
+              min="0"
+              max="600"
+              step="1"
+            />
           </div>
-          <div class="form-group" style="min-width:140px;">
+          <div class="form-group" style="min-width: 140px">
             <label for="cpBudgetDaily">Budget Diário</label>
-            <input id="cpBudgetDaily" class="form-control" type="number" min="0" max="5000" step="1" />
+            <input
+              id="cpBudgetDaily"
+              class="form-control"
+              type="number"
+              min="0"
+              max="5000"
+              step="1"
+            />
           </div>
         </div>
       </div>
     </details>
 
-    <div class="form-row" style="justify-content:space-between; align-items:center; margin-top:var(--spacing-5);">
-      <h3 style="margin:0;">Goals Scheduler</h3>
+    <div
+      class="form-row"
+      style="
+        justify-content: space-between;
+        align-items: center;
+        margin-top: var(--spacing-5);
+      "
+    >
+      <h3 style="margin: 0">Goals Scheduler</h3>
       <button id="cpAddGoalBtn" class="btn btn-secondary" type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
         Add Goal
       </button>
     </div>
-    <ul id="cpGoalsList" class="events-list" style="margin-top:var(--spacing-3);"></ul>
+    <ul
+      id="cpGoalsList"
+      class="events-list"
+      style="margin-top: var(--spacing-3)"
+    ></ul>
 
-    <div class="form-row" style="margin-top:var(--spacing-5);">
+    <div class="form-row" style="margin-top: var(--spacing-5)">
       <button id="cpSaveBtn" class="btn btn-primary" type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+          ></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
         Salvar Config
       </button>
-      <button id="cpReloadBtn" class="btn btn-secondary" type="button">Recarregar</button>
+      <button id="cpReloadBtn" class="btn btn-secondary" type="button">
+        Recarregar
+      </button>
     </div>
-    <p id="cpFeedbackMsg" class="panel-hint event-level-info" style="margin-top:var(--spacing-2);">Aguardando configuracao...</p>
+    <p
+      id="cpFeedbackMsg"
+      class="panel-hint event-level-info"
+      style="margin-top: var(--spacing-2)"
+    >
+      Aguardando configuracao...
+    </p>
   </article>
 
   <article class="panel">
     <h2>Autonomy Runtime</h2>
-    <p class="panel-hint">Telemetria de operação da autonomia e estado da fila (Action-driven).</p>
+    <p class="panel-hint">
+      Telemetria de operação da autonomia e estado da fila (Action-driven).
+    </p>
 
     <!-- Data Viz Vanilla SVG: Autonomy Budget Donut Chart -->
-    <div style="display:flex; gap:var(--spacing-5); align-items:center; justify-content:center; margin:var(--spacing-5) 0;">
-      <div style="position:relative; width:80px; height:80px;">
-        <svg width="80" height="80" viewBox="0 0 100 100" style="transform: rotate(-90deg);">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="var(--bg-elevated)" stroke-width="10"></circle>
-          <circle id="budgetDonutRing" cx="50" cy="50" r="45" fill="none" stroke="var(--status-ok)" stroke-width="10" stroke-dasharray="283" stroke-dashoffset="0" style="transition: stroke-dashoffset var(--transition-elastic), stroke var(--transition-med);"></circle>
+    <div
+      style="
+        display: flex;
+        gap: var(--spacing-5);
+        align-items: center;
+        justify-content: center;
+        margin: var(--spacing-5) 0;
+      "
+    >
+      <div style="position: relative; width: 80px; height: 80px">
+        <svg
+          width="80"
+          height="80"
+          viewBox="0 0 100 100"
+          style="transform: rotate(-90deg)"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="var(--bg-elevated)"
+            stroke-width="10"
+          ></circle>
+          <circle
+            id="budgetDonutRing"
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="var(--status-ok)"
+            stroke-width="10"
+            stroke-dasharray="283"
+            stroke-dashoffset="0"
+            style="
+              transition:
+                stroke-dashoffset var(--transition-elastic),
+                stroke var(--transition-med);
+            "
+          ></circle>
         </svg>
-        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-          <span id="autBudgetPctText" style="font-family:var(--font-family-display); font-weight:700; font-size:1.1rem; line-height:1;">0%</span>
+        <div
+          style="
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          "
+        >
+          <span
+            id="autBudgetPctText"
+            style="
+              font-family: var(--font-family-display);
+              font-weight: 700;
+              font-size: 1.1rem;
+              line-height: 1;
+            "
+            >0%</span
+          >
         </div>
       </div>
       <div>
-        <p style="margin:0; font-size:0.85rem; color:var(--text-muted); font-weight:600;">Budget Usage (60m)</p>
-        <p id="autBudgetUsage60m" style="margin:0; font-family:var(--font-family-mono); font-size:1.1rem; color:var(--text-primary);">0 / 0</p>
+        <p
+          style="
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+          "
+        >
+          Budget Usage (60m)
+        </p>
+        <p
+          id="autBudgetUsage60m"
+          style="
+            margin: 0;
+            font-family: var(--font-family-mono);
+            font-size: 1.1rem;
+            color: var(--text-primary);
+          "
+        >
+          0 / 0
+        </p>
       </div>
     </div>
 
     <dl class="kv">
-      <div><dt>Autonomia</dt><dd id="autEnabledState">-</dd></div>
-      <div><dt>Loop</dt><dd id="autLoopState">-</dd></div>
-      <div><dt>Last Tick</dt><dd id="autLastTick">-</dd></div>
-      <div><dt>Last Goal</dt><dd id="autLastGoal">-</dd></div>
-      <div><dt>Goal Runs Total</dt><dd id="autGoalRunsTotal">0</dd></div>
-      <div><dt>Auto Chat Sent</dt><dd id="autAutoChatSentTotal">0</dd></div>
+      <div>
+        <dt>Autonomia</dt>
+        <dd id="autEnabledState">-</dd>
+      </div>
+      <div>
+        <dt>Loop</dt>
+        <dd id="autLoopState">-</dd>
+      </div>
+      <div>
+        <dt>Last Tick</dt>
+        <dd id="autLastTick">-</dd>
+      </div>
+      <div>
+        <dt>Last Goal</dt>
+        <dd id="autLastGoal">-</dd>
+      </div>
+      <div>
+        <dt>Goal Runs Total</dt>
+        <dd id="autGoalRunsTotal">0</dd>
+      </div>
+      <div>
+        <dt>Auto Chat Sent</dt>
+        <dd id="autAutoChatSentTotal">0</dd>
+      </div>
     </dl>
 
     <details class="advanced-settings">
       <summary>Métricas Estendidas de Fila e Erros</summary>
       <div class="advanced-settings-content">
         <dl class="kv">
-          <div><dt>Budget Blocked</dt><dd id="autBudgetBlockedTotal">0</dd></div>
-          <div><dt>Dispatch Failures</dt><dd id="autDispatchFailuresTotal">0</dd></div>
-          <div><dt>Last Block Reason</dt><dd id="autLastBlockReason">-</dd></div>
-          <div><dt>Budget Usage 10m</dt><dd id="autBudgetUsage10m">0 / 0</dd></div>
-          <div><dt>Budget Usage Daily</dt><dd id="autBudgetUsageDaily">0 / 0</dd></div>
-          <div><dt>Queue Pending</dt><dd id="autQueuePending">0</dd></div>
-          <div><dt>Queue Approved</dt><dd id="autQueueApproved">0</dd></div>
-          <div><dt>Queue Rejected</dt><dd id="autQueueRejected">0</dd></div>
-          <div><dt>Queue Ignored</dt><dd id="autQueueIgnored">0</dd></div>
+          <div>
+            <dt>Budget Blocked</dt>
+            <dd id="autBudgetBlockedTotal">0</dd>
+          </div>
+          <div>
+            <dt>Dispatch Failures</dt>
+            <dd id="autDispatchFailuresTotal">0</dd>
+          </div>
+          <div>
+            <dt>Last Block Reason</dt>
+            <dd id="autLastBlockReason">-</dd>
+          </div>
+          <div>
+            <dt>Budget Usage 10m</dt>
+            <dd id="autBudgetUsage10m">0 / 0</dd>
+          </div>
+          <div>
+            <dt>Budget Usage Daily</dt>
+            <dd id="autBudgetUsageDaily">0 / 0</dd>
+          </div>
+          <div>
+            <dt>Queue Pending</dt>
+            <dd id="autQueuePending">0</dd>
+          </div>
+          <div>
+            <dt>Queue Approved</dt>
+            <dd id="autQueueApproved">0</dd>
+          </div>
+          <div>
+            <dt>Queue Rejected</dt>
+            <dd id="autQueueRejected">0</dd>
+          </div>
+          <div>
+            <dt>Queue Ignored</dt>
+            <dd id="autQueueIgnored">0</dd>
+          </div>
         </dl>
       </div>
     </details>
 
-    <div class="form-row" style="margin-top:var(--spacing-4);">
-      <div class="form-group" style="flex:1;">
+    <div class="form-row" style="margin-top: var(--spacing-4)">
+      <div class="form-group" style="flex: 1">
         <label for="autTickReasonInput">Manual Tick Reason</label>
-        <input id="autTickReasonInput" class="form-control" type="text" value="manual_dashboard" />
+        <input
+          id="autTickReasonInput"
+          class="form-control"
+          type="text"
+          value="manual_dashboard"
+        />
       </div>
       <div class="form-group">
-        <button id="autRunTickBtn" class="btn btn-primary" type="button">Run 1 Tick</button>
+        <button id="autRunTickBtn" class="btn btn-primary" type="button">
+          Run 1 Tick
+        </button>
       </div>
     </div>
-    <p id="autTickFeedbackMsg" class="panel-hint event-level-info">Aguardando acao manual...</p>
+    <p id="autTickFeedbackMsg" class="panel-hint event-level-info">
+      Aguardando acao manual...
+    </p>
   </article>
 </section>

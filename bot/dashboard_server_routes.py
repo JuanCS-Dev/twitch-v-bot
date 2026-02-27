@@ -54,6 +54,7 @@ def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
         "last_event": str(getattr(ctx, "last_event", "Bot Online") or "Bot Online"),
         "style_profile": str(getattr(ctx, "style_profile", "") or ""),
         "last_reply": str(getattr(ctx, "last_byte_reply", "") or ""),
+        "agent_notes": str(getattr(ctx, "agent_notes", "") or ""),
         "observability": {
             str(key): str(value) for key, value in dict(runtime_observability).items() if str(key)
         },
@@ -78,6 +79,18 @@ def _serialize_persisted_state(state: dict[str, Any] | None) -> dict[str, Any] |
             for key, value in dict(state.get("observability") or {}).items()
             if str(key)
         },
+    }
+
+
+def _serialize_persisted_agent_notes(notes: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not notes:
+        return None
+    return {
+        "channel_id": str(notes.get("channel_id") or ""),
+        "notes": str(notes.get("notes") or ""),
+        "has_notes": bool(notes.get("has_notes")),
+        "updated_at": str(notes.get("updated_at") or ""),
+        "source": str(notes.get("source") or ""),
     }
 
 
@@ -118,13 +131,18 @@ def build_channel_context_payload(channel_id: str | None = None) -> dict[str, An
     ctx = _get_context_sync(safe_channel_id)
     persisted_state = persistence.load_channel_state_sync(safe_channel_id)
     persisted_history = persistence.load_recent_history_sync(safe_channel_id)
+    persisted_agent_notes = persistence.load_agent_notes_sync(safe_channel_id)
     channel_payload = {
         "channel_id": safe_channel_id,
         "runtime_loaded": loaded_before_request,
         "runtime": _serialize_runtime_context(ctx),
         "persisted_state": _serialize_persisted_state(persisted_state),
+        "persisted_agent_notes": _serialize_persisted_agent_notes(persisted_agent_notes),
         "persisted_recent_history": list(persisted_history or []),
         "has_persisted_state": bool(persisted_state),
+        "has_persisted_notes": bool(
+            persisted_agent_notes and persisted_agent_notes.get("has_notes")
+        ),
         "has_persisted_history": bool(persisted_history),
     }
     return {
@@ -212,6 +230,25 @@ def handle_get(handler: Any) -> None:
         )
         return
 
+    if route == "/api/agent-notes":
+        try:
+            channel_id = _resolve_channel_id(query)
+        except ValueError as error:
+            handler._send_json(
+                {"ok": False, "error": "invalid_request", "message": str(error)},
+                status_code=400,
+            )
+            return
+        handler._send_json(
+            {
+                "ok": True,
+                "mode": TWITCH_CHAT_MODE,
+                "note": persistence.load_agent_notes_sync(channel_id),
+            },
+            status_code=200,
+        )
+        return
+
     if route == "/api/action-queue":
         status_filter = str((query.get("status") or [""])[0] or "").strip().lower()
         limit_raw = str((query.get("limit") or ["80"])[0] or "80")
@@ -289,7 +326,7 @@ def handle_put(handler: Any) -> None:
     parsed_path = urlparse(handler.path or "/")
     route = parsed_path.path or "/"
     query = parse_qs(parsed_path.query or "")
-    if route not in {"/api/control-plane", "/api/channel-config"}:
+    if route not in {"/api/control-plane", "/api/channel-config", "/api/agent-notes"}:
         handler._send_text("Not Found", status_code=404)
         return
 
@@ -331,6 +368,34 @@ def handle_put(handler: Any) -> None:
                 "ok": True,
                 "mode": TWITCH_CHAT_MODE,
                 "channel": channel_config,
+            },
+            status_code=200,
+        )
+        return
+
+    if route == "/api/agent-notes":
+        try:
+            channel_id = _resolve_channel_id(query, payload)
+            agent_notes = persistence.save_agent_notes_sync(
+                channel_id,
+                notes=payload.get("notes"),
+            )
+            context_manager.apply_agent_notes(
+                channel_id,
+                notes=str(agent_notes.get("notes") or ""),
+            )
+        except ValueError as error:
+            handler._send_json(
+                {"ok": False, "error": "invalid_request", "message": str(error)},
+                status_code=400,
+            )
+            return
+
+        handler._send_json(
+            {
+                "ok": True,
+                "mode": TWITCH_CHAT_MODE,
+                "note": agent_notes,
             },
             status_code=200,
         )

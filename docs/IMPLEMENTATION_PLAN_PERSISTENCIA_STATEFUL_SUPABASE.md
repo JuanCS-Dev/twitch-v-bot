@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.10
+**Versão:** 1.11
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PERSISTENT OBSERVABILITY ROLLUP, PANIC CONTROL, CHANNEL TUNING E DASHBOARD FOCUSED CHANNEL ENTREGUES | FASE 8 PLANEJADA
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PERSISTENT OBSERVABILITY ROLLUP, PANIC CONTROL, CHANNEL TUNING, DASHBOARD FOCUSED CHANNEL E AGENT NOTES ENTREGUES | FASE 8 PLANEJADA
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -83,11 +83,13 @@
 - HUD streamer como trilha paralela de resposta tática.
 - Override por canal de `temperature` e `top_p` persistido em `channels_config`.
 - Inferência aplica override por canal restaurado do estado persistido.
-- Dashboard expõe `Channel Tuning` no painel operacional existente.
+- Dashboard expõe directives operacionais por canal no painel operacional existente.
+- Persistência de notas operacionais em `agent_notes` com restore no `StreamContext`.
+- `agent_notes` agora é injetado de forma segura no system prompt antes da inferência.
+- Dashboard expõe leitura/escrita de `agent_notes` e o painel de contexto mostra o snapshot persistido dessas notas.
 
 **Ainda falta**
 
-- Persistência de notas operacionais (`agent_notes`) para thought injection.
 - Pause/silence por canal, não apenas configuração global de runtime.
 
 ### Fase 8: Gestão de Memória Semântica (Vector Memory) ❌ Não implementada
@@ -100,11 +102,10 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
-2. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
-3. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
-4. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
-5. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+1. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
+2. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
+3. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
+4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -120,7 +121,7 @@
 | **Persistent global observability rollup** | ✅ | `observability_rollups` + restore automático + chip de status na dashboard |
 | **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
 | **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
-| **Thought Injection (`agent_notes`)** | ❌ | Ainda não implementado |
+| **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
 ---
@@ -138,11 +139,12 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: observabilidade persistente via rollup global restaurável.
-- Backend: `PersistenceLayer` agora lê/escreve `observability_rollups`, e o `ObservabilityState` serializa/restaura o estado interno relevante com flush throttled e flush forçado em `snapshot()`.
-- Runtime: restart do processo preserva counters agregados, routes, timeline de 30 min, recent events, leaderboards/janelas analíticas e status de clips a partir do último rollup salvo.
-- Dashboard: o topo ganhou um chip de estado do rollup (`Rollup Restored`, `Rollup Live`, `Volatile Only`) reaproveitando o layout já existente.
-- Escopo validado: esta etapa fecha a perda de métricas globais em restart, mas ainda não resolve histórico multi-canal comparativo nem métricas realmente segregadas por canal.
-- Testes da etapa: suíte focal Python verde (`69 passed`), suíte `node:test` da dashboard verde, `bot/observability_state.py` em `100%` de cobertura e novos ramos de `bot/persistence_layer.py` exercitados para success/fallback/error.
+- Etapa entregue: thought injection operacional via `agent_notes`.
+- Backend: `PersistenceLayer` agora lê/escreve `agent_notes` com fallback em memória, sanitização básica e limite de tamanho; `dashboard_server_routes.py` expõe `GET/PUT /api/agent-notes`.
+- Runtime: `StreamContext` restaura `agent_notes` no lazy load e o `ContextManager` aplica updates online sem restart.
+- Inferência: `logic_inference.py` injeta as notas no system prompt com normalização, truncamento e limite de linhas para não vazar lixo operacional no contexto do modelo.
+- Dashboard: o card existente de directives agora edita tuning + notes no mesmo padrão visual, e `Agent Context & Internals` mostra também as notas persistidas do canal focado.
+- Escopo validado: a etapa fecha o thought injection persistido por canal, mas ainda não resolve pause/silence por canal nem observabilidade realmente segregada por canal.
+- Testes da etapa: suíte focal Python verde (`90 passed`), suíte `node:test` da dashboard verde, cobertura focada Python em `bot/dashboard_server_routes.py` (`97%`) e `bot/persistence_layer.py` (`80%`), com os ramos novos de `agent_notes` exercitados; cobertura JS do fluxo de dashboard validada para os caminhos novos de directives.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

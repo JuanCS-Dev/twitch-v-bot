@@ -118,6 +118,36 @@ class TestDashboardRoutes(unittest.TestCase):
             status_code=400,
         )
 
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_get_agent_notes_success(self, mock_persistence):
+        self.handler.path = "/api/agent-notes?channel=canal_a"
+        mock_persistence.load_agent_notes_sync.return_value = {
+            "channel_id": "canal_a",
+            "notes": "Priorize o host.",
+            "has_notes": True,
+            "updated_at": "2026-02-27T12:30:00Z",
+            "source": "supabase",
+        }
+
+        routes.handle_get(self.handler)
+
+        mock_persistence.load_agent_notes_sync.assert_called_with("canal_a")
+        self.handler._send_json.assert_called()
+
+    def test_handle_get_agent_notes_missing_channel(self):
+        self.handler.path = "/api/agent-notes"
+
+        routes.handle_get(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "invalid_request",
+                "message": "channel_id obrigatorio.",
+            },
+            status_code=400,
+        )
+
     @patch("bot.dashboard_server_routes.build_channel_context_payload")
     def test_handle_get_channel_context_success(self, mock_build_payload):
         self.handler.path = "/api/channel-context?channel=Canal_A"
@@ -202,6 +232,53 @@ class TestDashboardRoutes(unittest.TestCase):
                 "ok": False,
                 "error": "invalid_request",
                 "message": "top_p fora do intervalo permitido.",
+            },
+            status_code=400,
+        )
+
+    @patch("bot.dashboard_server_routes.context_manager")
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_agent_notes_success(self, mock_persistence, mock_context_manager):
+        self.handler.path = "/api/agent-notes"
+        self.handler._read_json_payload.return_value = {
+            "channel_id": "canal_a",
+            "notes": "Sem spoiler pesado.",
+        }
+        mock_persistence.save_agent_notes_sync.return_value = {
+            "channel_id": "canal_a",
+            "notes": "Sem spoiler pesado.",
+            "has_notes": True,
+            "updated_at": "2026-02-27T13:10:00Z",
+            "source": "supabase",
+        }
+
+        routes.handle_put(self.handler)
+
+        mock_persistence.save_agent_notes_sync.assert_called_with(
+            "canal_a",
+            notes="Sem spoiler pesado.",
+        )
+        mock_context_manager.apply_agent_notes.assert_called_with(
+            "canal_a",
+            notes="Sem spoiler pesado.",
+        )
+        self.handler._send_json.assert_called()
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_agent_notes_invalid_request(self, mock_persistence):
+        self.handler.path = "/api/agent-notes"
+        self.handler._read_json_payload.return_value = {"channel_id": "canal_a", "notes": "x"}
+        mock_persistence.save_agent_notes_sync.side_effect = ValueError(
+            "agent_notes excede o tamanho permitido."
+        )
+
+        routes.handle_put(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "invalid_request",
+                "message": "agent_notes excede o tamanho permitido.",
             },
             status_code=400,
         )

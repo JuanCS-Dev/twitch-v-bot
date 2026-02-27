@@ -42,6 +42,46 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["temperature"], 0.21)
         self.assertEqual(payload["top_p"], 0.63)
 
+    def test_save_agent_notes_sync_uses_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = layer.save_agent_notes_sync("Canal_A", notes="Priorize lore.\nSem backseat.")
+
+        self.assertEqual(payload["channel_id"], "canal_a")
+        self.assertEqual(payload["notes"], "Priorize lore.\nSem backseat.")
+        self.assertTrue(payload["has_notes"])
+        self.assertEqual(layer.load_agent_notes_sync("canal_a")["notes"], payload["notes"])
+
+    def test_save_agent_notes_sync_clears_empty_notes(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = layer.save_agent_notes_sync("Canal_A", notes=None)
+
+        self.assertEqual(payload["channel_id"], "canal_a")
+        self.assertEqual(payload["notes"], "")
+        self.assertFalse(payload["has_notes"])
+
+    async def test_load_agent_notes_async_returns_cached_defaults_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = await layer.load_agent_notes("default")
+
+        self.assertEqual(payload["channel_id"], "default")
+        self.assertEqual(payload["notes"], "")
+        self.assertFalse(payload["has_notes"])
+
+    async def test_save_agent_notes_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = await layer.save_agent_notes("Canal_B", notes="Foque no host.")
+
+        self.assertEqual(payload["channel_id"], "canal_b")
+        self.assertEqual(payload["notes"], "Foque no host.")
+
     def test_save_channel_config_sync_rejects_invalid_values(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()
@@ -54,6 +94,16 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ValueError):
             layer.save_channel_config_sync("canal_a", top_p="abc")
+
+    def test_save_agent_notes_sync_rejects_invalid_values(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with self.assertRaises(ValueError):
+            layer.save_agent_notes_sync("", notes="x")
+
+        with self.assertRaises(ValueError):
+            layer.save_agent_notes_sync("canal_a", notes="x" * 2001)
 
     def test_load_channel_config_sync_returns_memory_fallback_on_supabase_error(self):
         mock_client = MagicMock()
@@ -106,6 +156,54 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["top_p"], 0.66)
         self.assertEqual(payload["source"], "memory")
 
+    def test_load_agent_notes_sync_returns_memory_fallback_on_supabase_error(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.side_effect = RuntimeError("supabase down")
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        layer._agent_notes_cache["canal_fallback"] = {
+            "channel_id": "canal_fallback",
+            "notes": "Segura a ironia.",
+            "has_notes": True,
+            "updated_at": "2026-02-27T14:05:00Z",
+            "source": "memory",
+        }
+
+        payload = layer.load_agent_notes_sync("Canal_Fallback")
+
+        self.assertEqual(payload["channel_id"], "canal_fallback")
+        self.assertEqual(payload["notes"], "Segura a ironia.")
+        self.assertEqual(payload["source"], "memory")
+
+    def test_save_agent_notes_sync_returns_memory_payload_on_supabase_error(self):
+        mock_client = MagicMock()
+        mock_client.table.return_value.upsert.return_value.execute.side_effect = RuntimeError(
+            "write failed"
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        payload = layer.save_agent_notes_sync("Canal_C", notes="Nao force meme.")
+
+        self.assertEqual(payload["channel_id"], "canal_c")
+        self.assertEqual(payload["notes"], "Nao force meme.")
+        self.assertEqual(payload["source"], "memory")
+
     def test_load_and_save_channel_config_sync_with_supabase(self):
         mock_client = MagicMock()
         table = mock_client.table.return_value
@@ -138,6 +236,43 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
                 "channel_id": "canal_supabase",
                 "temperature": 0.27,
                 "top_p": 0.74,
+                "updated_at": "now()",
+            }
+        )
+
+    def test_load_and_save_agent_notes_sync_with_supabase(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.return_value = MagicMock(
+            data={
+                "channel_id": "canal_supabase",
+                "notes": "Leia o chat antes de responder.",
+                "updated_at": "2026-02-27T12:10:00Z",
+            }
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_agent_notes_sync("canal_supabase")
+        saved = layer.save_agent_notes_sync(
+            "canal_supabase",
+            notes="Leia o chat antes de responder.",
+        )
+
+        self.assertEqual(loaded["source"], "supabase")
+        self.assertEqual(loaded["notes"], "Leia o chat antes de responder.")
+        self.assertEqual(saved["source"], "supabase")
+        mock_client.table.return_value.upsert.assert_called_once_with(
+            {
+                "channel_id": "canal_supabase",
+                "notes": "Leia o chat antes de responder.",
                 "updated_at": "now()",
             }
         )

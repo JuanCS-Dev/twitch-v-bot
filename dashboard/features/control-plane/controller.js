@@ -1,15 +1,19 @@
 import {
+  getAgentNotes,
   getChannelConfig,
   getControlPlaneState,
   resumeAgent,
   suspendAgent,
+  updateAgentNotes,
   updateChannelConfig,
   updateControlPlaneConfig,
 } from "./api.js";
 import {
   appendGoalCard,
+  collectAgentNotesPayload,
   collectChannelConfigPayload,
   collectControlPlanePayload,
+  renderAgentNotes,
   renderChannelConfig,
   renderControlPlaneState,
   setControlPlaneBusy,
@@ -54,30 +58,45 @@ export function createControlPlaneController({
 
   async function loadChannelConfig(showFeedback = false) {
     if (!cpEls) return;
-    const payload = collectChannelConfigPayload(cpEls);
-    if (!payload.channel_id) {
+    const rawChannelId = String(cpEls?.channelIdInput?.value || "")
+      .trim()
+      .toLowerCase();
+    if (!rawChannelId) {
       showControlPlaneFeedback(
         cpEls,
-        "Informe um canal para carregar tuning.",
+        "Informe um canal para carregar directives.",
         "warn",
       );
       return;
     }
+    const payload = collectChannelConfigPayload(cpEls);
     setControlPlaneBusy(cpEls, true);
     if (showFeedback) {
-      showControlPlaneFeedback(cpEls, "Carregando channel tuning...", "warn");
+      showControlPlaneFeedback(
+        cpEls,
+        "Carregando directives operacionais do canal...",
+        "warn",
+      );
     }
     try {
-      const response = await getChannelConfig(payload.channel_id);
+      const [response, notesResponse] = await Promise.all([
+        getChannelConfig(payload.channel_id),
+        getAgentNotes(payload.channel_id),
+      ]);
       renderChannelConfig(response?.channel || {}, cpEls);
+      renderAgentNotes(notesResponse?.note || {}, cpEls);
       if (showFeedback) {
-        showControlPlaneFeedback(cpEls, "Channel tuning sincronizado.", "ok");
+        showControlPlaneFeedback(
+          cpEls,
+          "Directives operacionais sincronizados.",
+          "ok",
+        );
       }
     } catch (error) {
       console.error("Channel config load error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao carregar channel tuning.")}`,
+        `Erro: ${getErrorMessage(error, "Falha ao carregar directives do canal.")}`,
         "error",
       );
     } finally {
@@ -114,21 +133,30 @@ export function createControlPlaneController({
   async function saveChannelConfigState() {
     if (!cpEls) return;
     setControlPlaneBusy(cpEls, true);
-    showControlPlaneFeedback(cpEls, "Aplicando channel tuning...", "warn");
+    showControlPlaneFeedback(
+      cpEls,
+      "Aplicando directives operacionais...",
+      "warn",
+    );
     try {
       const payload = collectChannelConfigPayload(cpEls);
-      const updated = await updateChannelConfig(payload);
+      const notesPayload = collectAgentNotesPayload(cpEls);
+      const [updated, updatedNotes] = await Promise.all([
+        updateChannelConfig(payload),
+        updateAgentNotes(notesPayload),
+      ]);
       renderChannelConfig(updated?.channel || {}, cpEls);
+      renderAgentNotes(updatedNotes?.note || {}, cpEls);
       showControlPlaneFeedback(
         cpEls,
-        "Channel tuning salvo com sucesso.",
+        "Directives operacionais salvos com sucesso.",
         "ok",
       );
     } catch (error) {
       console.error("Channel config save error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao salvar channel tuning.")}`,
+        `Erro: ${getErrorMessage(error, "Falha ao salvar directives do canal.")}`,
         "error",
       );
     } finally {

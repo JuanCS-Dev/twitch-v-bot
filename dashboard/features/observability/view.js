@@ -91,6 +91,7 @@ export function getObservabilityElements() {
     ctxPersistedLastEvent: document.getElementById("ctxPersistedLastEvent"),
     ctxPersistedStyle: document.getElementById("ctxPersistedStyle"),
     ctxPersistedReply: document.getElementById("ctxPersistedReply"),
+    ctxPersistedNotes: document.getElementById("ctxPersistedNotes"),
     ctxPersistedUpdatedAt: document.getElementById("ctxPersistedUpdatedAt"),
     ctxPersistedHint: document.getElementById("ctxPersistedHint"),
     persistedHistoryItems: document.getElementById("persistedHistoryItems"),
@@ -462,6 +463,7 @@ export function renderChannelContextSnapshot(payload, els) {
   const safePayload = payload && typeof payload === "object" ? payload : {};
   const channel = safePayload.channel || {};
   const persistedState = channel.persisted_state || {};
+  const persistedAgentNotes = channel.persisted_agent_notes || {};
   const channelId =
     String(channel.channel_id || "default")
       .trim()
@@ -513,6 +515,7 @@ export function renderChannelContextSnapshot(payload, els) {
   setText(els.ctxPersistedLastEvent, persistedState.last_event || "-");
   setText(els.ctxPersistedStyle, persistedState.style_profile || "-");
   setText(els.ctxPersistedReply, persistedState.last_reply || "-");
+  setText(els.ctxPersistedNotes, persistedAgentNotes.notes || "-");
   setText(els.ctxPersistedUpdatedAt, persistedState.updated_at || "-");
 
   if (els.ctxPersistedHint) {
