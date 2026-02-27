@@ -22,7 +22,7 @@ import {
   triggerOpsPlaybook,
 } from "../features/action-queue/api.js";
 import { triggerAutonomyTick } from "../features/autonomy/api.js";
-import { fetchClipJobs } from "../features/clips/api.js";
+import { fetchClipJobs, fetchVisionStatus, postVisionIngest } from "../features/clips/api.js";
 import { fetchHudMessages } from "../features/hud/api.js";
 import {
   getChannelContextSnapshot,
@@ -190,6 +190,8 @@ test("operational runtime APIs keep backend contract", async () => {
     viewer_login: "test_user",
     revenue_value: 4.99,
   });
+  await fetchVisionStatus();
+  await postVisionIngest(new Blob(["mock-image"], { type: "image/jpeg" }));
 
   const channelControlCall = findCall(calls, "/api/channel-control", "POST");
   assert.ok(channelControlCall);
@@ -279,4 +281,9 @@ test("operational runtime APIs keep backend contract", async () => {
     JSON.parse(String(revenueConversionCall.options.body)).event_type,
     "sub",
   );
+
+  assert.ok(findCall(calls, "/api/vision/status", "GET"));
+  const visionIngestCall = findCall(calls, "/api/vision/ingest", "POST");
+  assert.ok(visionIngestCall);
+  assert.equal(visionIngestCall.options.headers["Content-Type"], "image/jpeg");
 });

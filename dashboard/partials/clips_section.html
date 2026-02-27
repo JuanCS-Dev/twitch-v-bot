@@ -17,12 +17,40 @@
   </article>
 
   <article class="panel">
-      <h2>Estatísticas de Clips</h2>
-      <dl class="kv">
+      <h2>Estatísticas de Clips & Vision</h2>
+      <dl class="kv" style="margin-bottom: var(--spacing-4);">
           <div><dt>Jobs Ativos</dt><dd>-</dd></div>
           <div><dt>Sucesso (24h)</dt><dd>-</dd></div>
           <div><dt>Falhas (24h)</dt><dd>-</dd></div>
       </dl>
-      <p class="panel-hint">Métricas detalhadas em breve (Fase 4).</p>
+
+      <hr style="border: none; border-top: 1px solid var(--border-default)" />
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: var(--spacing-3);">
+        <h3 style="margin: 0;">Autonomous Vision (Fase 19)</h3>
+        <span id="visionStatusChip" class="chip pending">Idle</span>
+      </div>
+      <p class="panel-hint" style="margin-bottom: var(--spacing-3);">
+        O agente analisa frames e gera clips automaticamente caso detecte picos na partida.
+      </p>
+
+      <dl class="kv" style="margin-bottom: var(--spacing-4);">
+          <div><dt>Frames Analisados</dt><dd id="visionFramesCount">0</dd></div>
+          <div><dt>Ultimo Frame Em</dt><dd id="visionLastIngest">-</dd></div>
+      </dl>
+
+      <p class="panel-hint" style="margin-bottom: var(--spacing-2);">Análise da Ultima Cena:</p>
+      <div class="code-block" style="margin-bottom: var(--spacing-4); max-height: 120px; overflow-y: auto; font-size: 0.85rem;" id="visionLastAnalysis">
+        Nenhuma analise disponivel.
+      </div>
+
+      <div class="form-row" style="gap: var(--spacing-2); align-items: center;">
+        <input type="file" id="visionIngestInput" accept="image/jpeg, image/png, image/webp" class="form-control" style="flex: 1; padding: 4px;" />
+        <button id="visionIngestBtn" class="btn btn-secondary" type="button">
+          Enviar Frame Manual
+        </button>
+      </div>
+      <p id="visionFeedback" class="panel-hint" style="margin-top: var(--spacing-2);">Aguardando envio...</p>
+
   </article>
 </section>

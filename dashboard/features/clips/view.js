@@ -55,5 +55,41 @@ export function getClipsElements() {
         container: document.getElementById("clipsList"),
         loadingSkeleton: document.getElementById("clipsSkeleton"),
         section: document.getElementById("clipsSection"),
+        visionStatusChip: document.getElementById("visionStatusChip"),
+        visionFramesCount: document.getElementById("visionFramesCount"),
+        visionLastIngest: document.getElementById("visionLastIngest"),
+        visionLastAnalysis: document.getElementById("visionLastAnalysis"),
+        visionIngestInput: document.getElementById("visionIngestInput"),
+        visionIngestBtn: document.getElementById("visionIngestBtn"),
+        visionFeedback: document.getElementById("visionFeedback"),
     };
+}
+
+export function renderVisionStatus(payload, els) {
+    if (!els || !payload) return;
+
+    if (els.visionFramesCount) els.visionFramesCount.textContent = payload.frame_count || 0;
+
+    if (els.visionLastIngest) {
+        if (payload.last_ingest_at && payload.last_ingest_at > 0) {
+            els.visionLastIngest.textContent = new Date(payload.last_ingest_at * 1000).toLocaleTimeString();
+        } else {
+            els.visionLastIngest.textContent = "-";
+        }
+    }
+
+    if (els.visionLastAnalysis) {
+        els.visionLastAnalysis.textContent = payload.last_analysis || "Nenhuma analise disponivel.";
+    }
+
+    if (els.visionStatusChip) {
+        els.visionStatusChip.classList.remove("ok", "warn", "error", "pending");
+        if (payload.frame_count > 0) {
+            els.visionStatusChip.textContent = "Active";
+            els.visionStatusChip.classList.add("ok");
+        } else {
+            els.visionStatusChip.textContent = "Idle";
+            els.visionStatusChip.classList.add("pending");
+        }
+    }
 }
