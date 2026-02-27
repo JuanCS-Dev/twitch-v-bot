@@ -58,7 +58,6 @@ ignore = [
   "RUF002",  # ambiguous dash in docstring
   "B017",    # blind exception
   "B023",    # loop variable binding
-  "UP038",   # use isinstance for union types
 ]
 
 [tool.ruff.lint.per-file-ignores]

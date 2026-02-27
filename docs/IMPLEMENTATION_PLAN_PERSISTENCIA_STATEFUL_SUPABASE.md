@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.19
+**Versão:** 1.20
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.3 CONCLUÍDAS, PRÓXIMA: 10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | ROADMAP DE POSICIONAMENTO (F11-F19) TRIADO E ADICIONADO SEM DUPLICAÇÃO
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -158,7 +158,7 @@
 3. **Fase 10.3 - Fatiamento da camada de persistência** ✅ Concluída
    - Separar responsabilidades em sub-repositórios (`channel_config`, `agent_notes`, `observability`), mantendo `PersistenceLayer` como facade.
    - Reduzir acoplamento e tamanho de arquivo em `bot/persistence_layer.py`.
-4. **Fase 10.4 - Gate automatizado de saúde estrutural**
+4. **Fase 10.4 - Gate automatizado de saúde estrutural** ✅ Concluída
    - Adicionar checagem de complexidade e duplicação no pipeline (alvos mínimos para `ruff C901` e `pylint R0801` nos módulos críticos).
    - Bloquear merge de nova capacidade operacional que reintroduza duplicações já removidas.
 
@@ -211,22 +211,41 @@
   - `ruff format --check bot/persistence_cached_channel_repository.py bot/persistence_channel_config_repository.py bot/persistence_agent_notes_repository.py bot/persistence_observability_history_repository.py bot/persistence_layer.py bot/tests/test_persistence_repositories.py` (verde);
   - `PYLINTHOME=/tmp/pylint-cache pylint --disable=all --enable=R0801 bot/persistence_layer.py bot/persistence_channel_config_repository.py bot/persistence_agent_notes_repository.py bot/persistence_observability_history_repository.py bot/persistence_cached_channel_repository.py` (verde).
 
+**Fechamento da Fase 10.4 (ciclo atual)**
+
+- Gate estrutural centralizado em `bot/structural_health_gate.py`, com steps versionados:
+  - `ruff C901` nos módulos críticos com orçamento explícito (`lint.mccabe.max-complexity=17`);
+  - `pylint R0801` nos módulos críticos de roteamento/persistência.
+- Pipeline CI atualizado em `.github/workflows/ci.yml`:
+  - instalação de `pylint` no job `lint`;
+  - etapa `Structural Health Gate (C901 + R0801)` executando `python -m bot.structural_health_gate`.
+- Testes novos da etapa em `bot/tests/test_structural_health_gate.py` cobrindo:
+  - construção correta dos comandos/targets do gate;
+  - execução completa em cenário de sucesso;
+  - fail-fast no primeiro erro;
+  - propagação de `env` (`PYLINTHOME`) e `cwd` no runner real.
+- Validação executada:
+  - `pytest -q --no-cov bot/tests/test_structural_health_gate.py` (`4 passed`);
+  - `python -m bot.structural_health_gate` (verde);
+  - `pytest -q --no-cov bot/tests/test_dashboard_http_helpers.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_persistence_repositories.py` (`71 passed`);
+  - `ruff check bot/structural_health_gate.py bot/tests/test_structural_health_gate.py` (verde);
+  - `ruff format --check bot/structural_health_gate.py bot/tests/test_structural_health_gate.py` (verde).
+
 ---
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 10.4 (saneamento estrutural):** automatizar gate de complexidade/duplicação no pipeline para impedir regressão estrutural.
-2. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
-3. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
-4. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
-5. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
-6. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
-7. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
-8. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
-9. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
-10. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
-11. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
-12. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
+2. **Fase 11 (Stream Health Score):** sintetizar observabilidade multi-canal em score operacional único por canal.
+3. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
+4. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
+5. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+6. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+7. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+8. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+9. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+10. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+11. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -329,7 +348,7 @@
 | **Histórico persistido + comparativo multi-canal na observabilidade**                           | ✅               | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals`     |
 | **Thought Injection (`agent_notes`)**                                                           | ✅               | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)**                              | ⚠️               | Fase 9 planejada para virar gate obrigatório de entrega operacional                                                |
-| **Saneamento anti-espaguete/anti-duplicação**                                                   | 🚧               | Fase 10 em andamento (10.1-10.3 concluídas, próxima etapa: 10.4)                                                   |
+| **Saneamento anti-espaguete/anti-duplicação**                                                   | ✅               | Fase 10 concluída (10.1-10.4) com gate automatizado ativo no pipeline CI                                           |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
 | **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
 
@@ -347,17 +366,17 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - dashboards históricos multi-canal e comparativo por canal entregues no painel operacional existente;
 - soberania por canal já cobre tuning + notes + pause/silence;
 - contrato formal de paridade backend -> dashboard agora está em execução com discovery de layout aplicado;
-- foi identificado débito estrutural objetivo de complexidade/duplicação e aberta fase dedicada de saneamento (Fase 10);
+- saneamento estrutural foi concluído (Fase 10) com gate automatizado de complexidade/duplicação no pipeline;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: Fase 10.3 (fatiamento da camada de persistência) concluída sem regressão funcional.
-- Backend (`persistence_layer.py` + novos repositórios): responsabilidades segregadas por domínio (`channels_config`, `agent_notes`, histórico de observabilidade) com facade estável.
-- Saneamento estrutural: duplicação entre repositórios de configuração/notas removida via base comum (`CachedChannelRepository`) e utilitários compartilhados.
-- Escopo validado: comportamento operacional e contratos HTTP existentes preservados.
-- Testes da etapa: suíte focal Python verde (`93 passed`, `--no-cov`) + lint/format/duplicação (`ruff` + `pylint R0801`) verdes.
+- Etapa entregue: Fase 10.4 (gate automatizado de saúde estrutural) concluída sem regressão funcional.
+- Backend/infra de qualidade: `bot/structural_health_gate.py` centraliza e executa os gates `ruff C901` (budget 17) e `pylint R0801`.
+- Pipeline: job `lint` da CI agora instala `pylint` e roda o gate estrutural antes do MyPy.
+- Escopo validado: gate falha quando houver regressão estrutural e preserva os contratos operacionais existentes.
+- Testes da etapa: suíte nova (`4 passed`) + regressão de dashboard/persistência (`71 passed`) + execução real do gate verde.
 - Planejamento: trilha F11-F19 adicionada com dependências, DoD e gate visual obrigatório sem criar backlog duplicado.
 
 _Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._

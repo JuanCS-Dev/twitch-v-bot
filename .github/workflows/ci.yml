@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy black
+          pip install ruff mypy black pylint
 
       - name: Check Ruff
         run: ruff check bot/ --output-format=github
@@ -41,6 +41,9 @@ jobs:
 
       - name: Check Black
         run: black --check bot/ --config=pyproject.toml
+
+      - name: Structural Health Gate (C901 + R0801)
+        run: python -m bot.structural_health_gate
 
       - name: Run MyPy
         run: |
