@@ -141,3 +141,74 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
                 "updated_at": "now()",
             }
         )
+
+    def test_load_channel_state_sync_returns_none_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        self.assertIsNone(layer.load_channel_state_sync("Canal_A"))
+
+    def test_load_channel_state_sync_reads_supabase_row(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.return_value = MagicMock(
+            data={"channel_id": "canal_a", "current_game": "Balatro"}
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        payload = layer.load_channel_state_sync("Canal_A")
+
+        self.assertEqual(payload["current_game"], "Balatro")
+        table.select.return_value.eq.assert_called_with("channel_id", "canal_a")
+
+    def test_load_recent_history_sync_reads_supabase_rows(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        order_chain = (
+            table.select.return_value.eq.return_value.order.return_value.limit.return_value
+        )
+        order_chain.execute.return_value = MagicMock(
+            data=[
+                {"author": "byte", "message": "reply"},
+                {"author": "viewer", "message": "hello"},
+            ]
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        payload = layer.load_recent_history_sync("Canal_A", limit=2)
+
+        self.assertEqual(payload, ["viewer: hello", "byte: reply"])
+        table.select.return_value.eq.assert_called_with("channel_id", "canal_a")
+
+    async def test_async_state_and_history_loaders_delegate_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer, "load_channel_state_sync", return_value={"channel_id": "canal_a"}
+        ) as mock_state:
+            state = await layer.load_channel_state("Canal_A")
+        with patch.object(
+            layer, "load_recent_history_sync", return_value=["viewer: hello"]
+        ) as mock_history:
+            history = await layer.load_recent_history("Canal_A", limit=3)
+
+        self.assertEqual(state, {"channel_id": "canal_a"})
+        self.assertEqual(history, ["viewer: hello"])
+        mock_state.assert_called_once_with("Canal_A")
+        mock_history.assert_called_once_with("Canal_A", limit=3)

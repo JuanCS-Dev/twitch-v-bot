@@ -2,7 +2,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bot.dashboard_server_routes import _dashboard_asset_route, handle_get, handle_get_config_js
+from bot.dashboard_server import HealthHandler
+from bot.dashboard_server_routes import (
+    _dashboard_asset_route,
+    build_channel_context_payload,
+    handle_get,
+    handle_get_config_js,
+)
 from bot.dashboard_server_routes_post import (
     _handle_action_decision,
     _handle_autonomy_tick,
@@ -66,18 +72,84 @@ class TestDashboardRoutesV3:
         handler.reset_mock()
         assert _dashboard_asset_route(handler, "/api/something") is False
 
+    @patch("bot.dashboard_server_routes._get_context_sync")
     @patch("bot.dashboard_server_routes.observability")
     @patch("bot.dashboard_server_routes.control_plane")
-    def test_build_observability_payload(self, mock_cp, mock_obs):
+    def test_build_observability_payload(self, mock_cp, mock_obs, mock_get_context):
         from bot.dashboard_server_routes import build_observability_payload
 
+        mock_get_context.return_value = MagicMock(channel_id="canal_a")
         mock_obs.snapshot.return_value = {"agent_outcomes": {}}
         mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {"ignored": 5}}
         mock_cp.build_capabilities.return_value = {"cap": 1}
 
-        res = build_observability_payload()
+        res = build_observability_payload("canal_a")
+        mock_get_context.assert_called_with("canal_a")
         assert res["ok"] is True
+        assert res["selected_channel"] == "canal_a"
         assert res["agent_outcomes"]["ignored_total_60m"] == 5
+
+    @patch("bot.dashboard_server_routes.persistence")
+    @patch("bot.dashboard_server_routes.context_manager")
+    def test_build_channel_context_payload(self, mock_context_manager, mock_persistence):
+        runtime_ctx = MagicMock(
+            channel_id="canal_a",
+            current_game="Balatro",
+            stream_vibe="Arena",
+            last_event="Boss defeat",
+            style_profile="Tatico",
+            last_byte_reply="Segura a call.",
+            live_observability={"game": "Balatro", "topic": "deck tech"},
+            recent_chat_entries=["viewer: hi", "byte: bora"],
+        )
+        mock_context_manager.list_active_channels.return_value = ["default"]
+        mock_context_manager.get.return_value = runtime_ctx
+        mock_persistence.load_channel_state_sync.return_value = {
+            "channel_id": "canal_a",
+            "current_game": "Balatro",
+            "stream_vibe": "Arena",
+            "last_event": "Boss defeat",
+            "style_profile": "Tatico",
+            "last_reply": "Segura a call.",
+            "updated_at": "2026-02-27T18:00:00Z",
+            "observability": {"game": "Balatro"},
+        }
+        mock_persistence.load_recent_history_sync.return_value = ["viewer: hi", "byte: bora"]
+
+        payload = build_channel_context_payload("canal_a")
+
+        assert payload["ok"] is True
+        assert payload["channel"]["channel_id"] == "canal_a"
+        assert payload["channel"]["runtime_loaded"] is False
+        assert payload["channel"]["has_persisted_state"] is True
+        assert payload["channel"]["persisted_state"]["current_game"] == "Balatro"
+        assert payload["channel"]["persisted_recent_history"] == ["viewer: hi", "byte: bora"]
+
+    @patch("bot.dashboard_server_routes.persistence")
+    @patch("bot.dashboard_server_routes.context_manager")
+    def test_build_channel_context_payload_without_persisted_data(
+        self, mock_context_manager, mock_persistence
+    ):
+        mock_context_manager.list_active_channels.return_value = ["canal_a"]
+        mock_context_manager.get.return_value = MagicMock(
+            channel_id="canal_a",
+            current_game="N/A",
+            stream_vibe="Conversa",
+            last_event="Bot Online",
+            style_profile="",
+            last_byte_reply="",
+            live_observability={},
+            recent_chat_entries=[],
+        )
+        mock_persistence.load_channel_state_sync.return_value = None
+        mock_persistence.load_recent_history_sync.return_value = []
+
+        payload = build_channel_context_payload("canal_a")
+
+        assert payload["channel"]["runtime_loaded"] is True
+        assert payload["channel"]["has_persisted_state"] is False
+        assert payload["channel"]["persisted_state"] is None
+        assert payload["channel"]["persisted_recent_history"] == []
 
     @patch("bot.dashboard_server_routes.control_plane")
     def test_handle_get_api_control_plane(self, mock_cp):
@@ -136,6 +208,15 @@ class TestDashboardRoutesV3:
         handler._send_json.assert_called_once()
         assert handler._send_json.call_args[0][0]["status"] == "ok"
 
+    def test_handle_get_api_channel_context_defaults_to_default(self):
+        handler = MagicMock(path="/api/channel-context")
+        handler._dashboard_authorized.return_value = True
+        with patch("bot.dashboard_server_routes.build_channel_context_payload") as mock_payload:
+            mock_payload.return_value = {"ok": True, "channel": {"channel_id": "default"}}
+            handle_get(handler)
+        mock_payload.assert_called_with("default")
+        handler._send_json.assert_called_once()
+
     def test_handle_get_api_unauthorized(self):
         handler = MagicMock(path="/api/control-plane")
         handler._dashboard_authorized.return_value = False
@@ -150,6 +231,16 @@ class TestDashboardRoutesV3:
         handler._send_bytes.assert_called_once()
         content = handler._send_bytes.call_args[0][0]
         assert b"supersecret" in content
+
+    @patch("bot.dashboard_server.build_observability_payload")
+    def test_health_handler_build_observability_payload_delegates_channel(self, mock_build):
+        mock_build.return_value = {"ok": True}
+        handler = object.__new__(HealthHandler)
+
+        payload = HealthHandler._build_observability_payload(handler, "canal_a")
+
+        assert payload == {"ok": True}
+        mock_build.assert_called_once_with("canal_a")
 
     # --- POST Routes Tests ---
 

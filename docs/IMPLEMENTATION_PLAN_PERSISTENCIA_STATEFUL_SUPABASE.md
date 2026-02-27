@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.8
+**Versão:** 1.9
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PANIC CONTROL E CHANNEL TUNING ENTREGUES | FASE 8 PLANEJADA
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PANIC CONTROL, CHANNEL TUNING E DASHBOARD FOCUSED CHANNEL ENTREGUES | FASE 8 PLANEJADA
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -59,12 +59,15 @@
 - Channel manager operacional para `list`, `join`, `part`.
 - HUD embutida no painel principal e overlay standalone em `/dashboard/hud`.
 - Exposição explícita do overlay OBS na UI principal concluída nesta validação.
+- Dashboard agora mantém um `focused channel` persistido em `localStorage` e usa esse canal como contexto primário.
+- `/api/observability` passou a aceitar `?channel=` para renderizar o `StreamContext` do canal selecionado.
+- Novo `GET /api/channel-context` expõe `runtime context + channel_state + channel_history` para inspeção operacional.
+- Painel `Agent Context & Internals` agora mostra snapshot persistido e histórico recente por canal sem inventar uma UI paralela.
 
 **Ainda falta**
 
-- Seletor de canal como contexto primário da dashboard.
-- Visualização de histórico persistente por canal vindo do Supabase.
-- Visão realmente multi-tenant para comparar ou alternar canais sem depender do runtime default.
+- Métricas de observabilidade realmente segregadas por canal; hoje os counters continuam globais e só o contexto/histórico é canalizado.
+- Visão realmente multi-tenant para comparar canais lado a lado.
 
 ### Fase 7: Soberania e Comando ⚠️ Parcial
 
@@ -95,10 +98,10 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Dashboard multi-canal de verdade:** seletor de canal + leitura de estado/histórico persistido.
-2. **Observabilidade persistente:** armazenar agregados globais para não perder histórico em restart.
-3. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
-4. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
+1. **Observabilidade persistente:** armazenar agregados globais para não perder histórico em restart.
+2. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
+3. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
+4. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
 5. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
@@ -113,6 +116,7 @@
 | **Streamer HUD** | ✅ | Embutida + overlay standalone |
 | **Panic Suspend/Resume** | ✅ | Backend + dashboard + bloqueio operacional implementados |
 | **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
+| **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
 | **Thought Injection (`agent_notes`)** | ❌ | Ainda não implementado |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
@@ -131,11 +135,11 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: overrides por canal de `temperature` e `top_p`.
-- Backend: `PersistenceLayer` passou a salvar/carregar tuning por canal em `channels_config`, com fallback em memória e validação de intervalo.
-- Runtime: lazy restore injeta os parâmetros no `StreamContext`, e a inferência passa a respeitar `temperature/top_p` por canal.
-- API: novas rotas `GET /api/channel-config` e `PUT /api/channel-config`, com aplicação imediata no contexto carregado.
-- Dashboard: control plane ganhou a faixa `Channel Tuning`, mantendo o mesmo padrão visual do layout atual.
-- Testes da etapa: suíte focal verde (`94 passed`) e cobertura dos arquivos alterados validada; `bot/dashboard_server_routes.py` ficou em `100%`.
+- Etapa entregue: dashboard multi-canal focada em contexto persistido.
+- Backend: `PersistenceLayer` ganhou loaders síncronos para `channel_state` e `channel_history`, compatíveis com o server HTTP síncrono.
+- API: `/api/observability` agora aceita `?channel=` e a nova rota `GET /api/channel-context` expõe runtime + snapshot persistido + histórico recente.
+- Dashboard: `Channel Manager` ganhou `Dashboard Focus` persistido e o painel `Agent Context & Internals` passou a refletir o canal selecionado com estado/histórico do Supabase.
+- Escopo validado: esta etapa resolve seleção e inspeção por canal, mas ainda não torna métricas e leaderboards realmente per-channel.
+- Testes da etapa: suíte focal Python verde (`104 passed`), suíte `node:test` da dashboard verde e cobertura nativa validando os fluxos novos de canal focado/contexto persistido; `bot/dashboard_server_routes.py` ficou em `100%`.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

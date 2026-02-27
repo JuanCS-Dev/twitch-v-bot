@@ -15,74 +15,105 @@ import { createClipsController } from "./features/clips/controller.js";
 import { createHudController } from "./features/hud/controller.js";
 
 async function bootstrapDashboard() {
-    const obsEls = getObservabilityElements();
-    const ctrlEls = getChannelControlElements();
-    const cpEls = getControlPlaneElements();
-    const autEls = getAutonomyElements();
-    const aqEls = getActionQueueElements();
-    const clipsEls = getClipsElements();
-    const hudEls = getHudElements();
+  const obsEls = getObservabilityElements();
+  const ctrlEls = getChannelControlElements();
+  const cpEls = getControlPlaneElements();
+  const autEls = getAutonomyElements();
+  const aqEls = getActionQueueElements();
+  const clipsEls = getClipsElements();
+  const hudEls = getHudElements();
 
-    const observabilityController = createObservabilityController({
-        obsEls,
-        ctrlEls,
-        cpEls,
-        autEls,
-    });
-    const actionQueueController = createActionQueueController({
-        aqEls,
-        fetchAndRenderObservability: observabilityController.fetchAndRenderObservability,
-        getErrorMessage,
-    });
-    const autonomyController = createAutonomyController({
-        autEls,
-        refreshActionQueue: actionQueueController.refreshActionQueue,
-        getErrorMessage,
-    });
-    const channelControlController = createChannelControlController({
-        ctrlEls,
-        applyRuntimeCapabilities: observabilityController.applyRuntimeCapabilities,
-        getErrorMessage,
-    });
-    const controlPlaneController = createControlPlaneController({
-        cpEls,
-        autEls,
-        applyRuntimeCapabilities: observabilityController.applyRuntimeCapabilities,
-        getErrorMessage,
-    });
-    const clipsController = createClipsController({
-        els: clipsEls
-    });
-    const hudController = createHudController({
-        hudEls,
-    });
-
-    channelControlController.bindChannelControlEvents();
-    controlPlaneController.bindControlPlaneEvents();
-    autonomyController.bindAutonomyEvents();
-    actionQueueController.bindActionQueueEvents();
-    hudController.bindEvents();
-
-    try {
-        await controlPlaneController.loadControlPlaneState(false);
-        await controlPlaneController.loadChannelConfig(false);
-        await channelControlController.handleChannelAction("list");
-        await Promise.all([
-            observabilityController.fetchAndRenderObservability(),
-            actionQueueController.refreshActionQueue({ showFeedback: false }),
-        ]);
-    } catch (err) {
-        if (err.status === 403) {
-            console.warn("Bootstrap: Acesso negado. Aguardando input do Admin Token.");
-        } else {
-            console.error("Erro durante o carregamento inicial:", err);
-        }
+  const observabilityController = createObservabilityController({
+    obsEls,
+    ctrlEls,
+    cpEls,
+    autEls,
+  });
+  let controlPlaneController;
+  async function syncDashboardChannel(
+    channelId,
+    { refreshObservability = true } = {},
+  ) {
+    observabilityController.setSelectedChannel(channelId);
+    if (controlPlaneController) {
+      controlPlaneController.setSelectedChannel(channelId);
     }
 
-    observabilityController.scheduleObservabilityPolling();
-    actionQueueController.scheduleActionQueuePolling();
-    clipsController.startPolling();
-    hudController.startPolling();
+    const jobs = [];
+    if (refreshObservability) {
+      jobs.push(observabilityController.fetchAndRenderObservability());
+    }
+    if (controlPlaneController) {
+      jobs.push(controlPlaneController.loadChannelConfig(false));
+    }
+    if (jobs.length) {
+      await Promise.all(jobs);
+    }
+  }
+  const actionQueueController = createActionQueueController({
+    aqEls,
+    fetchAndRenderObservability:
+      observabilityController.fetchAndRenderObservability,
+    getErrorMessage,
+  });
+  const autonomyController = createAutonomyController({
+    autEls,
+    refreshActionQueue: actionQueueController.refreshActionQueue,
+    getErrorMessage,
+  });
+  const channelControlController = createChannelControlController({
+    ctrlEls,
+    applyRuntimeCapabilities: observabilityController.applyRuntimeCapabilities,
+    getErrorMessage,
+    onDashboardChannelChange: async (channelId) => {
+      await syncDashboardChannel(channelId);
+    },
+  });
+  controlPlaneController = createControlPlaneController({
+    cpEls,
+    autEls,
+    applyRuntimeCapabilities: observabilityController.applyRuntimeCapabilities,
+    getErrorMessage,
+  });
+  const clipsController = createClipsController({
+    els: clipsEls,
+  });
+  const hudController = createHudController({
+    hudEls,
+  });
+
+  channelControlController.bindChannelControlEvents();
+  controlPlaneController.bindControlPlaneEvents();
+  autonomyController.bindAutonomyEvents();
+  actionQueueController.bindActionQueueEvents();
+  hudController.bindEvents();
+
+  try {
+    const initialChannel =
+      channelControlController.getSelectedDashboardChannel();
+    await syncDashboardChannel(initialChannel, { refreshObservability: false });
+    await controlPlaneController.loadControlPlaneState(false);
+    await channelControlController.handleChannelAction("list");
+    await Promise.all([
+      observabilityController.fetchAndRenderObservability(),
+      actionQueueController.refreshActionQueue({ showFeedback: false }),
+    ]);
+  } catch (err) {
+    if (err.status === 403) {
+      console.warn(
+        "Bootstrap: Acesso negado. Aguardando input do Admin Token.",
+      );
+    } else {
+      console.error("Erro durante o carregamento inicial:", err);
+    }
+  }
+
+  observabilityController.scheduleObservabilityPolling();
+  actionQueueController.scheduleActionQueuePolling();
+  clipsController.startPolling();
+  hudController.startPolling();
 }
 
-bootstrapDashboard().catch(err => console.error("Fatal error during bot dashboard bootstrap:", err));
+bootstrapDashboard().catch((err) =>
+  console.error("Fatal error during bot dashboard bootstrap:", err),
+);

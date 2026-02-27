@@ -202,22 +202,26 @@ class PersistenceLayer:
 
     # --- Persistência de Estado (Channel State) ---
 
-    async def load_channel_state(self, channel_id: str) -> dict[str, Any] | None:
+    def load_channel_state_sync(self, channel_id: str) -> dict[str, Any] | None:
         """Busca o snapshot do StreamContext do Supabase."""
         if not self._enabled or not self._client:
             return None
+        normalized = _normalize_channel_id(channel_id) or channel_id
         try:
             result = (
                 self._client.table("channel_state")
                 .select("*")
-                .eq("channel_id", channel_id)
+                .eq("channel_id", normalized)
                 .maybe_single()
                 .execute()
             )
             return result.data
         except Exception as e:
-            logger.error("PersistenceLayer: Falha ao carregar estado de %s: %s", channel_id, e)
+            logger.error("PersistenceLayer: Falha ao carregar estado de %s: %s", normalized, e)
             return None
+
+    async def load_channel_state(self, channel_id: str) -> dict[str, Any] | None:
+        return self.load_channel_state_sync(channel_id)
 
     async def save_channel_state(self, channel_id: str, state: dict[str, Any]) -> bool:
         """Upsert do snapshot do canal."""
@@ -254,15 +258,16 @@ class PersistenceLayer:
         except Exception as e:
             logger.debug("PersistenceLayer: Falha ao persistir histórico: %s", e)
 
-    async def load_recent_history(self, channel_id: str, limit: int = 12) -> list[str]:
+    def load_recent_history_sync(self, channel_id: str, limit: int = 12) -> list[str]:
         """Recupera histórico para reconstruir o StreamContext."""
         if not self._enabled or not self._client:
             return []
+        normalized = _normalize_channel_id(channel_id) or channel_id
         try:
             result = (
                 self._client.table("channel_history")
                 .select("author, message")
-                .eq("channel_id", channel_id)
+                .eq("channel_id", normalized)
                 .order("ts", desc=True)
                 .limit(limit)
                 .execute()
@@ -270,8 +275,11 @@ class PersistenceLayer:
             data = result.data or []
             return [f"{row['author']}: {row['message']}" for row in reversed(data)]
         except Exception as e:
-            logger.error("PersistenceLayer: Erro ao carregar histórico de %s: %s", channel_id, e)
+            logger.error("PersistenceLayer: Erro ao carregar histórico de %s: %s", normalized, e)
             return []
+
+    async def load_recent_history(self, channel_id: str, limit: int = 12) -> list[str]:
+        return self.load_recent_history_sync(channel_id, limit=limit)
 
     # --- Telemetria (Absorvendo supabase_client.py) ---
 

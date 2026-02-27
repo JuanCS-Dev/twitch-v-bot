@@ -1,7 +1,8 @@
-import { getObservabilitySnapshot } from "./api.js";
+import { getChannelContextSnapshot, getObservabilitySnapshot } from "./api.js";
 import {
-    renderObservabilitySnapshot,
-    setConnectionState,
+  renderChannelContextSnapshot,
+  renderObservabilitySnapshot,
+  setConnectionState,
 } from "./view.js";
 import { applyChannelControlCapability } from "../channel-control/view.js";
 import { renderControlPlaneCapabilities } from "../control-plane/view.js";
@@ -11,54 +12,68 @@ const OBSERVABILITY_INTERVAL_MS = 10000;
 const OBSERVABILITY_TIMEOUT_MS = 8000;
 
 export function createObservabilityController({
-    obsEls,
-    ctrlEls,
-    cpEls,
-    autEls,
+  obsEls,
+  ctrlEls,
+  cpEls,
+  autEls,
 }) {
-    let isPolling = false;
-    let timerId = 0;
+  let isPolling = false;
+  let timerId = 0;
+  let selectedChannel = "default";
 
-    function applyRuntimeCapabilities(capabilities = {}, mode = "") {
-        if (ctrlEls) {
-            applyChannelControlCapability(ctrlEls, capabilities?.channel_control || {});
-        }
-        if (cpEls) {
-            renderControlPlaneCapabilities(cpEls, capabilities || {}, mode || "");
-        }
+  function applyRuntimeCapabilities(capabilities = {}, mode = "") {
+    if (ctrlEls) {
+      applyChannelControlCapability(
+        ctrlEls,
+        capabilities?.channel_control || {},
+      );
     }
-
-    async function fetchAndRenderObservability() {
-        if (!obsEls || isPolling) return;
-        isPolling = true;
-        setConnectionState("pending", obsEls);
-        try {
-            const data = await getObservabilitySnapshot(OBSERVABILITY_TIMEOUT_MS);
-            renderObservabilitySnapshot(data, obsEls);
-            setConnectionState("ok", obsEls);
-            applyRuntimeCapabilities(data?.capabilities || {}, data?.bot?.mode || "");
-            renderAutonomyRuntime(data?.autonomy || {}, autEls);
-        } catch (error) {
-            console.error("Dashboard observability refresh error", error);
-            setConnectionState("error", obsEls);
-        } finally {
-            isPolling = false;
-        }
+    if (cpEls) {
+      renderControlPlaneCapabilities(cpEls, capabilities || {}, mode || "");
     }
+  }
 
-    function scheduleObservabilityPolling() {
-        if (timerId) {
-            window.clearTimeout(timerId);
-        }
-        timerId = window.setTimeout(async () => {
-            await fetchAndRenderObservability();
-            scheduleObservabilityPolling();
-        }, OBSERVABILITY_INTERVAL_MS);
+  async function fetchAndRenderObservability() {
+    if (!obsEls || isPolling) return;
+    isPolling = true;
+    setConnectionState("pending", obsEls);
+    try {
+      const [data, channelData] = await Promise.all([
+        getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
+        getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
+      ]);
+      renderObservabilitySnapshot(data, obsEls);
+      renderChannelContextSnapshot(channelData, obsEls);
+      setConnectionState("ok", obsEls);
+      applyRuntimeCapabilities(data?.capabilities || {}, data?.bot?.mode || "");
+      renderAutonomyRuntime(data?.autonomy || {}, autEls);
+    } catch (error) {
+      console.error("Dashboard observability refresh error", error);
+      setConnectionState("error", obsEls);
+    } finally {
+      isPolling = false;
     }
+  }
 
-    return {
-        applyRuntimeCapabilities,
-        fetchAndRenderObservability,
-        scheduleObservabilityPolling,
-    };
+  function scheduleObservabilityPolling() {
+    if (timerId) {
+      window.clearTimeout(timerId);
+    }
+    timerId = window.setTimeout(async () => {
+      await fetchAndRenderObservability();
+      scheduleObservabilityPolling();
+    }, OBSERVABILITY_INTERVAL_MS);
+  }
+
+  return {
+    applyRuntimeCapabilities,
+    fetchAndRenderObservability,
+    setSelectedChannel(channelId) {
+      selectedChannel =
+        String(channelId || "")
+          .trim()
+          .toLowerCase() || "default";
+    },
+    scheduleObservabilityPolling,
+  };
 }

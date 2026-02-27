@@ -144,8 +144,8 @@ class HealthHandler(BaseHTTPRequestHandler):
         self._send_bytes(target_path.read_bytes(), content_type=content_type, status_code=200)
         return True
 
-    def _build_observability_payload(self) -> dict[str, Any]:
-        return build_observability_payload()
+    def _build_observability_payload(self, channel_id: str | None = None) -> dict[str, Any]:
+        return build_observability_payload(channel_id)
 
     def _handle_channel_control(self, payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
         action = str(payload.get("action", "") or "").strip().lower()

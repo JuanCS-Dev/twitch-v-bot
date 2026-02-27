@@ -1,6 +1,21 @@
 <section class="grid-two">
   <article class="panel">
     <h2>Agent Context & Internals</h2>
+    <div
+      class="form-row"
+      style="
+        align-items: center;
+        gap: var(--spacing-2);
+        margin-bottom: var(--spacing-3);
+      "
+    >
+      <span class="chip">Focused Channel</span>
+      <span id="ctxSelectedChannelChip" class="chip pending">default</span>
+      <span id="ctxPersistedStatusChip" class="chip pending"
+        >PERSISTENCE IDLE</span
+      >
+      <span id="ctxRuntimeStatusChip" class="chip pending">RUNTIME COLD</span>
+    </div>
     <dl class="kv">
       <div>
         <dt>Core Mode</dt>
@@ -53,6 +68,47 @@
     </dl>
     <h3>Memória Curta/Temporária</h3>
     <ul id="contextItems" class="context-list"></ul>
+
+    <div
+      style="
+        margin-top: var(--spacing-4);
+        padding-top: var(--spacing-4);
+        border-top: 1px solid var(--border-default);
+      "
+    >
+      <h3 style="margin-top: 0">Persisted Channel Snapshot</h3>
+      <dl class="kv">
+        <div>
+          <dt>Persisted Game</dt>
+          <dd id="ctxPersistedGame">-</dd>
+        </div>
+        <div>
+          <dt>Persisted Vibe</dt>
+          <dd id="ctxPersistedVibe">-</dd>
+        </div>
+        <div>
+          <dt>Persisted Last Event</dt>
+          <dd id="ctxPersistedLastEvent">-</dd>
+        </div>
+        <div>
+          <dt>Persisted Style</dt>
+          <dd id="ctxPersistedStyle">-</dd>
+        </div>
+        <div>
+          <dt>Persisted Reply</dt>
+          <dd id="ctxPersistedReply">-</dd>
+        </div>
+        <div>
+          <dt>Persisted Updated</dt>
+          <dd id="ctxPersistedUpdatedAt">-</dd>
+        </div>
+      </dl>
+      <p id="ctxPersistedHint" class="panel-hint">
+        Carregando estado persistido...
+      </p>
+      <h3>Persisted Recent History</h3>
+      <ul id="persistedHistoryItems" class="context-list"></ul>
+    </div>
   </article>
 
   <article class="panel">
@@ -78,7 +134,11 @@
 <section class="grid-two">
   <article class="panel">
     <h2>Operational Events</h2>
-    <ul id="eventsList" class="events-list" style="max-height: 480px; overflow-y: auto;"></ul>
+    <ul
+      id="eventsList"
+      class="events-list"
+      style="max-height: 480px; overflow-y: auto"
+    ></ul>
   </article>
 
   <article class="panel">
@@ -90,19 +150,29 @@
       </div>
       <div>
         <dt>Total Churn (10/60m)</dt>
-        <dd><span id="aMessages10m">0</span> / <span id="aMessages60m">0</span> msgs</dd>
+        <dd>
+          <span id="aMessages10m">0</span> /
+          <span id="aMessages60m">0</span> msgs
+        </dd>
       </div>
       <div>
         <dt>Payload Avg Len (10/60m)</dt>
-        <dd><span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char</dd>
+        <dd>
+          <span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char
+        </dd>
       </div>
       <div>
         <dt>Commands Triggered</dt>
-        <dd><span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span>)</dd>
+        <dd>
+          <span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span
+          >)
+        </dd>
       </div>
       <div>
         <dt>Network Links Detected</dt>
-        <dd><span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)</dd>
+        <dd>
+          <span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)
+        </dd>
       </div>
       <div>
         <dt>Route IRC</dt>
@@ -118,11 +188,14 @@
       </div>
       <div>
         <dt>Byte Invokations (10/60m)</dt>
-        <dd><span id="aByteTriggers10m">0</span> / <span id="aByteTriggers60m">0</span> </dd>
+        <dd>
+          <span id="aByteTriggers10m">0</span> /
+          <span id="aByteTriggers60m">0</span>
+        </dd>
       </div>
     </dl>
 
-    <h3 style="margin-top:1.5rem;">API Rotas Truncadas</h3>
+    <h3 style="margin-top: 1.5rem">API Rotas Truncadas</h3>
     <div class="table-wrap">
       <table>
         <thead>

@@ -27,18 +27,62 @@ def _get_context_sync(channel_id: str | None = None) -> Any:
     return context_manager.get(channel_id)
 
 
-def _resolve_channel_id(query: dict[str, list[str]], payload: dict[str, Any] | None = None) -> str:
+def _resolve_channel_id(
+    query: dict[str, list[str]],
+    payload: dict[str, Any] | None = None,
+    *,
+    required: bool = True,
+    default: str = "default",
+) -> str:
     from_query = str((query.get("channel") or [""])[0] or "").strip().lower()
     if from_query:
         return from_query
     from_payload = str((payload or {}).get("channel_id", "") or "").strip().lower()
     if from_payload:
         return from_payload
-    raise ValueError("channel_id obrigatorio.")
+    if required:
+        raise ValueError("channel_id obrigatorio.")
+    return default
 
 
-def build_observability_payload() -> dict[str, Any]:
-    ctx = _get_context_sync()
+def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
+    runtime_observability = getattr(ctx, "live_observability", {}) or {}
+    return {
+        "channel_id": str(getattr(ctx, "channel_id", "default") or "default"),
+        "current_game": str(getattr(ctx, "current_game", "N/A") or "N/A"),
+        "stream_vibe": str(getattr(ctx, "stream_vibe", "Conversa") or "Conversa"),
+        "last_event": str(getattr(ctx, "last_event", "Bot Online") or "Bot Online"),
+        "style_profile": str(getattr(ctx, "style_profile", "") or ""),
+        "last_reply": str(getattr(ctx, "last_byte_reply", "") or ""),
+        "observability": {
+            str(key): str(value) for key, value in dict(runtime_observability).items() if str(key)
+        },
+        "recent_chat_entries": list(getattr(ctx, "recent_chat_entries", []) or [])[-12:],
+    }
+
+
+def _serialize_persisted_state(state: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not state:
+        return None
+    return {
+        "channel_id": str(state.get("channel_id") or ""),
+        "current_game": str(state.get("current_game") or "N/A"),
+        "stream_vibe": str(state.get("stream_vibe") or "Conversa"),
+        "last_event": str(state.get("last_event") or "Bot Online"),
+        "style_profile": str(state.get("style_profile") or ""),
+        "last_reply": str(state.get("last_reply") or ""),
+        "updated_at": str(state.get("updated_at") or ""),
+        "last_activity": str(state.get("last_activity") or ""),
+        "observability": {
+            str(key): str(value)
+            for key, value in dict(state.get("observability") or {}).items()
+            if str(key)
+        },
+    }
+
+
+def build_observability_payload(channel_id: str | None = None) -> dict[str, Any]:
+    ctx = _get_context_sync(channel_id)
     snapshot = observability.snapshot(
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,
@@ -57,8 +101,37 @@ def build_observability_payload() -> dict[str, Any]:
     }
     snapshot["capabilities"] = capabilities
     snapshot["autonomy"] = autonomy
+    snapshot["selected_channel"] = str(
+        getattr(ctx, "channel_id", channel_id or "default") or "default"
+    )
+    snapshot["context"] = {
+        **(snapshot.get("context") or {}),
+        "channel_id": str(getattr(ctx, "channel_id", channel_id or "default") or "default"),
+    }
     snapshot["ok"] = True
     return snapshot
+
+
+def build_channel_context_payload(channel_id: str | None = None) -> dict[str, Any]:
+    safe_channel_id = str(channel_id or "default").strip().lower() or "default"
+    loaded_before_request = safe_channel_id in set(context_manager.list_active_channels())
+    ctx = _get_context_sync(safe_channel_id)
+    persisted_state = persistence.load_channel_state_sync(safe_channel_id)
+    persisted_history = persistence.load_recent_history_sync(safe_channel_id)
+    channel_payload = {
+        "channel_id": safe_channel_id,
+        "runtime_loaded": loaded_before_request,
+        "runtime": _serialize_runtime_context(ctx),
+        "persisted_state": _serialize_persisted_state(persisted_state),
+        "persisted_recent_history": list(persisted_history or []),
+        "has_persisted_state": bool(persisted_state),
+        "has_persisted_history": bool(persisted_history),
+    }
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "channel": channel_payload,
+    }
 
 
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
@@ -98,7 +171,13 @@ def handle_get(handler: Any) -> None:
         return
 
     if route == "/api/observability":
-        handler._send_json(handler._build_observability_payload(), status_code=200)
+        channel_id = _resolve_channel_id(query, required=False)
+        handler._send_json(handler._build_observability_payload(channel_id), status_code=200)
+        return
+
+    if route == "/api/channel-context":
+        channel_id = _resolve_channel_id(query, required=False)
+        handler._send_json(build_channel_context_payload(channel_id), status_code=200)
         return
 
     if route == "/api/control-plane":

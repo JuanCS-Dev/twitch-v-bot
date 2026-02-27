@@ -38,6 +38,15 @@ class TestDashboardRoutes(unittest.TestCase):
         args = self.handler._send_json.call_args[0]
         self.assertTrue(args[0]["ok"])
 
+    def test_handle_get_observability_resolves_channel_query(self):
+        self.handler.path = "/api/observability?channel=Canal_A"
+        self.handler._build_observability_payload.return_value = {"ok": True, "channel": "canal_a"}
+
+        routes.handle_get(self.handler)
+
+        self.handler._build_observability_payload.assert_called_with("canal_a")
+        self.handler._send_json.assert_called()
+
     @patch("bot.dashboard_server_routes.control_plane")
     def test_handle_get_action_queue(self, mock_cp):
         self.handler.path = "/api/action-queue?status=pending&limit=10"
@@ -107,6 +116,19 @@ class TestDashboardRoutes(unittest.TestCase):
                 "message": "channel_id obrigatorio.",
             },
             status_code=400,
+        )
+
+    @patch("bot.dashboard_server_routes.build_channel_context_payload")
+    def test_handle_get_channel_context_success(self, mock_build_payload):
+        self.handler.path = "/api/channel-context?channel=Canal_A"
+        mock_build_payload.return_value = {"ok": True, "channel": {"channel_id": "canal_a"}}
+
+        routes.handle_get(self.handler)
+
+        mock_build_payload.assert_called_with("canal_a")
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "channel": {"channel_id": "canal_a"}},
+            status_code=200,
         )
 
     def test_handle_put_control_plane_invalid_json(self):
