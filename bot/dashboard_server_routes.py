@@ -104,6 +104,10 @@ def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
         "style_profile": str(getattr(ctx, "style_profile", "") or ""),
         "last_reply": str(getattr(ctx, "last_byte_reply", "") or ""),
         "agent_notes": str(getattr(ctx, "agent_notes", "") or ""),
+        "persona_name": str(getattr(ctx, "persona_name", "") or ""),
+        "tone": str(getattr(ctx, "persona_tone", "") or ""),
+        "emote_vocab": list(getattr(ctx, "persona_emote_vocab", []) or []),
+        "lore": str(getattr(ctx, "persona_lore", "") or ""),
         "channel_paused": bool(getattr(ctx, "channel_paused", False)),
         "observability": {
             str(key): str(value) for key, value in dict(runtime_observability).items() if str(key)
@@ -141,6 +145,49 @@ def _serialize_persisted_agent_notes(notes: dict[str, Any] | None) -> dict[str, 
         "has_notes": bool(notes.get("has_notes")),
         "updated_at": str(notes.get("updated_at") or ""),
         "source": str(notes.get("source") or ""),
+    }
+
+
+def _serialize_persisted_channel_identity(
+    identity: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not identity:
+        return None
+    return {
+        "channel_id": str(identity.get("channel_id") or ""),
+        "persona_name": str(identity.get("persona_name") or ""),
+        "tone": str(identity.get("tone") or ""),
+        "emote_vocab": list(identity.get("emote_vocab") or []),
+        "lore": str(identity.get("lore") or ""),
+        "has_identity": bool(identity.get("has_identity")),
+        "updated_at": str(identity.get("updated_at") or ""),
+        "source": str(identity.get("source") or ""),
+    }
+
+
+def _merge_channel_directives_payload(
+    channel_config: dict[str, Any] | None,
+    channel_identity: dict[str, Any] | None,
+) -> dict[str, Any]:
+    config = dict(channel_config or {})
+    identity = dict(channel_identity or {})
+    channel_id = str(config.get("channel_id") or identity.get("channel_id") or "default")
+
+    return {
+        "channel_id": channel_id,
+        "temperature": config.get("temperature"),
+        "top_p": config.get("top_p"),
+        "agent_paused": bool(config.get("agent_paused", False)),
+        "has_override": bool(config.get("has_override")),
+        "updated_at": str(config.get("updated_at") or ""),
+        "source": str(config.get("source") or ""),
+        "persona_name": str(identity.get("persona_name") or ""),
+        "tone": str(identity.get("tone") or ""),
+        "emote_vocab": list(identity.get("emote_vocab") or []),
+        "lore": str(identity.get("lore") or ""),
+        "has_identity": bool(identity.get("has_identity")),
+        "identity_updated_at": str(identity.get("updated_at") or ""),
+        "identity_source": str(identity.get("source") or ""),
     }
 
 
@@ -186,16 +233,23 @@ def build_channel_context_payload(channel_id: str | None = None) -> dict[str, An
     persisted_state = persistence.load_channel_state_sync(safe_channel_id)
     persisted_history = persistence.load_recent_history_sync(safe_channel_id)
     persisted_agent_notes = persistence.load_agent_notes_sync(safe_channel_id)
+    persisted_channel_identity = persistence.load_channel_identity_sync(safe_channel_id)
     channel_payload = {
         "channel_id": safe_channel_id,
         "runtime_loaded": loaded_before_request,
         "runtime": _serialize_runtime_context(ctx),
         "persisted_state": _serialize_persisted_state(persisted_state),
         "persisted_agent_notes": _serialize_persisted_agent_notes(persisted_agent_notes),
+        "persisted_channel_identity": _serialize_persisted_channel_identity(
+            persisted_channel_identity
+        ),
         "persisted_recent_history": list(persisted_history or []),
         "has_persisted_state": bool(persisted_state),
         "has_persisted_notes": bool(
             persisted_agent_notes and persisted_agent_notes.get("has_notes")
+        ),
+        "has_persisted_identity": bool(
+            persisted_channel_identity and persisted_channel_identity.get("has_identity")
         ),
         "has_persisted_history": bool(persisted_history),
     }
@@ -466,11 +520,13 @@ def _handle_get_channel_config(handler: Any, query: dict[str, list[str]]) -> Non
     except ValueError as error:
         send_invalid_request(handler, str(error))
         return
+    channel_config = persistence.load_channel_config_sync(channel_id)
+    channel_identity = persistence.load_channel_identity_sync(channel_id)
     handler._send_json(
         {
             "ok": True,
             "mode": TWITCH_CHAT_MODE,
-            "channel": persistence.load_channel_config_sync(channel_id),
+            "channel": _merge_channel_directives_payload(channel_config, channel_identity),
         },
         status_code=200,
     )
@@ -638,6 +694,7 @@ def _handle_put_channel_config(
     try:
         channel_id = _resolve_channel_id(query, payload)
         current_config = persistence.load_channel_config_sync(channel_id)
+        current_identity = persistence.load_channel_identity_sync(channel_id)
         next_agent_paused = (
             payload.get("agent_paused")
             if "agent_paused" in payload
@@ -649,11 +706,33 @@ def _handle_put_channel_config(
             top_p=payload.get("top_p"),
             agent_paused=next_agent_paused,
         )
+        channel_identity = persistence.save_channel_identity_sync(
+            channel_id,
+            persona_name=(
+                payload.get("persona_name")
+                if "persona_name" in payload
+                else current_identity.get("persona_name")
+            ),
+            tone=payload.get("tone") if "tone" in payload else current_identity.get("tone"),
+            emote_vocab=(
+                payload.get("emote_vocab")
+                if "emote_vocab" in payload
+                else current_identity.get("emote_vocab")
+            ),
+            lore=payload.get("lore") if "lore" in payload else current_identity.get("lore"),
+        )
         context_manager.apply_channel_config(
             channel_id,
             temperature=channel_config.get("temperature"),
             top_p=channel_config.get("top_p"),
             agent_paused=bool(channel_config.get("agent_paused", False)),
+        )
+        context_manager.apply_channel_identity(
+            channel_id,
+            persona_name=str(channel_identity.get("persona_name") or ""),
+            tone=str(channel_identity.get("tone") or ""),
+            emote_vocab=list(channel_identity.get("emote_vocab") or []),
+            lore=str(channel_identity.get("lore") or ""),
         )
     except ValueError as error:
         send_invalid_request(handler, str(error))
@@ -663,7 +742,7 @@ def _handle_put_channel_config(
         {
             "ok": True,
             "mode": TWITCH_CHAT_MODE,
-            "channel": channel_config,
+            "channel": _merge_channel_directives_payload(channel_config, channel_identity),
         },
         status_code=200,
     )

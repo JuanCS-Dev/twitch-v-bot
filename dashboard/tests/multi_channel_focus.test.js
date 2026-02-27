@@ -26,8 +26,10 @@ import {
 import { createObservabilityController } from "../features/observability/controller.js";
 import { createControlPlaneController } from "../features/control-plane/controller.js";
 import {
+  collectChannelConfigPayload,
   collectControlPlanePayload,
   getControlPlaneElements,
+  renderChannelConfig,
   renderAgentNotes,
 } from "../features/control-plane/view.js";
 import { createHudController } from "../features/hud/controller.js";
@@ -159,7 +161,9 @@ function createGoalFieldStub({ value = "", checked = false } = {}) {
 function createGoalCardStub(fieldValues = {}) {
   return {
     querySelector(selector) {
-      const match = String(selector || "").match(/\[data-goal-field="([^"]+)"\]/);
+      const match = String(selector || "").match(
+        /\[data-goal-field="([^"]+)"\]/,
+      );
       if (!match) return null;
       const fieldName = match[1];
       return fieldValues[fieldName] || null;
@@ -424,6 +428,10 @@ function createControlPlaneElements(document) {
       "cpChannelConfigHint",
       new MockElement("p", document),
     ),
+    channelIdentityStatusChip: document.registerElement(
+      "cpChannelIdentityStatusChip",
+      new MockElement("span", document),
+    ),
     channelIdInput: document.registerElement(
       "cpChannelConfigId",
       new MockElement("input", document),
@@ -439,6 +447,26 @@ function createControlPlaneElements(document) {
     channelAgentPausedInput: document.registerElement(
       "cpChannelAgentPaused",
       new MockElement("input", document),
+    ),
+    channelPersonaNameInput: document.registerElement(
+      "cpChannelPersonaName",
+      new MockElement("input", document),
+    ),
+    channelToneInput: document.registerElement(
+      "cpChannelTone",
+      new MockElement("input", document),
+    ),
+    channelEmoteVocabInput: document.registerElement(
+      "cpChannelEmoteVocab",
+      new MockElement("input", document),
+    ),
+    channelLoreInput: document.registerElement(
+      "cpChannelLore",
+      new MockElement("textarea", document),
+    ),
+    channelIdentityHint: document.registerElement(
+      "cpChannelIdentityHint",
+      new MockElement("p", document),
     ),
     agentNotesStatusChip: document.registerElement(
       "cpAgentNotesStatusChip",
@@ -1192,7 +1220,8 @@ test("observability controller triggers semantic memory search and save in intel
   assert.ok(searchCall);
 
   const saveCall = calls.find(
-    (call) => call.method === "PUT" && call.url.includes("/api/semantic-memory"),
+    (call) =>
+      call.method === "PUT" && call.url.includes("/api/semantic-memory"),
   );
   assert.ok(saveCall);
   const savePayload = JSON.parse(String(saveCall?.body || "{}"));
@@ -1200,7 +1229,10 @@ test("observability controller triggers semantic memory search and save in intel
   assert.equal(savePayload.memory_type, "preference");
   assert.equal(savePayload.content, "Nao spoiler de lore.");
   assert.equal(obsEls.intSemanticMemoryContentInput.value, "");
-  assert.match(obsEls.intSemanticMemoryStatusHint.textContent, /busca semantica/i);
+  assert.match(
+    obsEls.intSemanticMemoryStatusHint.textContent,
+    /busca semantica/i,
+  );
 });
 
 test("control plane controller mirrors the focused channel into channel tuning", () => {
@@ -1548,6 +1580,63 @@ test("control plane view renders cleared agent notes state", () => {
   );
 });
 
+test("control plane view renders per-channel identity fields", () => {
+  const { document } = installBrowserEnv();
+  const cpEls = createControlPlaneElements(document);
+
+  renderChannelConfig(
+    {
+      channel_id: "canal_id",
+      temperature: 0.44,
+      top_p: 0.73,
+      agent_paused: false,
+      has_override: true,
+      updated_at: "2026-02-27T19:00:00Z",
+      persona_name: "Byte Coach",
+      tone: "analitico e objetivo",
+      emote_vocab: ["PogChamp", "LUL"],
+      lore: "Lore principal do canal.",
+      has_identity: true,
+      identity_updated_at: "2026-02-27T19:01:00Z",
+    },
+    cpEls,
+  );
+
+  assert.equal(cpEls.channelPersonaNameInput.value, "Byte Coach");
+  assert.equal(cpEls.channelToneInput.value, "analitico e objetivo");
+  assert.equal(cpEls.channelEmoteVocabInput.value, "PogChamp, LUL");
+  assert.equal(cpEls.channelLoreInput.value, "Lore principal do canal.");
+  assert.equal(cpEls.channelIdentityStatusChip.textContent, "IDENTITY ACTIVE");
+  assert.match(cpEls.channelIdentityHint.textContent, /persona: Byte Coach/i);
+});
+
+test("control plane view collects identity payload with token normalization", () => {
+  const { document } = installBrowserEnv();
+  const cpEls = createControlPlaneElements(document);
+
+  cpEls.channelIdInput.value = " Canal_X ";
+  cpEls.channelTemperatureInput.value = "0.55";
+  cpEls.channelTopPInput.value = "0.80";
+  cpEls.channelAgentPausedInput.checked = true;
+  cpEls.channelPersonaNameInput.value = "Byte Coach";
+  cpEls.channelToneInput.value = "analitico";
+  cpEls.channelEmoteVocabInput.value = "PogChamp, LUL, pogchamp, , Kappa";
+  cpEls.channelLoreInput.value = "Lore ativo.";
+
+  const payload = collectChannelConfigPayload(cpEls);
+
+  assert.deepEqual(payload, {
+    channel_id: "canal_x",
+    temperature: 0.55,
+    top_p: 0.8,
+    agent_paused: true,
+    persona_name: "Byte Coach",
+    tone: "analitico",
+    emote_vocab: ["PogChamp", "LUL", "Kappa"],
+    lore: "Lore ativo.",
+  });
+});
+
 test("control plane view reads agent note elements from the dashboard DOM", () => {
   const { document } = installBrowserEnv();
   document.registerElement("cpPanel", new MockElement("section", document));
@@ -1575,6 +1664,10 @@ test("control plane view reads agent note elements from the dashboard DOM", () =
     new MockElement("p", document),
   );
   document.registerElement(
+    "cpChannelIdentityStatusChip",
+    new MockElement("span", document),
+  );
+  document.registerElement(
     "cpChannelConfigId",
     new MockElement("input", document),
   );
@@ -1586,6 +1679,23 @@ test("control plane view reads agent note elements from the dashboard DOM", () =
   document.registerElement(
     "cpChannelAgentPaused",
     new MockElement("input", document),
+  );
+  document.registerElement(
+    "cpChannelPersonaName",
+    new MockElement("input", document),
+  );
+  document.registerElement("cpChannelTone", new MockElement("input", document));
+  document.registerElement(
+    "cpChannelEmoteVocab",
+    new MockElement("input", document),
+  );
+  document.registerElement(
+    "cpChannelLore",
+    new MockElement("textarea", document),
+  );
+  document.registerElement(
+    "cpChannelIdentityHint",
+    new MockElement("p", document),
   );
   document.registerElement(
     "cpAgentNotesStatusChip",
@@ -1633,6 +1743,14 @@ test("control plane view reads agent note elements from the dashboard DOM", () =
   assert.equal(els.agentNotesStatusChip?.id, "cpAgentNotesStatusChip");
   assert.equal(els.agentNotesHint?.id, "cpAgentNotesHint");
   assert.equal(els.channelAgentPausedInput?.id, "cpChannelAgentPaused");
+  assert.equal(els.channelPersonaNameInput?.id, "cpChannelPersonaName");
+  assert.equal(els.channelToneInput?.id, "cpChannelTone");
+  assert.equal(els.channelEmoteVocabInput?.id, "cpChannelEmoteVocab");
+  assert.equal(els.channelLoreInput?.id, "cpChannelLore");
+  assert.equal(
+    els.channelIdentityStatusChip?.id,
+    "cpChannelIdentityStatusChip",
+  );
 });
 
 test("hud controller syncs overlay url with the active admin token", () => {

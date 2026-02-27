@@ -97,6 +97,74 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "canal_b")
         self.assertEqual(payload["notes"], "Foque no host.")
 
+    def test_save_channel_identity_sync_uses_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = layer.save_channel_identity_sync(
+            "Canal_A",
+            persona_name="Byte Coach",
+            tone="analitico",
+            emote_vocab=["PogChamp", "LUL"],
+            lore="Canal com lore recorrente.",
+        )
+
+        self.assertEqual(payload["channel_id"], "canal_a")
+        self.assertEqual(payload["persona_name"], "Byte Coach")
+        self.assertEqual(payload["tone"], "analitico")
+        self.assertEqual(payload["emote_vocab"], ["PogChamp", "LUL"])
+        self.assertEqual(payload["lore"], "Canal com lore recorrente.")
+        self.assertTrue(payload["has_identity"])
+        self.assertEqual(layer.load_channel_identity_sync("canal_a")["persona_name"], "Byte Coach")
+
+    def test_save_channel_identity_sync_clears_identity_when_empty(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = layer.save_channel_identity_sync(
+            "Canal_A",
+            persona_name=None,
+            tone=None,
+            emote_vocab=None,
+            lore=None,
+        )
+
+        self.assertEqual(payload["channel_id"], "canal_a")
+        self.assertEqual(payload["persona_name"], "")
+        self.assertEqual(payload["tone"], "")
+        self.assertEqual(payload["emote_vocab"], [])
+        self.assertEqual(payload["lore"], "")
+        self.assertFalse(payload["has_identity"])
+
+    async def test_load_channel_identity_async_returns_cached_defaults_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = await layer.load_channel_identity("default")
+
+        self.assertEqual(payload["channel_id"], "default")
+        self.assertEqual(payload["persona_name"], "")
+        self.assertEqual(payload["tone"], "")
+        self.assertEqual(payload["emote_vocab"], [])
+        self.assertEqual(payload["lore"], "")
+        self.assertFalse(payload["has_identity"])
+
+    async def test_save_channel_identity_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = await layer.save_channel_identity(
+            "Canal_B",
+            persona_name="Byte Guide",
+            tone="calmo",
+            emote_vocab=["Kappa"],
+            lore="Lore curto.",
+        )
+
+        self.assertEqual(payload["channel_id"], "canal_b")
+        self.assertEqual(payload["persona_name"], "Byte Guide")
+        self.assertEqual(payload["emote_vocab"], ["Kappa"])
+
     def test_save_channel_config_sync_rejects_invalid_values(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()
@@ -122,6 +190,28 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ValueError):
             layer.save_agent_notes_sync("canal_a", notes="x" * 2001)
+
+    def test_save_channel_identity_sync_rejects_invalid_values(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with self.assertRaises(ValueError):
+            layer.save_channel_identity_sync("", persona_name="Byte")
+
+        with self.assertRaises(ValueError):
+            layer.save_channel_identity_sync("canal_a", persona_name="x" * 81)
+
+        with self.assertRaises(ValueError):
+            layer.save_channel_identity_sync("canal_a", tone="x" * 161)
+
+        with self.assertRaises(ValueError):
+            layer.save_channel_identity_sync(
+                "canal_a",
+                emote_vocab=[f"emote_{index}" for index in range(21)],
+            )
+
+        with self.assertRaises(ValueError):
+            layer.save_channel_identity_sync("canal_a", lore="x" * 1201)
 
     def test_load_channel_config_sync_returns_memory_fallback_on_supabase_error(self):
         mock_client = MagicMock()
@@ -225,6 +315,65 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["notes"], "Nao force meme.")
         self.assertEqual(payload["source"], "memory")
 
+    def test_load_channel_identity_sync_returns_memory_fallback_on_supabase_error(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.side_effect = RuntimeError("supabase down")
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        layer._channel_identity_cache["canal_fallback"] = {
+            "channel_id": "canal_fallback",
+            "persona_name": "Byte Coach",
+            "tone": "analitico",
+            "emote_vocab": ["PogChamp"],
+            "lore": "Lore fallback.",
+            "has_identity": True,
+            "updated_at": "2026-02-27T14:07:00Z",
+            "source": "memory",
+        }
+
+        payload = layer.load_channel_identity_sync("Canal_Fallback")
+
+        self.assertEqual(payload["channel_id"], "canal_fallback")
+        self.assertEqual(payload["persona_name"], "Byte Coach")
+        self.assertEqual(payload["emote_vocab"], ["PogChamp"])
+        self.assertEqual(payload["source"], "memory")
+
+    def test_save_channel_identity_sync_returns_memory_payload_on_supabase_error(self):
+        mock_client = MagicMock()
+        mock_client.table.return_value.upsert.return_value.execute.side_effect = RuntimeError(
+            "write failed"
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        payload = layer.save_channel_identity_sync(
+            "Canal_C",
+            persona_name="Byte Coach",
+            tone="analitico",
+            emote_vocab=["PogChamp", "LUL"],
+            lore="Lore estavel.",
+        )
+
+        self.assertEqual(payload["channel_id"], "canal_c")
+        self.assertEqual(payload["persona_name"], "Byte Coach")
+        self.assertEqual(payload["tone"], "analitico")
+        self.assertEqual(payload["source"], "memory")
+
     def test_load_and_save_channel_config_sync_with_supabase(self):
         mock_client = MagicMock()
         table = mock_client.table.return_value
@@ -302,6 +451,53 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
             {
                 "channel_id": "canal_supabase",
                 "notes": "Leia o chat antes de responder.",
+                "updated_at": "now()",
+            }
+        )
+
+    def test_load_and_save_channel_identity_sync_with_supabase(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.return_value = MagicMock(
+            data={
+                "channel_id": "canal_supabase",
+                "persona_name": "Byte Coach",
+                "tone": "analitico",
+                "emote_vocab": ["PogChamp", "LUL"],
+                "lore": "Lore persistido.",
+                "updated_at": "2026-02-27T12:15:00Z",
+            }
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_channel_identity_sync("canal_supabase")
+        saved = layer.save_channel_identity_sync(
+            "canal_supabase",
+            persona_name="Byte Coach",
+            tone="analitico",
+            emote_vocab=["PogChamp", "LUL"],
+            lore="Lore persistido.",
+        )
+
+        self.assertEqual(loaded["source"], "supabase")
+        self.assertEqual(loaded["persona_name"], "Byte Coach")
+        self.assertEqual(loaded["emote_vocab"], ["PogChamp", "LUL"])
+        self.assertEqual(saved["source"], "supabase")
+        mock_client.table.return_value.upsert.assert_called_once_with(
+            {
+                "channel_id": "canal_supabase",
+                "persona_name": "Byte Coach",
+                "tone": "analitico",
+                "emote_vocab": ["PogChamp", "LUL"],
+                "lore": "Lore persistido.",
                 "updated_at": "now()",
             }
         )

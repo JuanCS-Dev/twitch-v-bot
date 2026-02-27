@@ -59,6 +59,24 @@ function readFloat(input, fallbackValue, minValue, maxValue) {
   return Number(safeValue.toFixed(4));
 }
 
+function readTokenList(input, maxItems = 20) {
+  const rawValue = String(input?.value || "").trim();
+  if (!rawValue) return [];
+  const dedup = new Set();
+  const tokens = [];
+  rawValue
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .forEach((item) => {
+      const key = item.toLowerCase();
+      if (dedup.has(key)) return;
+      dedup.add(key);
+      tokens.push(item);
+    });
+  return tokens.slice(0, Math.max(1, maxItems));
+}
+
 function normalizeGoalId(rawValue, fallbackIndex) {
   const lowered = String(rawValue || "")
     .trim()
@@ -227,7 +245,9 @@ function createGoalCard(goal = {}, index = 0) {
     ? goalKpiNameRaw
     : defaultKpiForRisk(safeRisk);
   const kpiSelect = buildKpiSelect(safeKpiName);
-  secondRow.appendChild(createGoalField("KPI", kpiSelect, { minWidth: "190px" }));
+  secondRow.appendChild(
+    createGoalField("KPI", kpiSelect, { minWidth: "190px" }),
+  );
 
   const targetInput = document.createElement("input");
   targetInput.type = "number";
@@ -388,6 +408,13 @@ export function renderChannelConfig(channelPayload, els) {
       .toLowerCase() || "default";
   const hasOverride = Boolean(channel.has_override);
   const agentPaused = Boolean(channel.agent_paused);
+  const personaName = String(channel.persona_name || "");
+  const tone = String(channel.tone || "");
+  const lore = String(channel.lore || "");
+  const emoteVocab = asArray(channel.emote_vocab)
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+  const hasIdentity = Boolean(channel.has_identity);
 
   if (els?.channelIdInput) {
     els.channelIdInput.value = channelId;
@@ -406,6 +433,18 @@ export function renderChannelConfig(channelPayload, els) {
   }
   if (els?.channelAgentPausedInput) {
     els.channelAgentPausedInput.checked = agentPaused;
+  }
+  if (els?.channelPersonaNameInput) {
+    els.channelPersonaNameInput.value = personaName;
+  }
+  if (els?.channelToneInput) {
+    els.channelToneInput.value = tone;
+  }
+  if (els?.channelEmoteVocabInput) {
+    els.channelEmoteVocabInput.value = emoteVocab.join(", ");
+  }
+  if (els?.channelLoreInput) {
+    els.channelLoreInput.value = lore;
   }
   if (els?.channelStatusChip) {
     els.channelStatusChip.classList.remove("ok", "warn", "pending", "error");
@@ -437,6 +476,34 @@ export function renderChannelConfig(channelPayload, els) {
       els.channelHint,
       `Canal ${channelId} | pause: ${pauseLabel} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`,
     );
+  }
+  if (els?.channelIdentityStatusChip) {
+    els.channelIdentityStatusChip.classList.remove(
+      "ok",
+      "warn",
+      "pending",
+      "error",
+    );
+    setText(
+      els.channelIdentityStatusChip,
+      hasIdentity ? "IDENTITY ACTIVE" : "IDENTITY CLEAR",
+    );
+    els.channelIdentityStatusChip.classList.add(hasIdentity ? "ok" : "pending");
+  }
+  if (els?.channelIdentityHint) {
+    const updatedAt = String(channel.identity_updated_at || "").trim();
+    const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
+    if (hasIdentity) {
+      setText(
+        els.channelIdentityHint,
+        `Canal ${channelId} | persona: ${personaName || "n/a"} | tone: ${tone || "n/a"} | emotes: ${emoteVocab.join(", ") || "n/a"}${updatedSuffix}`,
+      );
+    } else {
+      setText(
+        els.channelIdentityHint,
+        `Canal ${channelId} | identidade estruturada vazia${updatedSuffix}`,
+      );
+    }
   }
 }
 
@@ -488,6 +555,14 @@ export function getControlPlaneElements() {
     channelTemperatureInput: document.getElementById("cpChannelTemperature"),
     channelTopPInput: document.getElementById("cpChannelTopP"),
     channelAgentPausedInput: document.getElementById("cpChannelAgentPaused"),
+    channelIdentityStatusChip: document.getElementById(
+      "cpChannelIdentityStatusChip",
+    ),
+    channelPersonaNameInput: document.getElementById("cpChannelPersonaName"),
+    channelToneInput: document.getElementById("cpChannelTone"),
+    channelEmoteVocabInput: document.getElementById("cpChannelEmoteVocab"),
+    channelLoreInput: document.getElementById("cpChannelLore"),
+    channelIdentityHint: document.getElementById("cpChannelIdentityHint"),
     agentNotesStatusChip: document.getElementById("cpAgentNotesStatusChip"),
     agentNotesInput: document.getElementById("cpAgentNotes"),
     agentNotesHint: document.getElementById("cpAgentNotesHint"),
@@ -533,6 +608,10 @@ export function setControlPlaneBusy(els, busy) {
     els?.channelTemperatureInput,
     els?.channelTopPInput,
     els?.channelAgentPausedInput,
+    els?.channelPersonaNameInput,
+    els?.channelToneInput,
+    els?.channelEmoteVocabInput,
+    els?.channelLoreInput,
     els?.agentNotesInput,
     els?.loadChannelConfigBtn,
     els?.saveChannelConfigBtn,
@@ -690,6 +769,10 @@ export function collectChannelConfigPayload(els) {
     temperature: readOptionalFloat(els?.channelTemperatureInput, 0, 2),
     top_p: readOptionalFloat(els?.channelTopPInput, 0, 1),
     agent_paused: Boolean(els?.channelAgentPausedInput?.checked),
+    persona_name: String(els?.channelPersonaNameInput?.value || ""),
+    tone: String(els?.channelToneInput?.value || ""),
+    emote_vocab: readTokenList(els?.channelEmoteVocabInput),
+    lore: String(els?.channelLoreInput?.value || ""),
   };
 }
 

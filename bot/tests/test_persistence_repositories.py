@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
+from bot.persistence_channel_identity_repository import ChannelIdentityRepository
 from bot.persistence_layer import PersistenceLayer
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
@@ -34,6 +35,30 @@ def test_agent_notes_repository_sanitizes_text_and_marks_has_notes():
     assert saved["notes"] == "Priorize lore.\nSem backseat."
     assert saved["has_notes"] is True
     assert loaded["notes"] == "Priorize lore.\nSem backseat."
+
+
+def test_channel_identity_repository_memory_roundtrip_and_normalization():
+    cache: dict[str, dict[str, object]] = {}
+    repository = ChannelIdentityRepository(enabled=False, client=None, cache=cache)
+
+    saved = repository.save_sync(
+        "Canal_A",
+        persona_name="  Byte   Coach ",
+        tone="  tatico \n objetivo  ",
+        emote_vocab=["PogChamp", "LUL", "PogChamp", "", "  Kappa  "],
+        lore="Linha 1\nLinha 2",
+    )
+    loaded = repository.load_sync("canal_a")
+
+    assert saved["channel_id"] == "canal_a"
+    assert saved["source"] == "memory"
+    assert saved["persona_name"] == "Byte Coach"
+    assert saved["tone"] == "tatico objetivo"
+    assert saved["emote_vocab"] == ["PogChamp", "LUL", "Kappa"]
+    assert saved["lore"] == "Linha 1\nLinha 2"
+    assert saved["has_identity"] is True
+    assert loaded["persona_name"] == "Byte Coach"
+    assert loaded["emote_vocab"] == ["PogChamp", "LUL", "Kappa"]
 
 
 def test_observability_history_repository_memory_timeline_and_latest_snapshots():
@@ -118,6 +143,7 @@ def test_persistence_layer_facade_shares_repository_caches():
 
     assert layer._channel_config_repo._cache is layer._channel_config_cache
     assert layer._agent_notes_repo._cache is layer._agent_notes_cache
+    assert layer._channel_identity_repo._cache is layer._channel_identity_cache
     assert layer._observability_history_repo._cache is layer._observability_channel_history_cache
     assert layer._post_stream_report_repo._cache is layer._post_stream_report_cache
     assert layer._semantic_memory_repo._cache is layer._semantic_memory_cache

@@ -23,6 +23,7 @@ DUPLICATION_TARGETS = (
     "bot/persistence_layer.py",
     "bot/persistence_channel_config_repository.py",
     "bot/persistence_agent_notes_repository.py",
+    "bot/persistence_channel_identity_repository.py",
     "bot/persistence_observability_history_repository.py",
     "bot/persistence_cached_channel_repository.py",
 )

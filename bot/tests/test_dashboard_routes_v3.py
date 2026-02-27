@@ -129,6 +129,10 @@ class TestDashboardRoutesV3:
             style_profile="Tatico",
             channel_paused=True,
             agent_notes="",
+            persona_name="Byte Coach",
+            persona_tone="analitico",
+            persona_emote_vocab=["PogChamp", "LUL"],
+            persona_lore="Contexto ativo do canal.",
             last_byte_reply="Segura a call.",
             live_observability={"game": "Balatro", "topic": "deck tech"},
             recent_chat_entries=["viewer: hi", "byte: bora"],
@@ -152,6 +156,16 @@ class TestDashboardRoutesV3:
             "updated_at": "2026-02-27T18:01:00Z",
             "source": "supabase",
         }
+        mock_persistence.load_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "analitico",
+            "emote_vocab": ["PogChamp", "LUL"],
+            "lore": "Contexto ativo do canal.",
+            "has_identity": True,
+            "updated_at": "2026-02-27T18:02:00Z",
+            "source": "supabase",
+        }
         mock_persistence.load_recent_history_sync.return_value = ["viewer: hi", "byte: bora"]
 
         payload = build_channel_context_payload("canal_a")
@@ -164,6 +178,9 @@ class TestDashboardRoutesV3:
         assert payload["channel"]["has_persisted_notes"] is True
         assert payload["channel"]["persisted_state"]["current_game"] == "Balatro"
         assert payload["channel"]["persisted_agent_notes"]["notes"] == "Sem spoiler pesado."
+        assert payload["channel"]["persisted_channel_identity"]["persona_name"] == "Byte Coach"
+        assert payload["channel"]["persisted_channel_identity"]["has_identity"] is True
+        assert payload["channel"]["has_persisted_identity"] is True
         assert payload["channel"]["persisted_recent_history"] == ["viewer: hi", "byte: bora"]
 
     @patch("bot.dashboard_server_routes.persistence")
@@ -185,6 +202,7 @@ class TestDashboardRoutesV3:
         )
         mock_persistence.load_channel_state_sync.return_value = None
         mock_persistence.load_agent_notes_sync.return_value = None
+        mock_persistence.load_channel_identity_sync.return_value = None
         mock_persistence.load_recent_history_sync.return_value = []
 
         payload = build_channel_context_payload("canal_a")
@@ -192,8 +210,10 @@ class TestDashboardRoutesV3:
         assert payload["channel"]["runtime_loaded"] is True
         assert payload["channel"]["has_persisted_state"] is False
         assert payload["channel"]["has_persisted_notes"] is False
+        assert payload["channel"]["has_persisted_identity"] is False
         assert payload["channel"]["persisted_state"] is None
         assert payload["channel"]["persisted_agent_notes"] is None
+        assert payload["channel"]["persisted_channel_identity"] is None
         assert payload["channel"]["persisted_recent_history"] == []
 
     @patch("bot.dashboard_server_routes.persistence")

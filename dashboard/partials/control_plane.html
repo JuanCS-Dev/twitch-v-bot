@@ -154,6 +154,69 @@
           </label>
         </div>
       </div>
+      <div
+        class="form-row"
+        style="
+          align-items: center;
+          gap: var(--spacing-2);
+          margin-bottom: var(--spacing-2);
+        "
+      >
+        <span class="chip">Channel Identity</span>
+        <span id="cpChannelIdentityStatusChip" class="chip pending"
+          >IDENTITY CLEAR</span
+        >
+      </div>
+      <div
+        class="form-row"
+        style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
+      >
+        <div class="form-group" style="min-width: 220px">
+          <label for="cpChannelPersonaName">Persona Name</label>
+          <input
+            id="cpChannelPersonaName"
+            class="form-control"
+            type="text"
+            maxlength="80"
+            placeholder="Ex.: Byte Coach"
+          />
+        </div>
+        <div class="form-group" style="min-width: 280px">
+          <label for="cpChannelTone">Tone</label>
+          <input
+            id="cpChannelTone"
+            class="form-control"
+            type="text"
+            maxlength="160"
+            placeholder="Ex.: tatico, objetivo e sem spoiler"
+          />
+        </div>
+      </div>
+      <div
+        class="form-row"
+        style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
+      >
+        <div class="form-group" style="min-width: 260px; flex: 1">
+          <label for="cpChannelEmoteVocab">Emote Vocab (csv)</label>
+          <input
+            id="cpChannelEmoteVocab"
+            class="form-control"
+            type="text"
+            maxlength="720"
+            placeholder="Ex.: PogChamp, Kappa, LUL"
+          />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: var(--spacing-2)">
+        <label for="cpChannelLore">Lore / Continuity</label>
+        <textarea
+          id="cpChannelLore"
+          class="form-control"
+          rows="3"
+          maxlength="1200"
+          placeholder="Contexto recorrente do canal para continuidade das respostas."
+        ></textarea>
+      </div>
       <div class="form-group" style="margin-bottom: var(--spacing-2)">
         <label for="cpAgentNotes">Operational Notes</label>
         <textarea
@@ -169,6 +232,14 @@
         style="margin: 0 0 var(--spacing-1) 0"
       >
         Overrides persistidos em <code>channels_config</code>.
+      </p>
+      <p
+        id="cpChannelIdentityHint"
+        class="panel-hint"
+        style="margin: 0 0 var(--spacing-1) 0"
+      >
+        Identidade persistida em <code>channel_identity</code> e aplicada no
+        system prompt.
       </p>
       <p id="cpAgentNotesHint" class="panel-hint" style="margin: 0">
         Notes persistidas em <code>agent_notes</code> e injetadas no system

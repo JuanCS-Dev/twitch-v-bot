@@ -96,7 +96,14 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   await getControlPlaneState();
   await updateControlPlaneConfig({ autonomy_enabled: true });
   await getChannelConfig("Canal_A");
-  await updateChannelConfig({ channel_id: "canal_a", temperature: 0.77 });
+  await updateChannelConfig({
+    channel_id: "canal_a",
+    temperature: 0.77,
+    persona_name: "Byte Coach",
+    tone: "analitico",
+    emote_vocab: ["PogChamp", "LUL"],
+    lore: "Lore ativo.",
+  });
   await getAgentNotes("Canal_A");
   await updateAgentNotes({ channel_id: "canal_a", notes: "anotacao" });
   await suspendAgent({ reason: "panic_button" });
@@ -112,10 +119,14 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   assert.ok(findCall(calls, "/api/channel-config?channel=canal_a", "GET"));
   const updateConfigCall = findCall(calls, "/api/channel-config", "PUT");
   assert.ok(updateConfigCall);
-  assert.equal(
-    JSON.parse(String(updateConfigCall.options.body)).channel_id,
-    "canal_a",
-  );
+  assert.deepEqual(JSON.parse(String(updateConfigCall.options.body)), {
+    channel_id: "canal_a",
+    temperature: 0.77,
+    persona_name: "Byte Coach",
+    tone: "analitico",
+    emote_vocab: ["PogChamp", "LUL"],
+    lore: "Lore ativo.",
+  });
 
   assert.ok(findCall(calls, "/api/agent-notes?channel=canal_a", "GET"));
   const updateNotesCall = findCall(calls, "/api/agent-notes", "PUT");
@@ -184,7 +195,11 @@ test("operational runtime APIs keep backend contract", async () => {
     note: "ok",
   });
   assert.ok(findCall(calls, "/api/ops-playbooks?channel=canal_z", "GET"));
-  const triggerPlaybookCall = findCall(calls, "/api/ops-playbooks/trigger", "POST");
+  const triggerPlaybookCall = findCall(
+    calls,
+    "/api/ops-playbooks/trigger",
+    "POST",
+  );
   assert.ok(triggerPlaybookCall);
   assert.deepEqual(JSON.parse(String(triggerPlaybookCall.options.body)), {
     playbook_id: "queue_backlog_recovery",

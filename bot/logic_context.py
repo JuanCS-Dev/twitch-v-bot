@@ -43,6 +43,10 @@ class StreamContext:
         self.channel_paused = False
         self.channel_config_loaded = False
         self.agent_notes = ""
+        self.persona_name = ""
+        self.persona_tone = ""
+        self.persona_emote_vocab: list[str] = []
+        self.persona_lore = ""
         self.live_observability: dict[str, str] = {
             "game": "",
             "movie": "",
@@ -207,10 +211,16 @@ class ContextManager:
             ctx.inference_temperature = channel_config.get("temperature")
             ctx.inference_top_p = channel_config.get("top_p")
             ctx.channel_paused = bool(channel_config.get("agent_paused", False))
-            ctx.channel_config_loaded = True
 
             agent_notes = await persistence.load_agent_notes(channel_id)
             ctx.agent_notes = str(agent_notes.get("notes") or "")
+
+            channel_identity = await persistence.load_channel_identity(channel_id)
+            ctx.persona_name = str(channel_identity.get("persona_name") or "")
+            ctx.persona_tone = str(channel_identity.get("tone") or "")
+            ctx.persona_emote_vocab = list(channel_identity.get("emote_vocab") or [])
+            ctx.persona_lore = str(channel_identity.get("lore") or "")
+            ctx.channel_config_loaded = True
 
         try:
             loop = asyncio.get_running_loop()
@@ -260,6 +270,14 @@ class ContextManager:
             top_p=channel_config.get("top_p"),
             agent_paused=bool(channel_config.get("agent_paused", False)),
         )
+        channel_identity = persistence.load_channel_identity_sync(key)
+        self.apply_channel_identity(
+            key,
+            persona_name=str(channel_identity.get("persona_name") or ""),
+            tone=str(channel_identity.get("tone") or ""),
+            emote_vocab=list(channel_identity.get("emote_vocab") or []),
+            lore=str(channel_identity.get("lore") or ""),
+        )
         return ctx
 
     def apply_agent_notes(self, channel_id: str, *, notes: str) -> None:
@@ -269,6 +287,27 @@ class ContextManager:
         if ctx is None:
             return
         ctx.agent_notes = str(notes or "")
+
+    def apply_channel_identity(
+        self,
+        channel_id: str,
+        *,
+        persona_name: str,
+        tone: str,
+        emote_vocab: list[str] | tuple[str, ...],
+        lore: str,
+    ) -> None:
+        key = (channel_id or "default").strip().lower()
+        with self._lock:
+            ctx = self._contexts.get(key)
+        if ctx is None:
+            return
+        ctx.persona_name = str(persona_name or "")
+        ctx.persona_tone = str(tone or "")
+        ctx.persona_emote_vocab = [
+            str(item).strip() for item in list(emote_vocab or []) if str(item).strip()
+        ]
+        ctx.persona_lore = str(lore or "")
 
     async def cleanup(self, channel_id: str) -> None:
         """Remove contexto da RAM (Async para manter assinatura onde esperado)."""

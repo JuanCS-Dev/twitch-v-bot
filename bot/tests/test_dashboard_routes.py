@@ -125,10 +125,21 @@ class TestDashboardRoutes(unittest.TestCase):
             "updated_at": "2026-02-27T12:00:00Z",
             "source": "supabase",
         }
+        mock_persistence.load_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "tatico e objetivo",
+            "emote_vocab": ["PogChamp", "LUL"],
+            "lore": "Canal focado em analise de gameplay.",
+            "has_identity": True,
+            "updated_at": "2026-02-27T12:05:00Z",
+            "source": "supabase",
+        }
 
         routes.handle_get(self.handler)
 
         mock_persistence.load_channel_config_sync.assert_called_with("canal_a")
+        mock_persistence.load_channel_identity_sync.assert_called_with("canal_a")
         self.handler._send_json.assert_called()
 
     def test_handle_get_channel_config_missing_channel(self):
@@ -261,6 +272,13 @@ class TestDashboardRoutes(unittest.TestCase):
             "top_p": 0.55,
             "agent_paused": False,
         }
+        mock_persistence.load_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "tatico",
+            "emote_vocab": ["PogChamp"],
+            "lore": "Lore base.",
+        }
         mock_persistence.save_channel_config_sync.return_value = {
             "channel_id": "canal_a",
             "temperature": 0.41,
@@ -270,21 +288,46 @@ class TestDashboardRoutes(unittest.TestCase):
             "updated_at": "2026-02-27T13:00:00Z",
             "source": "supabase",
         }
+        mock_persistence.save_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "tatico",
+            "emote_vocab": ["PogChamp"],
+            "lore": "Lore base.",
+            "has_identity": True,
+            "updated_at": "2026-02-27T13:00:00Z",
+            "source": "supabase",
+        }
 
         routes.handle_put(self.handler)
 
         mock_persistence.load_channel_config_sync.assert_called_with("canal_a")
+        mock_persistence.load_channel_identity_sync.assert_called_with("canal_a")
         mock_persistence.save_channel_config_sync.assert_called_with(
             "canal_a",
             temperature=0.41,
             top_p=0.77,
             agent_paused=True,
         )
+        mock_persistence.save_channel_identity_sync.assert_called_with(
+            "canal_a",
+            persona_name="Byte Coach",
+            tone="tatico",
+            emote_vocab=["PogChamp"],
+            lore="Lore base.",
+        )
         mock_context_manager.apply_channel_config.assert_called_with(
             "canal_a",
             temperature=0.41,
             top_p=0.77,
             agent_paused=True,
+        )
+        mock_context_manager.apply_channel_identity.assert_called_with(
+            "canal_a",
+            persona_name="Byte Coach",
+            tone="tatico",
+            emote_vocab=["PogChamp"],
+            lore="Lore base.",
         )
         self.handler._send_json.assert_called()
 
@@ -303,12 +346,29 @@ class TestDashboardRoutes(unittest.TestCase):
             "channel_id": "canal_a",
             "agent_paused": True,
         }
+        mock_persistence.load_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "calmo",
+            "emote_vocab": ["Kappa", "LUL"],
+            "lore": "Contexto legado.",
+        }
         mock_persistence.save_channel_config_sync.return_value = {
             "channel_id": "canal_a",
             "temperature": 0.29,
             "top_p": 0.64,
             "agent_paused": True,
             "has_override": True,
+            "updated_at": "2026-02-27T13:00:00Z",
+            "source": "supabase",
+        }
+        mock_persistence.save_channel_identity_sync.return_value = {
+            "channel_id": "canal_a",
+            "persona_name": "Byte Coach",
+            "tone": "calmo",
+            "emote_vocab": ["Kappa", "LUL"],
+            "lore": "Contexto legado.",
+            "has_identity": True,
             "updated_at": "2026-02-27T13:00:00Z",
             "source": "supabase",
         }
@@ -321,11 +381,25 @@ class TestDashboardRoutes(unittest.TestCase):
             top_p=0.64,
             agent_paused=True,
         )
+        mock_persistence.save_channel_identity_sync.assert_called_with(
+            "canal_a",
+            persona_name="Byte Coach",
+            tone="calmo",
+            emote_vocab=["Kappa", "LUL"],
+            lore="Contexto legado.",
+        )
         mock_context_manager.apply_channel_config.assert_called_with(
             "canal_a",
             temperature=0.29,
             top_p=0.64,
             agent_paused=True,
+        )
+        mock_context_manager.apply_channel_identity.assert_called_with(
+            "canal_a",
+            persona_name="Byte Coach",
+            tone="calmo",
+            emote_vocab=["Kappa", "LUL"],
+            lore="Contexto legado.",
         )
         self.handler._send_json.assert_called()
 

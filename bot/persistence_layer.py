@@ -6,6 +6,7 @@ from supabase import Client, create_client
 
 from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
+from bot.persistence_channel_identity_repository import ChannelIdentityRepository
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
 from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
@@ -27,6 +28,7 @@ class PersistenceLayer:
         self._enabled = False
         self._channel_config_cache: dict[str, dict[str, Any]] = {}
         self._agent_notes_cache: dict[str, dict[str, Any]] = {}
+        self._channel_identity_cache: dict[str, dict[str, Any]] = {}
         self._observability_rollup_cache: dict[str, Any] | None = None
         self._observability_channel_history_cache: dict[str, list[dict[str, Any]]] = {}
         self._post_stream_report_cache: dict[str, dict[str, Any]] = {}
@@ -51,6 +53,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._agent_notes_cache,
+        )
+        self._channel_identity_repo = ChannelIdentityRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._channel_identity_cache,
         )
         self._observability_history_repo = ObservabilityHistoryRepository(
             enabled=self._enabled,
@@ -145,6 +152,46 @@ class PersistenceLayer:
 
     async def save_agent_notes(self, channel_id: str, *, notes: Any = None) -> dict[str, Any]:
         return self.save_agent_notes_sync(channel_id, notes=notes)
+
+    def load_channel_identity_sync(self, channel_id: str) -> dict[str, Any]:
+        return self._channel_identity_repo.load_sync(channel_id)
+
+    async def load_channel_identity(self, channel_id: str) -> dict[str, Any]:
+        return self.load_channel_identity_sync(channel_id)
+
+    def save_channel_identity_sync(
+        self,
+        channel_id: str,
+        *,
+        persona_name: Any = None,
+        tone: Any = None,
+        emote_vocab: Any = None,
+        lore: Any = None,
+    ) -> dict[str, Any]:
+        return self._channel_identity_repo.save_sync(
+            channel_id,
+            persona_name=persona_name,
+            tone=tone,
+            emote_vocab=emote_vocab,
+            lore=lore,
+        )
+
+    async def save_channel_identity(
+        self,
+        channel_id: str,
+        *,
+        persona_name: Any = None,
+        tone: Any = None,
+        emote_vocab: Any = None,
+        lore: Any = None,
+    ) -> dict[str, Any]:
+        return self.save_channel_identity_sync(
+            channel_id,
+            persona_name=persona_name,
+            tone=tone,
+            emote_vocab=emote_vocab,
+            lore=lore,
+        )
 
     # --- Persistência de Estado (Channel State) ---
 

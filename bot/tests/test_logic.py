@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from bot.logic import agent_inference, build_dynamic_prompt, context_manager, enforce_reply_limits
 from bot.logic_inference import (
     _build_agent_notes_instruction,
+    _build_identity_instruction,
     _build_messages,
     _execute_inference,
     _record_token_usage,
@@ -128,6 +129,34 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
         self.assertIn("- Priorize contexto do streamer.", messages[0]["content"])
         self.assertIn("- Evite backseat agressivo.", messages[0]["content"])
         self.assertEqual(messages[1]["role"], "user")
+
+    def test_build_identity_instruction_returns_empty_when_blank(self):
+        ctx = MagicMock(
+            persona_name=" ",
+            persona_tone="\n",
+            persona_emote_vocab=[],
+            persona_lore="  ",
+        )
+
+        instruction = _build_identity_instruction(ctx)
+
+        self.assertEqual(instruction, "")
+
+    def test_build_messages_injects_identity_into_system_prompt(self):
+        ctx = context_manager.get("identity_channel")
+        ctx.persona_name = "Byte Coach"
+        ctx.persona_tone = "analitico e objetivo"
+        ctx.persona_emote_vocab = ["PogChamp", "LUL"]
+        ctx.persona_lore = "Canal com foco em analise.\nEvitar spoiler de lore."
+
+        messages = _build_messages("status?", "viewer", ctx, True, [])
+
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertIn("Identidade do canal", messages[0]["content"])
+        self.assertIn("- Persona principal: Byte Coach", messages[0]["content"])
+        self.assertIn("- Tom de voz: analitico e objetivo", messages[0]["content"])
+        self.assertIn("- Vocabulario de emotes: PogChamp, LUL", messages[0]["content"])
+        self.assertIn("- Lore/continuidade:", messages[0]["content"])
 
     def test_build_agent_notes_instruction_limits_and_compacts_lines(self):
         ctx = MagicMock(
