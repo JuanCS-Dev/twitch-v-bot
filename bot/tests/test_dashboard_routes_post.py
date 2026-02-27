@@ -32,6 +32,86 @@ class TestDashboardRoutesPost(unittest.TestCase):
         self.handler._send_json.assert_called_with({"ok": True}, status_code=200)
 
     @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_agent_suspend_success(self, mock_cp):
+        self.handler.path = "/api/agent/suspend"
+        self.handler._read_json_payload.return_value = {"reason": "panic_button"}
+        mock_cp.get_config.return_value = {"agent_suspended": True}
+        mock_cp.runtime_snapshot.return_value = {"suspended": True}
+        mock_cp.build_capabilities.return_value = {"autonomy": {"suspended": True}}
+
+        routes_post.handle_post(self.handler)
+        mock_cp.suspend_agent.assert_called_with(reason="panic_button")
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "action": "suspend",
+                "reason": "panic_button",
+                "mode": routes_post.TWITCH_CHAT_MODE,
+                "config": {"agent_suspended": True},
+                "autonomy": {"suspended": True},
+                "capabilities": {"autonomy": {"suspended": True}},
+            },
+            status_code=200,
+        )
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
+    def test_handle_agent_resume_success_uses_default_reason(self, mock_cp):
+        self.handler.path = "/api/agent/resume"
+        self.handler._read_json_payload.return_value = {}
+        mock_cp.get_config.return_value = {"agent_suspended": False}
+        mock_cp.runtime_snapshot.return_value = {"suspended": False}
+        mock_cp.build_capabilities.return_value = {"autonomy": {"suspended": False}}
+
+        routes_post.handle_post(self.handler)
+        mock_cp.resume_agent.assert_called_with(reason="manual_dashboard")
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "action": "resume",
+                "reason": "manual_dashboard",
+                "mode": routes_post.TWITCH_CHAT_MODE,
+                "config": {"agent_suspended": False},
+                "autonomy": {"suspended": False},
+                "capabilities": {"autonomy": {"suspended": False}},
+            },
+            status_code=200,
+        )
+
+    def test_handle_agent_suspend_invalid_json(self):
+        self.handler.path = "/api/agent/suspend"
+        self.handler._read_json_payload.side_effect = ValueError("bad json")
+
+        routes_post.handle_post(self.handler)
+        self.handler._send_json.assert_called_with(
+            {"ok": False, "error": "invalid_request", "message": "bad json"},
+            status_code=400,
+        )
+
+    def test_handle_agent_resume_unauthorized(self):
+        self.handler.path = "/api/agent/resume"
+        self.handler._dashboard_authorized.return_value = False
+
+        routes_post.handle_post(self.handler)
+        self.handler._send_forbidden.assert_called_once()
+
+    def test_handle_agent_suspend_unauthorized(self):
+        self.handler.path = "/api/agent/suspend"
+        self.handler._dashboard_authorized.return_value = False
+
+        routes_post.handle_post(self.handler)
+        self.handler._send_forbidden.assert_called_once()
+
+    def test_handle_agent_resume_invalid_json(self):
+        self.handler.path = "/api/agent/resume"
+        self.handler._read_json_payload.side_effect = ValueError("bad json")
+
+        routes_post.handle_post(self.handler)
+        self.handler._send_json.assert_called_with(
+            {"ok": False, "error": "invalid_request", "message": "bad json"},
+            status_code=400,
+        )
+
+    @patch("bot.dashboard_server_routes_post.control_plane")
     def test_handle_action_decision_success(self, mock_cp):
         self.handler.path = "/api/action-queue/123/decision"
         self.handler._read_json_payload.return_value = {"decision": "allow"}

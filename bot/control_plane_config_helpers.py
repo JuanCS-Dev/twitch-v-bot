@@ -90,6 +90,21 @@ def runtime_base_snapshot(
 ) -> dict[str, Any]:
     return {
         "enabled": bool(config.get("autonomy_enabled", False)),
+        "suspended": bool(config.get("agent_suspended", False)),
+        "suspended_at": (
+            utc_iso(float(runtime.get("agent_suspended_at", 0.0)))
+            if float(runtime.get("agent_suspended_at", 0.0)) > 0
+            else ""
+        ),
+        "suspended_epoch": float(runtime.get("agent_suspended_at", 0.0)),
+        "suspend_reason": str(runtime.get("agent_suspend_reason", "")),
+        "last_resumed_at": (
+            utc_iso(float(runtime.get("agent_last_resumed_at", 0.0)))
+            if float(runtime.get("agent_last_resumed_at", 0.0)) > 0
+            else ""
+        ),
+        "last_resumed_epoch": float(runtime.get("agent_last_resumed_at", 0.0)),
+        "last_resume_reason": str(runtime.get("agent_last_resume_reason", "")),
         "loop_running": bool(runtime.get("loop_running", False)),
         "last_heartbeat_at": (
             utc_iso(float(runtime.get("last_heartbeat_at", 0.0)))

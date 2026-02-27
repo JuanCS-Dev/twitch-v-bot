@@ -1,5 +1,7 @@
 import {
     getControlPlaneState,
+    resumeAgent,
+    suspendAgent,
     updateControlPlaneConfig,
 } from "./api.js";
 import {
@@ -66,6 +68,35 @@ export function createControlPlaneController({
         }
     }
 
+    async function updateAgentSuspension(nextSuspended) {
+        if (!cpEls) return;
+        const actionLabel = nextSuspended ? "Suspending" : "Resuming";
+        setControlPlaneBusy(cpEls, true);
+        showControlPlaneFeedback(cpEls, `${actionLabel} agent...`, "warn");
+        try {
+            const payload = nextSuspended
+                ? await suspendAgent({ reason: "manual_dashboard_suspend" })
+                : await resumeAgent({ reason: "manual_dashboard_resume" });
+            renderControlPlaneState(payload, cpEls);
+            renderAutonomyRuntime(payload?.autonomy || {}, autEls);
+            applyRuntimeCapabilities(payload?.capabilities || {}, payload?.mode || "");
+            showControlPlaneFeedback(
+                cpEls,
+                nextSuspended ? "Agente suspenso." : "Agente retomado.",
+                "ok"
+            );
+        } catch (error) {
+            console.error("Control plane suspend/resume error", error);
+            showControlPlaneFeedback(
+                cpEls,
+                `Erro: ${getErrorMessage(error, "Falha ao atualizar estado do agente.")}`,
+                "error"
+            );
+        } finally {
+            setControlPlaneBusy(cpEls, false);
+        }
+    }
+
     function bindControlPlaneEvents() {
         if (!cpEls) return;
         if (cpEls.addGoalBtn) {
@@ -85,6 +116,16 @@ export function createControlPlaneController({
         if (cpEls.reloadBtn) {
             cpEls.reloadBtn.addEventListener("click", () => {
                 loadControlPlaneState(true);
+            });
+        }
+        if (cpEls.suspendBtn) {
+            cpEls.suspendBtn.addEventListener("click", () => {
+                updateAgentSuspension(true);
+            });
+        }
+        if (cpEls.resumeBtn) {
+            cpEls.resumeBtn.addEventListener("click", () => {
+                updateAgentSuspension(false);
             });
         }
     }

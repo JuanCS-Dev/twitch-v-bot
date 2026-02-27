@@ -25,6 +25,7 @@ class ControlPlaneConfigRuntime:
         self._config: dict[str, Any] = {
             "version": 1,
             "autonomy_enabled": False,
+            "agent_suspended": False,
             "clip_pipeline_enabled": False,
             "clip_api_enabled": False,
             "clip_mode_default": "live",
@@ -39,6 +40,10 @@ class ControlPlaneConfigRuntime:
         }
         self._runtime: dict[str, Any] = {
             "loop_running": False,
+            "agent_suspended_at": 0.0,
+            "agent_suspend_reason": "",
+            "agent_last_resumed_at": 0.0,
+            "agent_last_resume_reason": "",
             "last_heartbeat_at": 0.0,
             "last_tick_at": 0.0,
             "last_tick_reason": "boot",
@@ -68,6 +73,21 @@ class ControlPlaneConfigRuntime:
 
             if "autonomy_enabled" in payload:
                 config["autonomy_enabled"] = bool(payload.get("autonomy_enabled"))
+
+            if "agent_suspended" in payload:
+                next_suspended = bool(payload.get("agent_suspended"))
+                previous_suspended = bool(self._config.get("agent_suspended", False))
+                config["agent_suspended"] = next_suspended
+                if next_suspended and not previous_suspended:
+                    self._runtime["agent_suspended_at"] = now
+                    self._runtime["agent_suspend_reason"] = "config_update"
+                    self._runtime["last_heartbeat_at"] = now
+                if not next_suspended and previous_suspended:
+                    self._runtime["agent_suspended_at"] = 0.0
+                    self._runtime["agent_suspend_reason"] = ""
+                    self._runtime["agent_last_resumed_at"] = now
+                    self._runtime["agent_last_resume_reason"] = "config_update"
+                    self._runtime["last_heartbeat_at"] = now
 
             if "clip_pipeline_enabled" in payload:
                 config["clip_pipeline_enabled"] = bool(payload.get("clip_pipeline_enabled"))
@@ -141,6 +161,40 @@ class ControlPlaneConfigRuntime:
             self._config = config
             return copy.deepcopy(self._config)
 
+    def suspend_agent(
+        self,
+        *,
+        reason: str = "manual_dashboard",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        now = time.time() if timestamp is None else float(timestamp)
+        safe_reason = clip_text(reason or "manual_dashboard", max_chars=120)
+        with self._lock:
+            self._config["agent_suspended"] = True
+            self._config["updated_at"] = utc_iso(now)
+            self._runtime["agent_suspended_at"] = now
+            self._runtime["agent_suspend_reason"] = safe_reason
+            self._runtime["last_heartbeat_at"] = now
+            return copy.deepcopy(self._config)
+
+    def resume_agent(
+        self,
+        *,
+        reason: str = "manual_dashboard",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        now = time.time() if timestamp is None else float(timestamp)
+        safe_reason = clip_text(reason or "manual_dashboard", max_chars=120)
+        with self._lock:
+            self._config["agent_suspended"] = False
+            self._config["updated_at"] = utc_iso(now)
+            self._runtime["agent_suspended_at"] = 0.0
+            self._runtime["agent_suspend_reason"] = ""
+            self._runtime["agent_last_resumed_at"] = now
+            self._runtime["agent_last_resume_reason"] = safe_reason
+            self._runtime["last_heartbeat_at"] = now
+            return copy.deepcopy(self._config)
+
     def set_loop_running(self, running: bool) -> None:
         with self._lock:
             self._runtime["loop_running"] = bool(running)
@@ -192,6 +246,9 @@ class ControlPlaneConfigRuntime:
             usage = budget_usage(self._auto_chat_sent_timestamps, now)
             cfg = self._config
 
+            if bool(cfg.get("agent_suspended", False)):
+                return False, "agent_suspended", usage
+
             if int(cfg["budget_messages_daily"]) <= 0:
                 return False, "budget_daily_disabled", usage
 
@@ -229,6 +286,9 @@ class ControlPlaneConfigRuntime:
     ) -> list[dict[str, Any]]:
         now = time.time() if timestamp is None else float(timestamp)
         with self._lock:
+            if bool(self._config.get("agent_suspended", False)) and not force:
+                return []
+
             if not self._config.get("autonomy_enabled", False) and not force:
                 return []
 

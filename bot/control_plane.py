@@ -25,6 +25,22 @@ class ControlPlaneState:
     def update_config(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._config_runtime.update_config(payload)
 
+    def suspend_agent(
+        self,
+        *,
+        reason: str = "manual_dashboard",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        return self._config_runtime.suspend_agent(reason=reason, timestamp=timestamp)
+
+    def resume_agent(
+        self,
+        *,
+        reason: str = "manual_dashboard",
+        timestamp: float | None = None,
+    ) -> dict[str, Any]:
+        return self._config_runtime.resume_agent(reason=reason, timestamp=timestamp)
+
     def set_loop_running(self, running: bool) -> None:
         self._config_runtime.set_loop_running(running)
 
@@ -141,6 +157,8 @@ class ControlPlaneState:
                 "enabled": True,
                 "reason": "Autonomia com agenda e budget anti-spam disponivel.",
                 "active": bool(config.get("autonomy_enabled", False)),
+                "suspended": bool(config.get("agent_suspended", False)),
+                "suspendable": True,
             },
             "risk_actions": {
                 "enabled": True,

@@ -1,5 +1,5 @@
 <section class="grid-two" id="controlPlaneSection">
-  <article class="panel">
+  <article class="panel" id="cpPanel">
     <h2>Control Plane</h2>
     <p class="panel-hint">Ajustes transacionais da IA em tempo real. Opções avançadas estão ocultas por padrão (Progressive Disclosure).</p>
 
@@ -8,6 +8,20 @@
       <span id="cpResponseContract" class="chip">Contrato ativo: 1 mensagem / 4 linhas.</span>
     </div>
     <p id="cpCapabilitiesLine" class="panel-hint" style="margin-bottom: var(--spacing-5);">Carregando capacidades...</p>
+
+    <div style="margin-bottom:var(--spacing-4); padding:var(--spacing-4); background:var(--bg-base); border-radius:var(--radius-md); border:1px solid var(--border-default);">
+      <div class="form-row" style="align-items:center; justify-content:space-between; gap:var(--spacing-3); margin-bottom:var(--spacing-2);">
+        <div class="form-row" style="align-items:center; gap:var(--spacing-2); margin:0;">
+          <span class="chip">Operational Control</span>
+          <span id="cpAgentStatusChip" class="chip pending">RUNNING</span>
+        </div>
+        <div class="form-row" style="gap:var(--spacing-2); margin:0;">
+          <button id="cpSuspendBtn" class="btn btn-danger" type="button">Panic Suspend</button>
+          <button id="cpResumeBtn" class="btn btn-secondary" type="button">Resume Agent</button>
+        </div>
+      </div>
+      <p id="cpAgentStatusHint" class="panel-hint" style="margin:0;">Agente operacional.</p>
+    </div>
 
     <div class="form-row" style="flex-wrap:wrap;">
       <div class="form-group" style="min-width:170px;">

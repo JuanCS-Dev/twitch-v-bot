@@ -155,9 +155,51 @@ function clearGoalList(goalList) {
     goalList.innerHTML = "";
 }
 
+function renderAgentSuspension(els, autonomy = {}, config = {}) {
+    const suspended = Boolean(autonomy.suspended ?? config.agent_suspended);
+    const reason = String(autonomy.suspend_reason || "").trim();
+
+    els.currentSuspendedState = suspended;
+
+    if (els?.panel) {
+        if (suspended) {
+            els.panel.classList.add("attention-required");
+        } else {
+            els.panel.classList.remove("attention-required");
+        }
+    }
+
+    if (els?.agentStatusChip) {
+        els.agentStatusChip.classList.remove("ok", "warn", "pending", "error");
+        setText(els.agentStatusChip, suspended ? "SUSPENDED" : "RUNNING");
+        els.agentStatusChip.classList.add(suspended ? "error" : "ok");
+    }
+
+    if (els?.agentStatusHint) {
+        if (suspended) {
+            const since = autonomy.suspended_at ? ` desde ${autonomy.suspended_at}` : "";
+            setText(els.agentStatusHint, `Motivo: ${reason || "manual_dashboard"}${since}.`);
+        } else {
+            const resumedAt = String(autonomy.last_resumed_at || "").trim();
+            const resumeReason = String(autonomy.last_resume_reason || "").trim();
+            if (resumedAt) {
+                setText(
+                    els.agentStatusHint,
+                    `Ultima retomada: ${resumeReason || "manual_dashboard"} em ${resumedAt}.`
+                );
+            } else {
+                setText(els.agentStatusHint, "Agente operacional.");
+            }
+        }
+    }
+}
+
 export function getControlPlaneElements() {
     return {
+        panel: document.getElementById("cpPanel"),
         modeChip: document.getElementById("cpModeChip"),
+        agentStatusChip: document.getElementById("cpAgentStatusChip"),
+        agentStatusHint: document.getElementById("cpAgentStatusHint"),
         capabilitiesLine: document.getElementById("cpCapabilitiesLine"),
         responseContract: document.getElementById("cpResponseContract"),
         feedback: document.getElementById("cpFeedbackMsg"),
@@ -172,6 +214,9 @@ export function getControlPlaneElements() {
         addGoalBtn: document.getElementById("cpAddGoalBtn"),
         saveBtn: document.getElementById("cpSaveBtn"),
         reloadBtn: document.getElementById("cpReloadBtn"),
+        suspendBtn: document.getElementById("cpSuspendBtn"),
+        resumeBtn: document.getElementById("cpResumeBtn"),
+        currentSuspendedState: false,
     };
 }
 
@@ -199,6 +244,13 @@ export function setControlPlaneBusy(els, busy) {
         if (element) element.disabled = disabled;
     });
 
+    if (els?.suspendBtn) {
+        els.suspendBtn.disabled = disabled || Boolean(els.currentSuspendedState);
+    }
+    if (els?.resumeBtn) {
+        els.resumeBtn.disabled = disabled || !Boolean(els.currentSuspendedState);
+    }
+
     if (els?.goalsList) {
         const controls = els.goalsList.querySelectorAll("input, textarea, select, button");
         controls.forEach((element) => {
@@ -222,7 +274,7 @@ export function renderControlPlaneCapabilities(els, capabilities = {}, mode = ""
 
     setText(
         els?.capabilitiesLine,
-        `Channel control: ${channelCapability?.enabled ? "on" : "off"} | Autonomia: ${autonomyCapability?.enabled ? "on" : "off"} | Risco: ${riskCapability?.enabled ? "on" : "off"}`
+        `Channel control: ${channelCapability?.enabled ? "on" : "off"} | Autonomia: ${autonomyCapability?.enabled ? "on" : "off"} | Panic: ${autonomyCapability?.suspended ? "suspended" : "ready"} | Risco: ${riskCapability?.enabled ? "on" : "off"}`
     );
 
     const responseContract = capabilities?.response_contract || {};
@@ -234,6 +286,7 @@ export function renderControlPlaneCapabilities(els, capabilities = {}, mode = ""
 export function renderControlPlaneState(payload, els) {
     const safePayload = payload && typeof payload === "object" ? payload : {};
     const config = safePayload.config || {};
+    const autonomy = safePayload.autonomy || {};
 
     if (els?.autonomyEnabled) els.autonomyEnabled.checked = Boolean(config.autonomy_enabled);
     if (els?.heartbeatInterval) els.heartbeatInterval.value = String(config.heartbeat_interval_seconds ?? 60);
@@ -252,6 +305,7 @@ export function renderControlPlaneState(payload, els) {
     }
 
     renderControlPlaneCapabilities(els, safePayload.capabilities || {}, safePayload.mode || "");
+    renderAgentSuspension(els, autonomy, config);
 }
 
 export function appendGoalCard(els, goal = {}, index = 0) {

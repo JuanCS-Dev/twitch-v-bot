@@ -19,6 +19,14 @@ def handle_post(handler: Any) -> None:
         _handle_autonomy_tick(handler)
         return
 
+    if route == "/api/agent/suspend":
+        _handle_agent_suspend(handler)
+        return
+
+    if route == "/api/agent/resume":
+        _handle_agent_resume(handler)
+        return
+
     if route.startswith("/api/action-queue/") and route.endswith("/decision"):
         _handle_action_decision(handler, route)
         return
@@ -77,6 +85,57 @@ def _handle_autonomy_tick(handler: Any) -> None:
         )
         return
     handler._send_json(tick_result, status_code=200)
+
+
+def _send_control_plane_state(handler: Any, *, action: str, reason: str) -> None:
+    handler._send_json(
+        {
+            "ok": True,
+            "action": action,
+            "reason": reason,
+            "mode": TWITCH_CHAT_MODE,
+            "config": control_plane.get_config(),
+            "autonomy": control_plane.runtime_snapshot(),
+            "capabilities": control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE),
+        },
+        status_code=200,
+    )
+
+
+def _handle_agent_suspend(handler: Any) -> None:
+    if not handler._dashboard_authorized():
+        handler._send_forbidden()
+        return
+    try:
+        payload = handler._read_json_payload(allow_empty=True)
+    except ValueError as error:
+        handler._send_json(
+            {"ok": False, "error": "invalid_request", "message": str(error)},
+            status_code=400,
+        )
+        return
+
+    reason = str(payload.get("reason", "manual_dashboard") or "manual_dashboard")
+    control_plane.suspend_agent(reason=reason)
+    _send_control_plane_state(handler, action="suspend", reason=reason)
+
+
+def _handle_agent_resume(handler: Any) -> None:
+    if not handler._dashboard_authorized():
+        handler._send_forbidden()
+        return
+    try:
+        payload = handler._read_json_payload(allow_empty=True)
+    except ValueError as error:
+        handler._send_json(
+            {"ok": False, "error": "invalid_request", "message": str(error)},
+            status_code=400,
+        )
+        return
+
+    reason = str(payload.get("reason", "manual_dashboard") or "manual_dashboard")
+    control_plane.resume_agent(reason=reason)
+    _send_control_plane_state(handler, action="resume", reason=reason)
 
 
 def _handle_action_decision(handler: Any, route: str) -> None:
