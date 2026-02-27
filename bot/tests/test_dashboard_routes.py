@@ -94,6 +94,7 @@ class TestDashboardRoutes(unittest.TestCase):
             "channel_id": "canal_a",
             "temperature": 0.25,
             "top_p": 0.8,
+            "agent_paused": False,
             "has_override": True,
             "updated_at": "2026-02-27T12:00:00Z",
             "source": "supabase",
@@ -193,11 +194,61 @@ class TestDashboardRoutes(unittest.TestCase):
             "channel_id": "canal_a",
             "temperature": 0.41,
             "top_p": 0.77,
+            "agent_paused": True,
+        }
+        mock_persistence.load_channel_config_sync.return_value = {
+            "channel_id": "canal_a",
+            "temperature": 0.19,
+            "top_p": 0.55,
+            "agent_paused": False,
         }
         mock_persistence.save_channel_config_sync.return_value = {
             "channel_id": "canal_a",
             "temperature": 0.41,
             "top_p": 0.77,
+            "agent_paused": True,
+            "has_override": True,
+            "updated_at": "2026-02-27T13:00:00Z",
+            "source": "supabase",
+        }
+
+        routes.handle_put(self.handler)
+
+        mock_persistence.load_channel_config_sync.assert_called_with("canal_a")
+        mock_persistence.save_channel_config_sync.assert_called_with(
+            "canal_a",
+            temperature=0.41,
+            top_p=0.77,
+            agent_paused=True,
+        )
+        mock_context_manager.apply_channel_config.assert_called_with(
+            "canal_a",
+            temperature=0.41,
+            top_p=0.77,
+            agent_paused=True,
+        )
+        self.handler._send_json.assert_called()
+
+    @patch("bot.dashboard_server_routes.context_manager")
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_channel_config_preserves_pause_when_payload_omits_flag(
+        self, mock_persistence, mock_context_manager
+    ):
+        self.handler.path = "/api/channel-config"
+        self.handler._read_json_payload.return_value = {
+            "channel_id": "canal_a",
+            "temperature": 0.29,
+            "top_p": 0.64,
+        }
+        mock_persistence.load_channel_config_sync.return_value = {
+            "channel_id": "canal_a",
+            "agent_paused": True,
+        }
+        mock_persistence.save_channel_config_sync.return_value = {
+            "channel_id": "canal_a",
+            "temperature": 0.29,
+            "top_p": 0.64,
+            "agent_paused": True,
             "has_override": True,
             "updated_at": "2026-02-27T13:00:00Z",
             "source": "supabase",
@@ -207,13 +258,15 @@ class TestDashboardRoutes(unittest.TestCase):
 
         mock_persistence.save_channel_config_sync.assert_called_with(
             "canal_a",
-            temperature=0.41,
-            top_p=0.77,
+            temperature=0.29,
+            top_p=0.64,
+            agent_paused=True,
         )
         mock_context_manager.apply_channel_config.assert_called_with(
             "canal_a",
-            temperature=0.41,
-            top_p=0.77,
+            temperature=0.29,
+            top_p=0.64,
+            agent_paused=True,
         )
         self.handler._send_json.assert_called()
 

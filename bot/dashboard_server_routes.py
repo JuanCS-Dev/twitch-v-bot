@@ -55,6 +55,7 @@ def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
         "style_profile": str(getattr(ctx, "style_profile", "") or ""),
         "last_reply": str(getattr(ctx, "last_byte_reply", "") or ""),
         "agent_notes": str(getattr(ctx, "agent_notes", "") or ""),
+        "channel_paused": bool(getattr(ctx, "channel_paused", False)),
         "observability": {
             str(key): str(value) for key, value in dict(runtime_observability).items() if str(key)
         },
@@ -346,15 +347,23 @@ def handle_put(handler: Any) -> None:
     if route == "/api/channel-config":
         try:
             channel_id = _resolve_channel_id(query, payload)
+            current_config = persistence.load_channel_config_sync(channel_id)
+            next_agent_paused = (
+                payload.get("agent_paused")
+                if "agent_paused" in payload
+                else current_config.get("agent_paused", False)
+            )
             channel_config = persistence.save_channel_config_sync(
                 channel_id,
                 temperature=payload.get("temperature"),
                 top_p=payload.get("top_p"),
+                agent_paused=next_agent_paused,
             )
             context_manager.apply_channel_config(
                 channel_id,
                 temperature=channel_config.get("temperature"),
                 top_p=channel_config.get("top_p"),
+                agent_paused=bool(channel_config.get("agent_paused", False)),
             )
         except ValueError as error:
             handler._send_json(

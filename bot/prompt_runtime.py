@@ -64,6 +64,35 @@ def unwrap_inference_result(result: Any) -> tuple[str, dict | None]:
     return unwrap_inference_result_impl(result)
 
 
+def _resolve_channel_context(channel_id: str | None = None) -> Any:
+    ctx = context_manager.get(channel_id)
+    try:
+        ctx = context_manager.ensure_channel_config_loaded(channel_id)
+    except Exception as error:
+        logger.warning(
+            "Falha ao restaurar channel_config de %s: %s", channel_id or "default", error
+        )
+    return ctx
+
+
+def _is_channel_paused(ctx: Any) -> bool:
+    return bool(getattr(ctx, "channel_paused", False))
+
+
+def _record_channel_paused_skip(prompt: str, author_name: str, route: str) -> None:
+    observability.record_byte_interaction(
+        route=route,
+        author_name=author_name,
+        prompt_chars=len(prompt),
+        reply_parts=0,
+        reply_chars=0,
+        serious=False,
+        follow_up=False,
+        current_events=False,
+        latency_ms=0.0,
+    )
+
+
 def build_prompt_runtime(ctx: Any = None) -> BytePromptRuntime:
     effective_ctx = ctx or context_manager.get()
     return BytePromptRuntime(
@@ -106,7 +135,10 @@ async def handle_movie_fact_sheet_prompt(
     reply_fn,
     channel_id: str | None = None,
 ) -> None:
-    ctx = context_manager.get(channel_id)
+    ctx = _resolve_channel_context(channel_id)
+    if _is_channel_paused(ctx):
+        _record_channel_paused_skip(prompt, author_name, route="channel_paused_movie_fact")
+        return
     await handle_movie_fact_sheet_prompt_impl(
         prompt,
         author_name,
@@ -122,7 +154,10 @@ async def handle_byte_prompt_text(
     status_line_factory=None,
     channel_id: str | None = None,
 ) -> None:
-    ctx = context_manager.get(channel_id)
+    ctx = _resolve_channel_context(channel_id)
+    if _is_channel_paused(ctx):
+        _record_channel_paused_skip(prompt, author_name, route="channel_paused")
+        return
     # Recap detection — short-circuit to recap engine
     from bot.recap_engine import generate_recap, is_recap_prompt
 

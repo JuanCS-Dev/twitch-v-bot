@@ -316,6 +316,10 @@ function createControlPlaneElements(document) {
       "cpChannelTopP",
       new MockElement("input", document),
     ),
+    channelAgentPausedInput: document.registerElement(
+      "cpChannelAgentPaused",
+      new MockElement("input", document),
+    ),
     agentNotesStatusChip: document.registerElement(
       "cpAgentNotesStatusChip",
       new MockElement("span", document),
@@ -666,6 +670,7 @@ test("control plane controller loads channel directives including agent notes", 
             channel_id: "canal_a",
             temperature: 0.22,
             top_p: 0.73,
+            agent_paused: true,
             has_override: true,
             updated_at: "2026-02-27T19:00:00Z",
           },
@@ -687,6 +692,8 @@ test("control plane controller loads channel directives including agent notes", 
 
   assert.equal(cpEls.channelTemperatureInput.value, "0.22");
   assert.equal(cpEls.channelTopPInput.value, "0.73");
+  assert.equal(cpEls.channelAgentPausedInput.checked, true);
+  assert.equal(cpEls.channelStatusChip.textContent, "CHANNEL PAUSED");
   assert.equal(cpEls.agentNotesInput.value, "Priorize o host.");
   assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
   assert.match(cpEls.feedback.textContent, /sincronizados/i);
@@ -730,6 +737,7 @@ test("control plane controller saves channel directives including agent notes", 
   cpEls.channelIdInput.value = "Canal_B";
   cpEls.channelTemperatureInput.value = "0.35";
   cpEls.channelTopPInput.value = "0.81";
+  cpEls.channelAgentPausedInput.checked = true;
   cpEls.agentNotesInput.value = "Evite insistir em dica repetida.";
   const calls = [];
 
@@ -762,6 +770,7 @@ test("control plane controller saves channel directives including agent notes", 
             channel_id: "canal_b",
             temperature: 0.35,
             top_p: 0.81,
+            agent_paused: true,
             has_override: true,
             updated_at: "2026-02-27T19:05:00Z",
           },
@@ -786,6 +795,13 @@ test("control plane controller saves channel directives including agent notes", 
   assert.equal(calls.length, 2);
   assert.ok(calls.some((call) => call.url.includes("/api/channel-config")));
   assert.ok(calls.some((call) => call.url.includes("/api/agent-notes")));
+  const channelConfigCall = calls.find((call) =>
+    call.url.includes("/api/channel-config"),
+  );
+  assert.equal(
+    JSON.parse(String(channelConfigCall?.options?.body || "{}")).agent_paused,
+    true,
+  );
   assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
   assert.match(cpEls.feedback.textContent, /salvos com sucesso/i);
 });
@@ -814,6 +830,7 @@ test("control plane controller surfaces directive save errors", async () => {
             channel_id: "canal_d",
             temperature: null,
             top_p: null,
+            agent_paused: false,
             has_override: false,
             updated_at: "2026-02-27T19:10:00Z",
           },
@@ -897,6 +914,10 @@ test("control plane view reads agent note elements from the dashboard DOM", () =
   );
   document.registerElement("cpChannelTopP", new MockElement("input", document));
   document.registerElement(
+    "cpChannelAgentPaused",
+    new MockElement("input", document),
+  );
+  document.registerElement(
     "cpAgentNotesStatusChip",
     new MockElement("span", document),
   );
@@ -941,6 +962,7 @@ test("control plane view reads agent note elements from the dashboard DOM", () =
   assert.equal(els.agentNotesInput?.id, "cpAgentNotes");
   assert.equal(els.agentNotesStatusChip?.id, "cpAgentNotesStatusChip");
   assert.equal(els.agentNotesHint?.id, "cpAgentNotesHint");
+  assert.equal(els.channelAgentPausedInput?.id, "cpChannelAgentPaused");
 });
 
 test("hud controller syncs overlay url with the active admin token", () => {

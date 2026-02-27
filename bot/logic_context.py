@@ -40,6 +40,8 @@ class StreamContext:
         self.style_profile = DEFAULT_STYLE_PROFILE
         self.inference_temperature: float | None = None
         self.inference_top_p: float | None = None
+        self.channel_paused = False
+        self.channel_config_loaded = False
         self.agent_notes = ""
         self.live_observability: dict[str, str] = {
             "game": "",
@@ -204,6 +206,8 @@ class ContextManager:
             channel_config = await persistence.load_channel_config(channel_id)
             ctx.inference_temperature = channel_config.get("temperature")
             ctx.inference_top_p = channel_config.get("top_p")
+            ctx.channel_paused = bool(channel_config.get("agent_paused", False))
+            ctx.channel_config_loaded = True
 
             agent_notes = await persistence.load_agent_notes(channel_id)
             ctx.agent_notes = str(agent_notes.get("notes") or "")
@@ -225,6 +229,7 @@ class ContextManager:
         *,
         temperature: float | None,
         top_p: float | None,
+        agent_paused: bool = False,
     ) -> None:
         key = (channel_id or "default").strip().lower()
         with self._lock:
@@ -233,6 +238,29 @@ class ContextManager:
             return
         ctx.inference_temperature = temperature
         ctx.inference_top_p = top_p
+        ctx.channel_paused = bool(agent_paused)
+        ctx.channel_config_loaded = True
+
+    def ensure_channel_config_loaded(self, channel_id: str | None = None) -> StreamContext:
+        key = (channel_id or "default").strip().lower() or "default"
+        ctx = self.get(key)
+        if bool(getattr(ctx, "channel_config_loaded", False)):
+            return ctx
+
+        from bot.persistence_layer import persistence
+
+        if not persistence.is_enabled:
+            ctx.channel_config_loaded = True
+            return ctx
+
+        channel_config = persistence.load_channel_config_sync(key)
+        self.apply_channel_config(
+            key,
+            temperature=channel_config.get("temperature"),
+            top_p=channel_config.get("top_p"),
+            agent_paused=bool(channel_config.get("agent_paused", False)),
+        )
+        return ctx
 
     def apply_agent_notes(self, channel_id: str, *, notes: str) -> None:
         key = (channel_id or "default").strip().lower()

@@ -239,6 +239,7 @@ export function renderChannelConfig(channelPayload, els) {
       .trim()
       .toLowerCase() || "default";
   const hasOverride = Boolean(channel.has_override);
+  const agentPaused = Boolean(channel.agent_paused);
 
   if (els?.channelIdInput) {
     els.channelIdInput.value = channelId;
@@ -255,13 +256,22 @@ export function renderChannelConfig(channelPayload, els) {
         ? ""
         : String(channel.top_p);
   }
+  if (els?.channelAgentPausedInput) {
+    els.channelAgentPausedInput.checked = agentPaused;
+  }
   if (els?.channelStatusChip) {
     els.channelStatusChip.classList.remove("ok", "warn", "pending", "error");
     setText(
       els.channelStatusChip,
-      hasOverride ? "OVERRIDE ACTIVE" : "MODEL DEFAULT",
+      agentPaused
+        ? "CHANNEL PAUSED"
+        : hasOverride
+          ? "OVERRIDE ACTIVE"
+          : "MODEL DEFAULT",
     );
-    els.channelStatusChip.classList.add(hasOverride ? "ok" : "pending");
+    els.channelStatusChip.classList.add(
+      agentPaused ? "warn" : hasOverride ? "ok" : "pending",
+    );
   }
   if (els?.channelHint) {
     const temperatureLabel =
@@ -272,11 +282,12 @@ export function renderChannelConfig(channelPayload, els) {
       channel.top_p === null || channel.top_p === undefined
         ? "auto"
         : channel.top_p;
+    const pauseLabel = agentPaused ? "on" : "off";
     const updatedAt = String(channel.updated_at || "").trim();
     const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
     setText(
       els.channelHint,
-      `Canal ${channelId} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`,
+      `Canal ${channelId} | pause: ${pauseLabel} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`,
     );
   }
 }
@@ -328,6 +339,7 @@ export function getControlPlaneElements() {
     channelIdInput: document.getElementById("cpChannelConfigId"),
     channelTemperatureInput: document.getElementById("cpChannelTemperature"),
     channelTopPInput: document.getElementById("cpChannelTopP"),
+    channelAgentPausedInput: document.getElementById("cpChannelAgentPaused"),
     agentNotesStatusChip: document.getElementById("cpAgentNotesStatusChip"),
     agentNotesInput: document.getElementById("cpAgentNotes"),
     agentNotesHint: document.getElementById("cpAgentNotesHint"),
@@ -372,6 +384,7 @@ export function setControlPlaneBusy(els, busy) {
     els?.channelIdInput,
     els?.channelTemperatureInput,
     els?.channelTopPInput,
+    els?.channelAgentPausedInput,
     els?.agentNotesInput,
     els?.loadChannelConfigBtn,
     els?.saveChannelConfigBtn,
@@ -528,6 +541,7 @@ export function collectChannelConfigPayload(els) {
     channel_id: safeChannelId,
     temperature: readOptionalFloat(els?.channelTemperatureInput, 0, 2),
     top_p: readOptionalFloat(els?.channelTopPInput, 0, 1),
+    agent_paused: Boolean(els?.channelAgentPausedInput?.checked),
   };
 }
 

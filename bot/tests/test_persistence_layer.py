@@ -18,6 +18,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "canal_a")
         self.assertEqual(payload["temperature"], 0.33)
         self.assertEqual(payload["top_p"], 0.91)
+        self.assertFalse(payload["agent_paused"])
         self.assertTrue(payload["has_override"])
         self.assertEqual(layer.load_channel_config_sync("canal_a")["temperature"], 0.33)
 
@@ -30,6 +31,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "default")
         self.assertIsNone(payload["temperature"])
         self.assertIsNone(payload["top_p"])
+        self.assertFalse(payload["agent_paused"])
         self.assertFalse(payload["has_override"])
 
     async def test_save_channel_config_async_delegates_to_sync(self):
@@ -41,6 +43,19 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "canal_b")
         self.assertEqual(payload["temperature"], 0.21)
         self.assertEqual(payload["top_p"], 0.63)
+        self.assertFalse(payload["agent_paused"])
+
+    def test_save_channel_config_sync_uses_agent_paused_override(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        payload = layer.save_channel_config_sync("Canal_Pause", agent_paused=True)
+
+        self.assertEqual(payload["channel_id"], "canal_pause")
+        self.assertIsNone(payload["temperature"])
+        self.assertIsNone(payload["top_p"])
+        self.assertTrue(payload["agent_paused"])
+        self.assertTrue(payload["has_override"])
 
     def test_save_agent_notes_sync_uses_memory_fallback_when_disabled(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -95,6 +110,9 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             layer.save_channel_config_sync("canal_a", top_p="abc")
 
+        with self.assertRaises(ValueError):
+            layer.save_channel_config_sync("canal_a", agent_paused="talvez")
+
     def test_save_agent_notes_sync_rejects_invalid_values(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()
@@ -123,6 +141,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
             "channel_id": "canal_fallback",
             "temperature": 0.19,
             "top_p": 0.52,
+            "agent_paused": True,
             "has_override": True,
             "updated_at": "2026-02-27T14:00:00Z",
             "source": "memory",
@@ -133,6 +152,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "canal_fallback")
         self.assertEqual(payload["temperature"], 0.19)
         self.assertEqual(payload["top_p"], 0.52)
+        self.assertTrue(payload["agent_paused"])
         self.assertEqual(payload["source"], "memory")
 
     def test_save_channel_config_sync_returns_memory_payload_on_supabase_error(self):
@@ -154,6 +174,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["channel_id"], "canal_c")
         self.assertEqual(payload["temperature"], 0.44)
         self.assertEqual(payload["top_p"], 0.66)
+        self.assertFalse(payload["agent_paused"])
         self.assertEqual(payload["source"], "memory")
 
     def test_load_agent_notes_sync_returns_memory_fallback_on_supabase_error(self):
@@ -213,6 +234,7 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
                 "channel_id": "canal_supabase",
                 "temperature": 0.27,
                 "top_p": 0.74,
+                "agent_paused": True,
                 "updated_at": "2026-02-27T12:00:00Z",
             }
         )
@@ -226,16 +248,23 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
                 layer = PersistenceLayer()
 
         loaded = layer.load_channel_config_sync("canal_supabase")
-        saved = layer.save_channel_config_sync("canal_supabase", temperature=0.27, top_p=0.74)
+        saved = layer.save_channel_config_sync(
+            "canal_supabase",
+            temperature=0.27,
+            top_p=0.74,
+            agent_paused=True,
+        )
 
         self.assertEqual(loaded["source"], "supabase")
         self.assertEqual(loaded["temperature"], 0.27)
+        self.assertTrue(loaded["agent_paused"])
         self.assertEqual(saved["top_p"], 0.74)
         mock_client.table.return_value.upsert.assert_called_once_with(
             {
                 "channel_id": "canal_supabase",
                 "temperature": 0.27,
                 "top_p": 0.74,
+                "agent_paused": True,
                 "updated_at": "now()",
             }
         )

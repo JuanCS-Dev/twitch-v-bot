@@ -11,15 +11,27 @@ class TestLogicContext(unittest.IsolatedAsyncioTestCase):
         manager = ContextManager()
         ctx = manager.get("canal_a")
 
-        manager.apply_channel_config("canal_a", temperature=0.44, top_p=0.81)
+        manager.apply_channel_config(
+            "canal_a",
+            temperature=0.44,
+            top_p=0.81,
+            agent_paused=True,
+        )
 
         self.assertEqual(ctx.inference_temperature, 0.44)
         self.assertEqual(ctx.inference_top_p, 0.81)
+        self.assertTrue(ctx.channel_paused)
+        self.assertTrue(ctx.channel_config_loaded)
 
     async def test_apply_channel_config_ignores_missing_context(self):
         manager = ContextManager()
 
-        manager.apply_channel_config("canal_inexistente", temperature=0.5, top_p=0.9)
+        manager.apply_channel_config(
+            "canal_inexistente",
+            temperature=0.5,
+            top_p=0.9,
+            agent_paused=True,
+        )
 
         self.assertNotIn("canal_inexistente", manager._contexts)
 
@@ -58,7 +70,11 @@ class TestLogicContext(unittest.IsolatedAsyncioTestCase):
         ):
             mock_state.return_value = None
             mock_history.return_value = []
-            mock_channel_config.return_value = {"temperature": 0.31, "top_p": 0.67}
+            mock_channel_config.return_value = {
+                "temperature": 0.31,
+                "top_p": 0.67,
+                "agent_paused": True,
+            }
             mock_agent_notes.return_value = {"notes": "Priorize o contexto do host."}
 
             ctx = manager.get("canal_lazy")
@@ -68,3 +84,54 @@ class TestLogicContext(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ctx.inference_temperature, 0.31)
         self.assertEqual(ctx.inference_top_p, 0.67)
         self.assertEqual(ctx.agent_notes, "Priorize o contexto do host.")
+        self.assertTrue(ctx.channel_paused)
+        self.assertTrue(ctx.channel_config_loaded)
+
+    async def test_ensure_channel_config_loaded_restores_sync_config(self):
+        manager = ContextManager()
+
+        with (
+            patch.object(manager, "_trigger_lazy_load"),
+            patch.object(
+                type(persistence), "is_enabled", new_callable=PropertyMock, return_value=True
+            ),
+            patch.object(
+                persistence,
+                "load_channel_config_sync",
+                return_value={"temperature": 0.29, "top_p": 0.71, "agent_paused": True},
+            ) as mock_load_config,
+        ):
+            ctx = manager.ensure_channel_config_loaded("canal_sync")
+
+        self.assertEqual(ctx.inference_temperature, 0.29)
+        self.assertEqual(ctx.inference_top_p, 0.71)
+        self.assertTrue(ctx.channel_paused)
+        self.assertTrue(ctx.channel_config_loaded)
+        mock_load_config.assert_called_once_with("canal_sync")
+
+    async def test_ensure_channel_config_loaded_skips_when_already_loaded(self):
+        manager = ContextManager()
+        with patch.object(
+            type(persistence), "is_enabled", new_callable=PropertyMock, return_value=False
+        ):
+            ctx = manager.get("canal_sync")
+        manager.apply_channel_config(
+            "canal_sync",
+            temperature=0.22,
+            top_p=0.55,
+            agent_paused=True,
+        )
+
+        with (
+            patch.object(
+                type(persistence), "is_enabled", new_callable=PropertyMock, return_value=True
+            ),
+            patch.object(persistence, "load_channel_config_sync") as mock_load_config,
+        ):
+            ensured = manager.ensure_channel_config_loaded("canal_sync")
+
+        self.assertIs(ensured, ctx)
+        self.assertEqual(ensured.inference_temperature, 0.22)
+        self.assertEqual(ensured.inference_top_p, 0.55)
+        self.assertTrue(ensured.channel_paused)
+        mock_load_config.assert_not_called()

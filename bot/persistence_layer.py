@@ -51,6 +51,24 @@ def _normalize_optional_text(
     return cleaned
 
 
+def _normalize_bool(value: Any, *, field_name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        if value in (0, 0.0):
+            return False
+        if value in (1, 1.0):
+            return True
+    if value in (None, ""):
+        return False
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    raise ValueError(f"{field_name} invalido.")
+
+
 class PersistenceLayer:
     """
     Camada unificada de persistência para o Byte Bot.
@@ -85,11 +103,13 @@ class PersistenceLayer:
         cached = self._channel_config_cache.get(normalized, {})
         temperature = cached.get("temperature")
         top_p = cached.get("top_p")
+        agent_paused = bool(cached.get("agent_paused", False))
         return {
             "channel_id": normalized,
             "temperature": temperature,
             "top_p": top_p,
-            "has_override": temperature is not None or top_p is not None,
+            "agent_paused": agent_paused,
+            "has_override": temperature is not None or top_p is not None or agent_paused,
             "updated_at": cached.get("updated_at", ""),
             "source": cached.get("source", "memory"),
         }
@@ -140,17 +160,23 @@ class PersistenceLayer:
         try:
             result = (
                 self._client.table("channels_config")
-                .select("channel_id, temperature, top_p, updated_at")
+                .select("channel_id, temperature, top_p, agent_paused, updated_at")
                 .eq("channel_id", normalized)
                 .maybe_single()
                 .execute()
             )
             row = result.data or {}
+            safe_agent_paused = bool(row.get("agent_paused", False))
             payload = {
                 "channel_id": normalized,
                 "temperature": row.get("temperature"),
                 "top_p": row.get("top_p"),
-                "has_override": row.get("temperature") is not None or row.get("top_p") is not None,
+                "agent_paused": safe_agent_paused,
+                "has_override": (
+                    row.get("temperature") is not None
+                    or row.get("top_p") is not None
+                    or safe_agent_paused
+                ),
                 "updated_at": str(row.get("updated_at") or ""),
                 "source": "supabase",
             }
@@ -169,6 +195,7 @@ class PersistenceLayer:
         *,
         temperature: Any = None,
         top_p: Any = None,
+        agent_paused: Any = False,
     ) -> dict[str, Any]:
         normalized = _normalize_channel_id(channel_id)
         if not normalized:
@@ -186,12 +213,16 @@ class PersistenceLayer:
             maximum=1.0,
             field_name="top_p",
         )
+        safe_agent_paused = _normalize_bool(agent_paused, field_name="agent_paused")
 
         payload = {
             "channel_id": normalized,
             "temperature": safe_temperature,
             "top_p": safe_top_p,
-            "has_override": safe_temperature is not None or safe_top_p is not None,
+            "agent_paused": safe_agent_paused,
+            "has_override": safe_temperature is not None
+            or safe_top_p is not None
+            or safe_agent_paused,
             "updated_at": _utc_iso_now(),
             "source": "memory",
         }
@@ -206,6 +237,7 @@ class PersistenceLayer:
                     "channel_id": normalized,
                     "temperature": safe_temperature,
                     "top_p": safe_top_p,
+                    "agent_paused": safe_agent_paused,
                     "updated_at": "now()",
                 }
             ).execute()
@@ -223,11 +255,13 @@ class PersistenceLayer:
         *,
         temperature: Any = None,
         top_p: Any = None,
+        agent_paused: Any = False,
     ) -> dict[str, Any]:
         return self.save_channel_config_sync(
             channel_id,
             temperature=temperature,
             top_p=top_p,
+            agent_paused=agent_paused,
         )
 
     def load_agent_notes_sync(self, channel_id: str) -> dict[str, Any]:

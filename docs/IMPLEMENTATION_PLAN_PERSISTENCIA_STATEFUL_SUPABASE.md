@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.11
+**Versão:** 1.12
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PERSISTENT OBSERVABILITY ROLLUP, PANIC CONTROL, CHANNEL TUNING, DASHBOARD FOCUSED CHANNEL E AGENT NOTES ENTREGUES | FASE 8 PLANEJADA
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-6 PARCIAIS COM ETAPAS DE PERSISTENT OBSERVABILITY ROLLUP E DASHBOARD FOCUSED CHANNEL ENTREGUES | FASE 7 CONCLUÍDA COM PANIC CONTROL, CHANNEL TUNING, AGENT NOTES E PAUSE/SILENCE POR CANAL | FASE 8 PLANEJADA
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -71,7 +71,7 @@
 - Métricas de observabilidade realmente segregadas por canal; hoje os counters continuam globais e só o contexto/histórico é canalizado.
 - Visão realmente multi-tenant para comparar canais lado a lado.
 
-### Fase 7: Soberania e Comando ⚠️ Parcial
+### Fase 7: Soberania e Comando ✅ Concluída
 
 **Já existe**
 
@@ -84,13 +84,10 @@
 - Override por canal de `temperature` e `top_p` persistido em `channels_config`.
 - Inferência aplica override por canal restaurado do estado persistido.
 - Dashboard expõe directives operacionais por canal no painel operacional existente.
+- Pause/silence por canal persistido em `channels_config.agent_paused`, aplicado no runtime e respeitado no prompt handler + autonomia.
 - Persistência de notas operacionais em `agent_notes` com restore no `StreamContext`.
 - `agent_notes` agora é injetado de forma segura no system prompt antes da inferência.
 - Dashboard expõe leitura/escrita de `agent_notes` e o painel de contexto mostra o snapshot persistido dessas notas.
-
-**Ainda falta**
-
-- Pause/silence por canal, não apenas configuração global de runtime.
 
 ### Fase 8: Gestão de Memória Semântica (Vector Memory) ❌ Não implementada
 
@@ -102,10 +99,9 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
-2. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
-3. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
-4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+1. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
+2. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
+3. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -120,6 +116,7 @@
 | **Panic Suspend/Resume** | ✅ | Backend + dashboard + bloqueio operacional implementados |
 | **Persistent global observability rollup** | ✅ | `observability_rollups` + restore automático + chip de status na dashboard |
 | **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
+| **Pause/Silence por canal (`agent_paused`)** | ✅ | Persistido em `channels_config`, aplicado no runtime e respeitado no prompt/autonomia |
 | **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Vector Memory** | ❌ | Ainda não implementado |
@@ -134,17 +131,17 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - boot dinâmico por `channels_config` funcional;
 - dashboard operacional funcional;
 - HUD standalone funcional e agora exposta na dashboard;
-- soberania avançada ainda incompleta;
+- soberania por canal já cobre tuning + notes + pause/silence;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: thought injection operacional via `agent_notes`.
-- Backend: `PersistenceLayer` agora lê/escreve `agent_notes` com fallback em memória, sanitização básica e limite de tamanho; `dashboard_server_routes.py` expõe `GET/PUT /api/agent-notes`.
-- Runtime: `StreamContext` restaura `agent_notes` no lazy load e o `ContextManager` aplica updates online sem restart.
-- Inferência: `logic_inference.py` injeta as notas no system prompt com normalização, truncamento e limite de linhas para não vazar lixo operacional no contexto do modelo.
-- Dashboard: o card existente de directives agora edita tuning + notes no mesmo padrão visual, e `Agent Context & Internals` mostra também as notas persistidas do canal focado.
-- Escopo validado: a etapa fecha o thought injection persistido por canal, mas ainda não resolve pause/silence por canal nem observabilidade realmente segregada por canal.
-- Testes da etapa: suíte focal Python verde (`90 passed`), suíte `node:test` da dashboard verde, cobertura focada Python em `bot/dashboard_server_routes.py` (`97%`) e `bot/persistence_layer.py` (`80%`), com os ramos novos de `agent_notes` exercitados; cobertura JS do fluxo de dashboard validada para os caminhos novos de directives.
+- Etapa entregue: pause/silence por canal (`agent_paused`) integrado em persistência, runtime, autonomia, prompt runtime e dashboard.
+- Backend: `PersistenceLayer` agora lê/escreve `agent_paused` em `channels_config` com validação forte; `/api/channel-config` preserva o valor atual quando o payload não envia a flag.
+- Runtime: `StreamContext` mantém `channel_paused` + `channel_config_loaded`; `ContextManager` restaura config de canal sob demanda e aplica pause sem restart.
+- Execução: `prompt_runtime.py` bloqueia respostas quando o canal está pausado; `autonomy_logic.py` bloqueia execução de goals no mesmo estado.
+- Dashboard: control plane recebeu toggle de pause por canal e o status chip/hint passou a refletir `CHANNEL PAUSED`.
+- Escopo validado: fase 7 fechada para soberania operacional por canal; pendências remanescentes seguem em observabilidade per-channel real e histórico multi-canal.
+- Testes da etapa: suíte focal Python verde (`91 passed`) e suíte `node:test` da dashboard verde para o fluxo multi-channel com pause.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

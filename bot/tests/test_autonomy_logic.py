@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot import autonomy_logic
 from bot.control_plane import RISK_AUTO_CHAT, RISK_CLIP_CANDIDATE
@@ -28,3 +28,26 @@ class TestAutonomyLogic(unittest.IsolatedAsyncioTestCase):
 
         result = await autonomy_logic.process_autonomy_goal({"risk": RISK_AUTO_CHAT}, None)
         self.assertEqual(result["outcome"], "queued_no_dispatcher")
+
+    @patch("bot.autonomy_logic.generate_goal_text", new_callable=AsyncMock)
+    @patch("bot.autonomy_logic.context_manager")
+    @patch("bot.autonomy_logic.control_plane")
+    async def test_process_autonomy_goal_skips_when_channel_is_paused(
+        self,
+        mock_cp,
+        mock_context_manager,
+        mock_generate,
+    ):
+        mock_context_manager.ensure_channel_config_loaded.return_value = MagicMock(
+            channel_paused=True
+        )
+
+        result = await autonomy_logic.process_autonomy_goal(
+            {"id": "g-paused", "risk": RISK_AUTO_CHAT},
+            None,
+            channel_id="canal_a",
+        )
+
+        self.assertEqual(result["outcome"], "channel_paused")
+        mock_cp.register_goal_run.assert_not_called()
+        mock_generate.assert_not_called()

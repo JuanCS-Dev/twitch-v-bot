@@ -98,6 +98,7 @@ class TestDashboardRoutesV3:
             stream_vibe="Arena",
             last_event="Boss defeat",
             style_profile="Tatico",
+            channel_paused=True,
             agent_notes="",
             last_byte_reply="Segura a call.",
             live_observability={"game": "Balatro", "topic": "deck tech"},
@@ -129,6 +130,7 @@ class TestDashboardRoutesV3:
         assert payload["ok"] is True
         assert payload["channel"]["channel_id"] == "canal_a"
         assert payload["channel"]["runtime_loaded"] is False
+        assert payload["channel"]["runtime"]["channel_paused"] is True
         assert payload["channel"]["has_persisted_state"] is True
         assert payload["channel"]["has_persisted_notes"] is True
         assert payload["channel"]["persisted_state"]["current_game"] == "Balatro"

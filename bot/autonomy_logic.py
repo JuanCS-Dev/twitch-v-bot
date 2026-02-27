@@ -79,6 +79,27 @@ async def process_autonomy_goal(
     prompt = str(goal.get("prompt", "") or "").strip()
     safe_prompt = prompt or f"Objetivo autonomo {goal_name}."
 
+    try:
+        ctx = context_manager.ensure_channel_config_loaded(channel_id)
+    except Exception as error:
+        observability.record_error(
+            category="autonomy_channel_config",
+            details=str(error),
+        )
+        ctx = context_manager.get(channel_id)
+
+    if bool(getattr(ctx, "channel_paused", False)):
+        observability.record_autonomy_goal(
+            risk=risk,
+            outcome="channel_paused",
+            details=goal_id,
+        )
+        return {
+            "goal_id": goal_id,
+            "risk": risk,
+            "outcome": "channel_paused",
+        }
+
     control_plane.register_goal_run(goal_id=goal_id, risk=risk)
 
     generated_text = await generate_goal_text(prompt=safe_prompt, risk=risk, channel_id=channel_id)
