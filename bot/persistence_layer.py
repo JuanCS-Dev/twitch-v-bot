@@ -47,6 +47,7 @@ class PersistenceLayer:
         self._client: Client | None = None
         self._enabled = False
         self._channel_config_cache: dict[str, dict[str, Any]] = {}
+        self._observability_rollup_cache: dict[str, Any] | None = None
 
         if self._url and self._key:
             try:
@@ -282,6 +283,64 @@ class PersistenceLayer:
         return self.load_recent_history_sync(channel_id, limit=limit)
 
     # --- Telemetria (Absorvendo supabase_client.py) ---
+
+    def load_observability_rollup_sync(self) -> dict[str, Any] | None:
+        cached = self._observability_rollup_cache
+        if not self._enabled or not self._client:
+            return dict(cached) if cached else None
+        try:
+            result = (
+                self._client.table("observability_rollups")
+                .select("rollup_key, state, updated_at")
+                .eq("rollup_key", "global")
+                .maybe_single()
+                .execute()
+            )
+            row = result.data or None
+            if not row:
+                return dict(cached) if cached else None
+            payload = {
+                "rollup_key": "global",
+                "state": dict(row.get("state") or {}),
+                "updated_at": str(row.get("updated_at") or ""),
+                "source": "supabase",
+            }
+            self._observability_rollup_cache = payload
+            return dict(payload)
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao carregar observability rollup: %s", e)
+            return dict(cached) if cached else None
+
+    def save_observability_rollup_sync(self, state: dict[str, Any]) -> dict[str, Any]:
+        payload = {
+            "rollup_key": "global",
+            "state": dict(state or {}),
+            "updated_at": _utc_iso_now(),
+            "source": "memory",
+        }
+        self._observability_rollup_cache = payload
+        if not self._enabled or not self._client:
+            return dict(payload)
+        try:
+            self._client.table("observability_rollups").upsert(
+                {
+                    "rollup_key": "global",
+                    "state": dict(state or {}),
+                    "updated_at": "now()",
+                }
+            ).execute()
+            payload["source"] = "supabase"
+            self._observability_rollup_cache = payload
+            return dict(payload)
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao salvar observability rollup: %s", e)
+            return dict(payload)
+
+    async def load_observability_rollup(self) -> dict[str, Any] | None:
+        return self.load_observability_rollup_sync()
+
+    async def save_observability_rollup(self, state: dict[str, Any]) -> dict[str, Any]:
+        return self.save_observability_rollup_sync(state)
 
     def log_message_sync(
         self, author_name: str, message: str, channel: str = "", source: str = "irc"

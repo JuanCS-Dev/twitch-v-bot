@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.9
+**Versão:** 1.10
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PANIC CONTROL, CHANNEL TUNING E DASHBOARD FOCUSED CHANNEL ENTREGUES | FASE 8 PLANEJADA
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PERSISTENT OBSERVABILITY ROLLUP, PANIC CONTROL, CHANNEL TUNING E DASHBOARD FOCUSED CHANNEL ENTREGUES | FASE 8 PLANEJADA
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -44,12 +44,14 @@
 - Snapshot operacional robusto via `/api/observability`.
 - Registro de mensagens, replies e eventos em persistência.
 - Runtime de observabilidade consolidado para health, outcomes e fila.
+- Rollup global persistente em `observability_rollups` com save throttled e restore automático no bootstrap do `ObservabilityState`.
+- Reidratação pós-restart de counters, routes, timeline, recent events, janelas analíticas, leaderboards e status de clips a partir do rollup persistido.
+- Snapshot agora expõe metadados de persistência (`enabled/restored/source/updated_at`) e a dashboard mostra o estado do rollup no topo sem criar layout paralelo.
 
 **Ainda falta**
 
-- Persistir contadores agregados/rollups como fonte de verdade global.
-- Reidratar métricas históricas de observabilidade após restart.
 - Definir schema claro para dashboards históricos multi-canal.
+- Estratégia de retenção/compactação para histórico observability de longo prazo fora do rollup operacional.
 
 ### Fase 6: Dashboard Integrada (Multi-Channel UI) ⚠️ Parcial
 
@@ -98,10 +100,10 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Observabilidade persistente:** armazenar agregados globais para não perder histórico em restart.
-2. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
-3. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
-4. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
+1. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
+2. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
+3. **Métricas per-channel reais:** sair do snapshot global e produzir counters/leaderboards isolados por canal.
+4. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
 5. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
@@ -115,6 +117,7 @@
 | **Manual Tick** | ✅ | `/api/autonomy/tick` |
 | **Streamer HUD** | ✅ | Embutida + overlay standalone |
 | **Panic Suspend/Resume** | ✅ | Backend + dashboard + bloqueio operacional implementados |
+| **Persistent global observability rollup** | ✅ | `observability_rollups` + restore automático + chip de status na dashboard |
 | **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
 | **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
 | **Thought Injection (`agent_notes`)** | ❌ | Ainda não implementado |
@@ -135,11 +138,11 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: dashboard multi-canal focada em contexto persistido.
-- Backend: `PersistenceLayer` ganhou loaders síncronos para `channel_state` e `channel_history`, compatíveis com o server HTTP síncrono.
-- API: `/api/observability` agora aceita `?channel=` e a nova rota `GET /api/channel-context` expõe runtime + snapshot persistido + histórico recente.
-- Dashboard: `Channel Manager` ganhou `Dashboard Focus` persistido e o painel `Agent Context & Internals` passou a refletir o canal selecionado com estado/histórico do Supabase.
-- Escopo validado: esta etapa resolve seleção e inspeção por canal, mas ainda não torna métricas e leaderboards realmente per-channel.
-- Testes da etapa: suíte focal Python verde (`104 passed`), suíte `node:test` da dashboard verde e cobertura nativa validando os fluxos novos de canal focado/contexto persistido; `bot/dashboard_server_routes.py` ficou em `100%`.
+- Etapa entregue: observabilidade persistente via rollup global restaurável.
+- Backend: `PersistenceLayer` agora lê/escreve `observability_rollups`, e o `ObservabilityState` serializa/restaura o estado interno relevante com flush throttled e flush forçado em `snapshot()`.
+- Runtime: restart do processo preserva counters agregados, routes, timeline de 30 min, recent events, leaderboards/janelas analíticas e status de clips a partir do último rollup salvo.
+- Dashboard: o topo ganhou um chip de estado do rollup (`Rollup Restored`, `Rollup Live`, `Volatile Only`) reaproveitando o layout já existente.
+- Escopo validado: esta etapa fecha a perda de métricas globais em restart, mas ainda não resolve histórico multi-canal comparativo nem métricas realmente segregadas por canal.
+- Testes da etapa: suíte focal Python verde (`69 passed`), suíte `node:test` da dashboard verde, `bot/observability_state.py` em `100%` de cobertura e novos ramos de `bot/persistence_layer.py` exercitados para success/fallback/error.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

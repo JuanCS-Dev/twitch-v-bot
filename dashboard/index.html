@@ -1,82 +1,106 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Byte Live Observability</title>
+    <!-- Novas Importacoes Modulares de CSS -->
+    <link rel="stylesheet" href="/dashboard/styles/tokens.css" />
+    <link rel="stylesheet" href="/dashboard/styles/base.css" />
+    <link rel="stylesheet" href="/dashboard/styles/layout.css" />
+    <link rel="stylesheet" href="/dashboard/styles/components.css" />
+    <link rel="stylesheet" href="/dashboard/styles/clips.css" />
+    <script src="/dashboard/config.js"></script>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Byte Live Observability</title>
-  <!-- Novas Importacoes Modulares de CSS -->
-  <link rel="stylesheet" href="/dashboard/styles/tokens.css" />
-  <link rel="stylesheet" href="/dashboard/styles/base.css" />
-  <link rel="stylesheet" href="/dashboard/styles/layout.css" />
-  <link rel="stylesheet" href="/dashboard/styles/components.css" />
-  <link rel="stylesheet" href="/dashboard/styles/clips.css" />
-  <script src="/dashboard/config.js"></script>
-</head>
+  <body class="theme-dark">
+    <header class="topbar">
+      <div class="brand-head">
+        <p class="brand-kicker">BYTE // TWITCH OPERATIONS</p>
+        <h1>Byte Live Observability</h1>
+        <p>
+          Telemetry para runtime de operações, saúde da IA e controle
+          transacional de canais de streaming.
+        </p>
+      </div>
+      <div class="topbar-right">
+        <span id="botIdentity" class="chip">Byte</span>
+        <span id="connectionState" class="chip warn">Poller Booting...</span>
+        <span id="rollupStateChip" class="chip pending">Rollup: booting</span>
+      </div>
+    </header>
 
-<body class="theme-dark">
-  <header class="topbar">
-    <div class="brand-head">
-      <p class="brand-kicker">BYTE // TWITCH OPERATIONS</p>
-      <h1>Byte Live Observability</h1>
-      <p>Telemetry para runtime de operações, saúde da IA e controle transacional de canais de streaming.</p>
-    </div>
-    <div class="topbar-right">
-      <span id="botIdentity" class="chip">Byte</span>
-      <span id="connectionState" class="chip warn">Poller Booting...</span>
-    </div>
-  </header>
+    <main class="layout">
+      <div id="heroChannelContainer"></div>
+      <div id="metricsHealthContainer"></div>
+      <div id="controlPlaneContainer"></div>
+      <div id="intelligencePanelContainer"></div>
+      <div id="clipsSectionContainer"></div>
+      <div id="riskQueueContainer"></div>
+      <div id="analyticsLogsContainer"></div>
+    </main>
 
-  <main class="layout">
-    <div id="heroChannelContainer"></div>
-    <div id="metricsHealthContainer"></div>
-    <div id="controlPlaneContainer"></div>
-    <div id="intelligencePanelContainer"></div>
-    <div id="clipsSectionContainer"></div>
-    <div id="riskQueueContainer"></div>
-    <div id="analyticsLogsContainer"></div>
-  </main>
+    <footer class="footer">
+      <span id="lastUpdate">Starting Application...</span>
+      <span>VÉRTICE Core Analytics x BYTE AI</span>
+    </footer>
 
-  <footer class="footer">
-    <span id="lastUpdate">Starting Application...</span>
-    <span>VÉRTICE Core Analytics x BYTE AI</span>
-  </footer>
+    <!-- Loader de Partials -->
+    <script>
+      async function loadPartials() {
+        const partials = [
+          {
+            id: "heroChannelContainer",
+            url: "/dashboard/partials/hero_channel.html",
+          },
+          {
+            id: "metricsHealthContainer",
+            url: "/dashboard/partials/metrics_health.html",
+          },
+          {
+            id: "controlPlaneContainer",
+            url: "/dashboard/partials/control_plane.html",
+          },
+          {
+            id: "intelligencePanelContainer",
+            url: "/dashboard/partials/intelligence_panel.html",
+          },
+          {
+            id: "clipsSectionContainer",
+            url: "/dashboard/partials/clips_section.html",
+          },
+          {
+            id: "riskQueueContainer",
+            url: "/dashboard/partials/risk_queue.html",
+          },
+          {
+            id: "analyticsLogsContainer",
+            url: "/dashboard/partials/analytics_logs.html",
+          },
+        ];
 
-  <!-- Loader de Partials -->
-  <script>
-    async function loadPartials() {
-      const partials = [
-        { id: 'heroChannelContainer', url: '/dashboard/partials/hero_channel.html' },
-        { id: 'metricsHealthContainer', url: '/dashboard/partials/metrics_health.html' },
-        { id: 'controlPlaneContainer', url: '/dashboard/partials/control_plane.html' },
-        { id: 'intelligencePanelContainer', url: '/dashboard/partials/intelligence_panel.html' },
-        { id: 'clipsSectionContainer', url: '/dashboard/partials/clips_section.html' },
-        { id: 'riskQueueContainer', url: '/dashboard/partials/risk_queue.html' },
-        { id: 'analyticsLogsContainer', url: '/dashboard/partials/analytics_logs.html' }
-      ];
+        try {
+          await Promise.all(
+            partials.map(async (p) => {
+              const res = await fetch(p.url);
+              if (!res.ok) throw new Error(`Failed to load ${p.url}`);
+              const html = await res.text();
+              document.getElementById(p.id).innerHTML = html;
+            }),
+          );
 
-      try {
-        await Promise.all(partials.map(async (p) => {
-          const res = await fetch(p.url);
-          if (!res.ok) throw new Error(`Failed to load ${p.url}`);
-          const html = await res.text();
-          document.getElementById(p.id).innerHTML = html;
-        }));
-
-        // Load main script AFTER partials are injected
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = '/dashboard/main.js';
-        document.body.appendChild(script);
-
-      } catch (err) {
-        console.error("Critical error loading dashboard partials:", err);
-        document.body.innerHTML = `<div style="padding:2rem; color:red;"><h1>Fatal Error</h1><p>Failed to load dashboard components. Check console.</p></div>`;
+          // Load main script AFTER partials are injected
+          const script = document.createElement("script");
+          script.type = "module";
+          script.src = "/dashboard/main.js";
+          document.body.appendChild(script);
+        } catch (err) {
+          console.error("Critical error loading dashboard partials:", err);
+          document.body.innerHTML = `<div style="padding:2rem; color:red;"><h1>Fatal Error</h1><p>Failed to load dashboard components. Check console.</p></div>`;
+        }
       }
-    }
 
-    document.addEventListener('DOMContentLoaded', loadPartials);
-  </script>
-</body>
-
+      document.addEventListener("DOMContentLoaded", loadPartials);
+    </script>
+  </body>
 </html>

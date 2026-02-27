@@ -215,6 +215,10 @@ function createObservabilityElements(document) {
       "connectionState",
       new MockElement("span", document),
     ),
+    rollupStateChip: document.registerElement(
+      "rollupStateChip",
+      new MockElement("span", document),
+    ),
     lastUpdate: document.registerElement(
       "lastUpdate",
       new MockElement("p", document),
@@ -399,6 +403,10 @@ test("observability views render focused channel and persisted context state", (
         stream_vibe: "Calm",
         last_event: "Boss fight",
       },
+      persistence: {
+        enabled: true,
+        restored: true,
+      },
       timestamp: "2026-02-27T14:00:00Z",
       sentiment: {
         positive: 3,
@@ -430,6 +438,7 @@ test("observability views render focused channel and persisted context state", (
   );
 
   assert.equal(els.ctxSelectedChannelChip.textContent, "canal_a");
+  assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
   assert.equal(els.ctxPersistedStatusChip.textContent, "PERSISTED READY");
   assert.equal(els.ctxRuntimeStatusChip.textContent, "RUNTIME HOT");
   assert.equal(els.ctxPersistedGame.textContent, "Celeste");

@@ -1,7 +1,33 @@
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from bot.observability import ObservabilityState
+
+
+class FakePersistence:
+    def __init__(self, loaded=None, *, fail_load=False, fail_save=False):
+        self.loaded = loaded
+        self.fail_load = fail_load
+        self.fail_save = fail_save
+        self.saved = []
+
+    def load_observability_rollup_sync(self):
+        if self.fail_load:
+            raise RuntimeError("load failed")
+        return self.loaded
+
+    def save_observability_rollup_sync(self, state):
+        if self.fail_save:
+            raise RuntimeError("save failed")
+        payload = {
+            "rollup_key": "global",
+            "state": dict(state or {}),
+            "updated_at": "2026-02-27T16:00:00Z",
+            "source": "memory",
+        }
+        self.saved.append(payload)
+        return payload
 
 
 class TestObservabilityState(unittest.TestCase):
@@ -159,6 +185,203 @@ class TestObservabilityState(unittest.TestCase):
         self.assertEqual(snapshot["metrics"]["p95_latency_ms"], 200.0)
         self.assertTrue(snapshot["recent_events"])
         self.assertEqual(snapshot["recent_events"][0]["event"], "quality_gate")
+
+    def test_state_restores_persisted_rollup_and_exposes_metadata(self):
+        persistence = FakePersistence(
+            loaded={
+                "rollup_key": "global",
+                "updated_at": "2026-02-27T15:55:00Z",
+                "source": "supabase",
+                "state": {
+                    "counters": {
+                        "chat_messages_total": 7,
+                        "byte_triggers_total": 2,
+                        "replies_total": 1,
+                    },
+                    "route_counts": {"llm_default": 3},
+                    "minute_buckets": {
+                        "28333333": {
+                            "chat_messages": 4,
+                            "byte_triggers": 1,
+                            "replies_sent": 1,
+                            "llm_requests": 1,
+                            "errors": 0,
+                        }
+                    },
+                    "latencies_ms": [90.0, 120.0, 150.0],
+                    "recent_events": [
+                        {
+                            "ts": "2026-02-27T15:54:59Z",
+                            "level": "INFO",
+                            "event": "byte_interaction",
+                            "message": "llm_default by alice",
+                        }
+                    ],
+                    "chatter_last_seen": {"alice": 1_700_010_000.0},
+                    "known_chatters": ["alice", "bob"],
+                    "chat_events": [
+                        {
+                            "ts": 1_700_010_000.0,
+                            "source": "irc",
+                            "author": "alice",
+                            "length": 12,
+                            "is_command": False,
+                            "has_url": False,
+                        }
+                    ],
+                    "byte_trigger_events": [
+                        {"ts": 1_700_010_001.0, "author": "alice", "source": "irc"}
+                    ],
+                    "interaction_events": [
+                        {"ts": 1_700_010_002.0, "route": "llm_default", "is_llm": True}
+                    ],
+                    "quality_events": [],
+                    "token_usage_events": [],
+                    "autonomy_goal_events": [],
+                    "chatter_message_totals": {"alice": 5, "bob": 2},
+                    "trigger_user_totals": {"alice": 2},
+                    "last_prompt": "status",
+                    "last_reply": "online",
+                    "estimated_cost_usd_total": 0.1234,
+                    "clips_status": {"token_valid": True, "scope_ok": False},
+                },
+            }
+        )
+        state = ObservabilityState(
+            persistence_layer=persistence,
+            persist_interval_seconds=60.0,
+        )
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Boot restored",
+            live_observability={},
+        )
+
+        snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            timestamp=1_700_010_100.0,
+        )
+
+        self.assertEqual(snapshot["metrics"]["chat_messages_total"], 7)
+        self.assertEqual(snapshot["metrics"]["byte_triggers_total"], 2)
+        self.assertEqual(snapshot["routes"][0], {"route": "llm_default", "count": 3})
+        self.assertEqual(snapshot["context"]["last_prompt"], "status")
+        self.assertEqual(snapshot["context"]["clips_status"]["token_valid"], True)
+        self.assertTrue(snapshot["persistence"]["enabled"])
+        self.assertTrue(snapshot["persistence"]["restored"])
+        self.assertEqual(snapshot["persistence"]["source"], "supabase")
+        self.assertEqual(snapshot["persistence"]["updated_at"], "2026-02-27T15:55:00Z")
+
+    def test_snapshot_forces_rollup_flush_when_interval_has_not_elapsed(self):
+        persistence = FakePersistence()
+        state = ObservabilityState(
+            persistence_layer=persistence,
+            persist_interval_seconds=1000.0,
+        )
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Fresh boot",
+            live_observability={},
+        )
+
+        with patch("bot.observability_state.time.monotonic", side_effect=[100.0, 101.0]):
+            state.record_chat_message(
+                author_name="alice",
+                source="irc",
+                text="hello there",
+                timestamp=1_700_020_000.0,
+            )
+            self.assertEqual(len(persistence.saved), 0)
+
+            snapshot = state.snapshot(
+                bot_brand="Byte",
+                bot_version="1.5",
+                bot_mode="irc",
+                stream_context=stream_context,
+                timestamp=1_700_020_010.0,
+            )
+
+        self.assertEqual(len(persistence.saved), 1)
+        self.assertEqual(
+            persistence.saved[0]["state"]["counters"]["chat_messages_total"],
+            1,
+        )
+        self.assertEqual(snapshot["metrics"]["chat_messages_total"], 1)
+        self.assertFalse(snapshot["persistence"]["dirty"])
+        self.assertEqual(snapshot["persistence"]["updated_at"], "2026-02-27T16:00:00Z")
+
+    def test_state_handles_restore_and_flush_failures_without_breaking_snapshot(self):
+        state = ObservabilityState(
+            persistence_layer=FakePersistence(fail_load=True, fail_save=True),
+            persist_interval_seconds=1000.0,
+        )
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Safe mode",
+            live_observability={},
+        )
+
+        with patch(
+            "bot.observability_state.time.monotonic",
+            side_effect=[100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0, 108.0],
+        ):
+            state.update_clips_auth_status(
+                token_valid=True,
+                scope_ok=True,
+                timestamp=1_700_030_000.0,
+            )
+            state.record_token_usage(
+                input_tokens=12,
+                output_tokens=7,
+                estimated_cost_usd=0.03,
+                timestamp=1_700_030_001.0,
+            )
+            state.record_autonomy_goal(
+                risk="medium",
+                outcome="approved",
+                details="scene update",
+                timestamp=1_700_030_002.0,
+            )
+            state.record_auto_scene_update(
+                update_types=["game", "vibe"],
+                timestamp=1_700_030_003.0,
+            )
+            state.record_token_refresh(reason="manual", timestamp=1_700_030_004.0)
+            state.record_auth_failure(
+                details="expired token",
+                timestamp=1_700_030_005.0,
+            )
+            state.record_error(
+                category="vision",
+                details="frame timeout",
+                timestamp=1_700_030_006.0,
+            )
+            state.record_vision_frame(
+                analysis="detected facecam motion",
+                timestamp=1_700_030_007.0,
+            )
+            snapshot = state.snapshot(
+                bot_brand="Byte",
+                bot_version="1.5",
+                bot_mode="irc",
+                stream_context=stream_context,
+                timestamp=1_700_030_010.0,
+            )
+
+        self.assertEqual(snapshot["metrics"]["token_input_total"], 12)
+        self.assertEqual(snapshot["metrics"]["token_output_total"], 7)
+        self.assertEqual(snapshot["metrics"]["token_refreshes_total"], 1)
+        self.assertEqual(snapshot["metrics"]["auth_failures_total"], 1)
+        self.assertEqual(snapshot["metrics"]["errors_total"], 2)
+        self.assertEqual(snapshot["metrics"]["vision_frames_total"], 1)
+        self.assertEqual(snapshot["metrics"]["auto_scene_updates_total"], 2)
+        self.assertEqual(snapshot["context"]["clips_status"]["token_valid"], True)
+        self.assertTrue(snapshot["persistence"]["enabled"])
+        self.assertFalse(snapshot["persistence"]["restored"])
+        self.assertTrue(snapshot["persistence"]["dirty"])
 
 
 if __name__ == "__main__":

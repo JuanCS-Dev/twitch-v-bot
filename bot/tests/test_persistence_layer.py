@@ -212,3 +212,141 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(history, ["viewer: hello"])
         mock_state.assert_called_once_with("Canal_A")
         mock_history.assert_called_once_with("Canal_A", limit=3)
+
+    def test_observability_rollup_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        saved = layer.save_observability_rollup_sync({"counters": {"chat_messages_total": 2}})
+        loaded = layer.load_observability_rollup_sync()
+
+        self.assertEqual(saved["rollup_key"], "global")
+        self.assertEqual(saved["source"], "memory")
+        self.assertEqual(loaded["state"]["counters"]["chat_messages_total"], 2)
+
+    def test_observability_rollup_supabase_roundtrip(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.return_value = MagicMock(
+            data={
+                "rollup_key": "global",
+                "state": {"counters": {"chat_messages_total": 9}},
+                "updated_at": "2026-02-27T17:00:00Z",
+            }
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_observability_rollup_sync()
+        saved = layer.save_observability_rollup_sync({"counters": {"chat_messages_total": 9}})
+
+        self.assertEqual(loaded["source"], "supabase")
+        self.assertEqual(loaded["state"]["counters"]["chat_messages_total"], 9)
+        self.assertEqual(saved["source"], "supabase")
+        mock_client.table.return_value.upsert.assert_called_once_with(
+            {
+                "rollup_key": "global",
+                "state": {"counters": {"chat_messages_total": 9}},
+                "updated_at": "now()",
+            }
+        )
+
+    def test_observability_rollup_load_returns_cached_payload_on_supabase_error(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.side_effect = RuntimeError("boom")
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        layer._observability_rollup_cache = {
+            "rollup_key": "global",
+            "state": {"counters": {"errors_total": 3}},
+            "updated_at": "2026-02-27T18:00:00Z",
+            "source": "memory",
+        }
+
+        loaded = layer.load_observability_rollup_sync()
+
+        self.assertEqual(loaded["state"]["counters"]["errors_total"], 3)
+        self.assertEqual(loaded["source"], "memory")
+
+    def test_observability_rollup_load_returns_cached_payload_when_row_missing(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.eq.return_value.maybe_single.return_value
+        select_chain.execute.return_value = MagicMock(data=None)
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        layer._observability_rollup_cache = {
+            "rollup_key": "global",
+            "state": {"counters": {"replies_total": 4}},
+            "updated_at": "2026-02-27T18:10:00Z",
+            "source": "memory",
+        }
+
+        loaded = layer.load_observability_rollup_sync()
+
+        self.assertEqual(loaded["state"]["counters"]["replies_total"], 4)
+        self.assertEqual(loaded["source"], "memory")
+
+    def test_observability_rollup_save_returns_memory_payload_on_supabase_error(self):
+        mock_client = MagicMock()
+        mock_client.table.return_value.upsert.return_value.execute.side_effect = RuntimeError(
+            "write failed"
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        saved = layer.save_observability_rollup_sync({"counters": {"errors_total": 5}})
+
+        self.assertEqual(saved["source"], "memory")
+        self.assertEqual(saved["state"]["counters"]["errors_total"], 5)
+
+    async def test_observability_rollup_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer,
+            "load_observability_rollup_sync",
+            return_value={"rollup_key": "global"},
+        ) as mock_load:
+            loaded = await layer.load_observability_rollup()
+        with patch.object(
+            layer,
+            "save_observability_rollup_sync",
+            return_value={"rollup_key": "global", "source": "memory"},
+        ) as mock_save:
+            saved = await layer.save_observability_rollup({"counters": {"chat_messages_total": 1}})
+
+        self.assertEqual(loaded["rollup_key"], "global")
+        self.assertEqual(saved["source"], "memory")
+        mock_load.assert_called_once_with()
+        mock_save.assert_called_once_with({"counters": {"chat_messages_total": 1}})

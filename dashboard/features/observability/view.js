@@ -16,6 +16,7 @@ export function getObservabilityElements() {
   return {
     botIdentity: document.getElementById("botIdentity"),
     connectionState: document.getElementById("connectionState"),
+    rollupStateChip: document.getElementById("rollupStateChip"),
     lastUpdate: document.getElementById("lastUpdate"),
     mChatMessages: document.getElementById("mChatMessages"),
     mByteTriggers: document.getElementById("mByteTriggers"),
@@ -273,6 +274,7 @@ export function renderObservabilitySnapshot(data, els) {
   const leaderboards = safeData.leaderboards || {};
   const context = safeData.context || {};
   const outcomes = safeData.agent_outcomes || {};
+  const persistence = safeData.persistence || {};
 
   setText(els.botIdentity, `${bot.brand || "Byte"} v${bot.version || "-"}`);
   setText(els.mChatMessages, formatNumber(metrics.chat_messages_total));
@@ -375,6 +377,19 @@ export function renderObservabilitySnapshot(data, els) {
       context.channel_id || safeData.selected_channel || "default",
     );
     els.ctxSelectedChannelChip.classList.add("ok");
+  }
+  if (els.rollupStateChip) {
+    els.rollupStateChip.classList.remove("ok", "warn", "error", "pending");
+    if (persistence.enabled && persistence.restored) {
+      setText(els.rollupStateChip, "Rollup Restored");
+      els.rollupStateChip.classList.add("ok");
+    } else if (persistence.enabled) {
+      setText(els.rollupStateChip, "Rollup Live");
+      els.rollupStateChip.classList.add("warn");
+    } else {
+      setText(els.rollupStateChip, "Volatile Only");
+      els.rollupStateChip.classList.add("pending");
+    }
   }
 
   renderRoutes(safeData.routes || [], els.routesBody);
