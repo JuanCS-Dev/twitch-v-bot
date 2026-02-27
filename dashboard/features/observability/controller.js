@@ -1,12 +1,14 @@
 import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
+  getPostStreamReportSnapshot,
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
 } from "./api.js";
 import {
   renderChannelContextSnapshot,
   renderObservabilityHistorySnapshot,
+  renderPostStreamReportSnapshot,
   renderObservabilitySnapshot,
   setConnectionState,
 } from "./view.js";
@@ -51,20 +53,26 @@ export function createObservabilityController({
         OBSERVABILITY_TIMEOUT_MS,
       ).catch((_error) => null);
 
-      const [data, channelData, historyData, sentimentData] = await Promise.all([
-        getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
-        getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
-        getObservabilityHistorySnapshot(
-          selectedChannel,
-          OBSERVABILITY_TIMEOUT_MS,
-          OBSERVABILITY_HISTORY_LIMIT,
-          OBSERVABILITY_COMPARE_LIMIT,
-        ),
-        sentimentPromise,
-      ]);
+      const [data, channelData, historyData, sentimentData, postStreamData] =
+        await Promise.all([
+          getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
+          getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
+          getObservabilityHistorySnapshot(
+            selectedChannel,
+            OBSERVABILITY_TIMEOUT_MS,
+            OBSERVABILITY_HISTORY_LIMIT,
+            OBSERVABILITY_COMPARE_LIMIT,
+          ),
+          sentimentPromise,
+          getPostStreamReportSnapshot(
+            selectedChannel,
+            OBSERVABILITY_TIMEOUT_MS,
+          ).catch((_error) => null),
+        ]);
       renderObservabilitySnapshot(data, obsEls, sentimentData);
       renderChannelContextSnapshot(channelData, obsEls);
       renderObservabilityHistorySnapshot(historyData, obsEls);
+      renderPostStreamReportSnapshot(postStreamData, obsEls);
       setConnectionState("ok", obsEls);
       applyRuntimeCapabilities(data?.capabilities || {}, data?.bot?.mode || "");
       renderAutonomyRuntime(data?.autonomy || {}, autEls);
@@ -74,6 +82,37 @@ export function createObservabilityController({
     } finally {
       isPolling = false;
     }
+  }
+
+  async function generatePostStreamReport() {
+    if (!obsEls) return null;
+    if (obsEls.intPostStreamGenerateBtn) {
+      obsEls.intPostStreamGenerateBtn.disabled = true;
+    }
+    try {
+      const payload = await getPostStreamReportSnapshot(
+        selectedChannel,
+        OBSERVABILITY_TIMEOUT_MS,
+        true,
+      );
+      renderPostStreamReportSnapshot(payload, obsEls);
+      return payload;
+    } catch (error) {
+      console.error("Dashboard post-stream report generation error", error);
+      return null;
+    } finally {
+      if (obsEls.intPostStreamGenerateBtn) {
+        obsEls.intPostStreamGenerateBtn.disabled = false;
+      }
+    }
+  }
+
+  function bindObservabilityEvents() {
+    if (!obsEls?.intPostStreamGenerateBtn) return;
+    obsEls.intPostStreamGenerateBtn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      await generatePostStreamReport();
+    });
   }
 
   function scheduleObservabilityPolling() {
@@ -89,6 +128,8 @@ export function createObservabilityController({
   return {
     applyRuntimeCapabilities,
     fetchAndRenderObservability,
+    generatePostStreamReport,
+    bindObservabilityEvents,
     setSelectedChannel(channelId) {
       selectedChannel =
         String(channelId || "")

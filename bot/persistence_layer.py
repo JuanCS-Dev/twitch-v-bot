@@ -7,6 +7,7 @@ from supabase import Client, create_client
 from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
+from bot.persistence_post_stream_report_repository import PostStreamReportRepository
 from bot.persistence_utils import normalize_channel_id, utc_iso_now
 
 logger = logging.getLogger("byte.persistence")
@@ -27,6 +28,7 @@ class PersistenceLayer:
         self._agent_notes_cache: dict[str, dict[str, Any]] = {}
         self._observability_rollup_cache: dict[str, Any] | None = None
         self._observability_channel_history_cache: dict[str, list[dict[str, Any]]] = {}
+        self._post_stream_report_cache: dict[str, dict[str, Any]] = {}
 
         if self._url and self._key:
             try:
@@ -52,6 +54,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._observability_channel_history_cache,
+        )
+        self._post_stream_report_repo = PostStreamReportRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._post_stream_report_cache,
         )
 
     @property
@@ -258,6 +265,44 @@ class PersistenceLayer:
         limit: int = 6,
     ) -> list[dict[str, Any]]:
         return self.load_latest_observability_channel_snapshots_sync(limit=limit)
+
+    def save_post_stream_report_sync(
+        self,
+        channel_id: str,
+        report: dict[str, Any],
+        *,
+        trigger: str = "manual_dashboard",
+    ) -> dict[str, Any]:
+        return self._post_stream_report_repo.save_latest_report_sync(
+            channel_id,
+            report,
+            trigger=trigger,
+        )
+
+    async def save_post_stream_report(
+        self,
+        channel_id: str,
+        report: dict[str, Any],
+        *,
+        trigger: str = "manual_dashboard",
+    ) -> dict[str, Any]:
+        return self.save_post_stream_report_sync(
+            channel_id,
+            report,
+            trigger=trigger,
+        )
+
+    def load_latest_post_stream_report_sync(
+        self,
+        channel_id: str,
+    ) -> dict[str, Any] | None:
+        return self._post_stream_report_repo.load_latest_report_sync(channel_id)
+
+    async def load_latest_post_stream_report(
+        self,
+        channel_id: str,
+    ) -> dict[str, Any] | None:
+        return self.load_latest_post_stream_report_sync(channel_id)
 
     def load_observability_rollup_sync(self) -> dict[str, Any] | None:
         cached = self._observability_rollup_cache

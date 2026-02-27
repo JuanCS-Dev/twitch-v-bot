@@ -307,7 +307,7 @@
 | **F1 Stream Health Score**             | ✅ Implementado na Fase 11 com score 0-100 por canal (`v1` + bandas + componentes).                        | Entregue sem duplicação no layout atual da dashboard.        |
 | **F2 Ops Playbooks**                   | ❌ Não existe motor determinístico de playbooks.                                                            | Entrou como **Fase 14** (nova).                              |
 | **F3 Per-Channel Identity**            | ⚠️ Parcial: `agent_notes` e config por canal existem, mas sem identidade estruturada.                       | Entrou como **Fase 15** (evolução).                          |
-| **F4 Post-Stream Intelligence Report** | ❌ Não existe relatório pós-stream narrativo.                                                               | Entrou como **Fase 12** (nova).                              |
+| **F4 Post-Stream Intelligence Report** | ✅ Implementado na Fase 12 com geração determinística, persistência e integração ao painel existente.       | Concluído sem UI paralela e com cobertura backend/dashboard. |
 | **F5 Viewer Churn Risk Signal**        | ❌ Não existe sinal explícito de risco de churn por viewer.                                                 | Entrou como **Fase 16** (nova, junto com coaching HUD).      |
 | **F6 Goal-Driven Autonomy Session**    | ⚠️ Parcial: goals no control plane já existem, mas sem contrato KPI por sessão.                             | Entrou como **Fase 13** (evolução, sem retrabalho).          |
 | **F7 Revenue Attribution Trace**       | ❌ Não existe correlação de ações com follow/sub/cheer; EventSub hoje está centrado em chat message.        | Entrou como **Fase 17** (nova).                              |
@@ -326,6 +326,7 @@
 
 #### Fase 12: Post-Stream Intelligence Report
 
+- **Status atual:** ✅ Concluída no ciclo atual.
 - **Escopo backend:** sumarização pós-live usando `observability_channel_history`, métricas de ação/aprovação/rejeição e custo operacional.
 - **Escopo dashboard:** relatório acessível no fluxo atual de observabilidade/contexto.
 - **DoD:** geração manual + automática ao fim de sessão, persistência do relatório, testes de integração e regressão.
@@ -400,6 +401,7 @@
 | **Contrato backend -> dashboard (paridade visual por capability)**                              | ✅               | Fase 9 concluída com gate obrigatório (`bot/dashboard_parity_gate.py`) e checklist de release ativo na CI          |
 | **Saneamento anti-espaguete/anti-duplicação**                                                   | ✅               | Fase 10 concluída (10.1-10.4) com gate automatizado ativo no pipeline CI                                           |
 | **Stream Health Score multi-canal (score + banda + histórico persistido)**                     | ✅               | Fase 11 concluída com endpoint por canal (`/api/sentiment/scores`) e render no layout atual                        |
+| **Post-Stream Intelligence Report (manual + auto-part + persistência + painel existente)**     | ✅               | Fase 12 concluída com `/api/observability/post-stream-report` e integração no `Intelligence Overview`              |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
 | **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
 
@@ -419,20 +421,31 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - contrato formal de paridade backend -> dashboard concluído, com gate de release/CI ativo e discovery de layout aplicado;
 - saneamento estrutural foi concluído (Fase 10) com gate automatizado de complexidade/duplicação no pipeline;
 - stream health score multi-canal foi concluído (Fase 11) com contrato versionado e exposição no layout operacional existente;
+- post-stream intelligence report foi concluído (Fase 12) com geração determinística, persistência dedicada e integração no painel `Intelligence Overview`;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: Fase 11 (Stream Health Score Multi-Canal) concluída sem regressão funcional.
+- Etapa entregue: Fase 12 (Post-Stream Intelligence Report) concluída sem regressão funcional.
 - Backend/infra de qualidade:
-  - `bot/stream_health_score.py` centraliza score determinístico por canal e componentes explicáveis;
-  - `bot/dashboard_parity_gate.py` passou a classificar `/api/sentiment/scores` como `integrated` com evidência backend + dashboard.
+  - `bot/post_stream_report.py` implementa geração determinística de relatório pós-live sem dependência de LLM;
+  - `bot/persistence_post_stream_report_repository.py` adiciona persistência dedicada para relatórios;
+  - `bot/dashboard_server_routes.py` expõe `GET /api/observability/post-stream-report?channel=&generate=1`;
+  - `bot/dashboard_server.py` aciona geração automática em `part` com sucesso;
+  - `bot/dashboard_parity_gate.py` classifica `/api/observability/post-stream-report` como `integrated`.
 - Pipeline:
   - gates de `ruff` + `pytest` + `node --test` + `python -m bot.dashboard_parity_gate` executados e verdes no ciclo;
   - contrato visual manteve o encaixe no layout existente (`metrics_health`, `agent context`, `intelligence`) sem tela paralela.
-- Escopo validado: score e banda por canal fluem de runtime/persistência até UI comparativa histórica com cobertura de regressão.
-- Testes da etapa: suíte nova Python de score + ajustes de contratos backend/dashboard + regressão multi-canal preservada.
-- Planejamento: backlog priorizado passa a iniciar na Fase 12, com Fases 9-11 fechadas.
+- Escopo validado: relatório pós-live flui de histórico/persistência até UI por canal com geração manual e automática.
+- Testes da etapa:
+  - novos: `bot/tests/test_post_stream_report.py`;
+  - backend ajustado: `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_server_extra.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_dashboard_parity_gate.py`;
+  - dashboard ajustado: `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`.
+- Evidências de validação:
+  - `pytest -q --no-cov bot/tests/test_post_stream_report.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_server.py bot/tests/test_dashboard_server_extra.py bot/tests/test_dashboard_parity_gate.py` (`105 passed`);
+  - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js` (`17 passed`);
+  - `python -m bot.dashboard_parity_gate` (`ok integrated=19 headless_approved=2`).
+- Planejamento: backlog priorizado passa a iniciar na Fase 13, com Fases 9-12 fechadas.
 
 _Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real._

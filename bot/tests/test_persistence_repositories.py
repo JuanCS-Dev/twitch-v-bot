@@ -5,6 +5,7 @@ from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_layer import PersistenceLayer
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
+from bot.persistence_post_stream_report_repository import PostStreamReportRepository
 
 
 def test_channel_config_repository_memory_roundtrip_when_disabled():
@@ -60,6 +61,28 @@ def test_observability_history_repository_memory_timeline_and_latest_snapshots()
     assert latest[1]["channel_id"] == "canal_a"
 
 
+def test_post_stream_report_repository_memory_roundtrip():
+    cache: dict[str, dict[str, object]] = {}
+    repository = PostStreamReportRepository(enabled=False, client=None, cache=cache)
+
+    saved = repository.save_latest_report_sync(
+        "Canal_A",
+        {
+            "generated_at": "2026-02-27T20:00:00Z",
+            "trigger": "manual_dashboard",
+            "narrative": "Resumo de fechamento.",
+            "recommendations": ["Ajustar ritmo de respostas."],
+        },
+        trigger="manual_dashboard",
+    )
+    loaded = repository.load_latest_report_sync("canal_a")
+
+    assert saved["channel_id"] == "canal_a"
+    assert saved["source"] == "memory"
+    assert loaded["generated_at"] == "2026-02-27T20:00:00Z"
+    assert loaded["recommendations"] == ["Ajustar ritmo de respostas."]
+
+
 def test_persistence_layer_facade_shares_repository_caches():
     with patch.dict(os.environ, {}, clear=True):
         layer = PersistenceLayer()
@@ -67,3 +90,4 @@ def test_persistence_layer_facade_shares_repository_caches():
     assert layer._channel_config_repo._cache is layer._channel_config_cache
     assert layer._agent_notes_repo._cache is layer._agent_notes_cache
     assert layer._observability_history_repo._cache is layer._observability_channel_history_cache
+    assert layer._post_stream_report_repo._cache is layer._post_stream_report_cache

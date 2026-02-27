@@ -17,6 +17,7 @@ from bot.logic import BOT_BRAND, context_manager
 from bot.observability import observability
 from bot.observability_history_contract import normalize_observability_history_point
 from bot.persistence_layer import persistence
+from bot.post_stream_report import build_post_stream_report
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
 from bot.status_runtime import build_status_line
 from bot.vision_runtime import vision_runtime
@@ -70,6 +71,17 @@ def _resolve_int_query_param(
     if parsed > maximum:
         return maximum
     return parsed
+
+
+def _resolve_bool_query_param(
+    query: dict[str, list[str]],
+    key: str,
+    *,
+    default: bool = False,
+) -> bool:
+    fallback = "1" if default else "0"
+    raw_value = str((query.get(key) or [fallback])[0] or fallback).strip().lower()
+    return raw_value in {"1", "true", "yes", "on"}
 
 
 def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
@@ -258,6 +270,49 @@ def build_sentiment_scores_payload(channel_id: str | None = None) -> dict[str, A
     }
 
 
+def build_post_stream_report_payload(
+    channel_id: str | None = None,
+    *,
+    generate: bool = False,
+    trigger: str = "manual_dashboard",
+) -> dict[str, Any]:
+    safe_channel_id = str(channel_id or "default").strip().lower() or "default"
+    history_points = persistence.load_observability_channel_history_sync(safe_channel_id, limit=120)
+    latest_report = persistence.load_latest_post_stream_report_sync(safe_channel_id)
+    if not generate:
+        return {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "selected_channel": safe_channel_id,
+            "has_report": bool(latest_report),
+            "generated": False,
+            "report": dict(latest_report or {}),
+            "history_points": len(history_points),
+        }
+
+    observability_payload = build_observability_payload(safe_channel_id)
+    generated_report = build_post_stream_report(
+        channel_id=safe_channel_id,
+        history_points=list(history_points or []),
+        observability_snapshot=observability_payload,
+        trigger=trigger,
+    )
+    persisted_report = persistence.save_post_stream_report_sync(
+        safe_channel_id,
+        generated_report,
+        trigger=trigger,
+    )
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "selected_channel": safe_channel_id,
+        "has_report": True,
+        "generated": True,
+        "report": dict(persisted_report),
+        "history_points": len(history_points),
+    }
+
+
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
@@ -412,6 +467,19 @@ def _handle_get_sentiment_scores(handler: Any, query: dict[str, list[str]]) -> N
     handler._send_json(build_sentiment_scores_payload(channel_id), status_code=200)
 
 
+def _handle_get_post_stream_report(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    generate = _resolve_bool_query_param(query, "generate", default=False)
+    handler._send_json(
+        build_post_stream_report_payload(
+            channel_id,
+            generate=generate,
+            trigger="manual_dashboard",
+        ),
+        status_code=200,
+    )
+
+
 def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> None:
     handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
 
@@ -431,6 +499,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/clip-jobs": _handle_get_clip_jobs,
     "/api/hud/messages": _handle_get_hud_messages,
     "/api/sentiment/scores": _handle_get_sentiment_scores,
+    "/api/observability/post-stream-report": _handle_get_post_stream_report,
     "/api/vision/status": _handle_get_vision_status,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
@@ -573,6 +642,7 @@ __all__ = [
     "build_channel_context_payload",
     "build_observability_history_payload",
     "build_observability_payload",
+    "build_post_stream_report_payload",
     "build_sentiment_scores_payload",
     "handle_get",
     "handle_get_config_js",

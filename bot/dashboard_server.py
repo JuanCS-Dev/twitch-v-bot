@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,6 +13,8 @@ from bot.dashboard_server_routes import (
     handle_post,
     handle_put,
 )
+from bot.persistence_layer import persistence
+from bot.post_stream_report import build_post_stream_report
 from bot.runtime_config import (
     BYTE_DASHBOARD_ADMIN_TOKEN,
     DASHBOARD_DIR,
@@ -26,6 +29,7 @@ class HealthHandler(BaseHTTPRequestHandler):
     _rate_limit_state: ClassVar[dict[str, list[float]]] = {}
     _rate_limit_max_requests = 100
     _rate_limit_window_seconds = 60
+    _logger = logging.getLogger("byte.dashboard.server")
 
     def _check_rate_limit(self) -> bool:
         ip = self.client_address[0]
@@ -180,6 +184,39 @@ class HealthHandler(BaseHTTPRequestHandler):
 
         result = irc_channel_control.execute(action=action, channel_login=channel_login)
         result["mode"] = TWITCH_CHAT_MODE
+        if result.get("ok") and action == "part":
+            report_channel_id = (
+                str(channel_login or result.get("channel") or "default").strip().lower()
+            )
+            report_channel_id = report_channel_id or "default"
+            try:
+                snapshot = build_observability_payload(report_channel_id)
+                history_points = persistence.load_observability_channel_history_sync(
+                    report_channel_id,
+                    limit=120,
+                )
+                generated_report = build_post_stream_report(
+                    channel_id=report_channel_id,
+                    history_points=list(history_points or []),
+                    observability_snapshot=snapshot,
+                    trigger="auto_part_success",
+                )
+                persistence.save_post_stream_report_sync(
+                    report_channel_id,
+                    generated_report,
+                    trigger="auto_part_success",
+                )
+                result["post_stream_report"] = {
+                    "generated": True,
+                    "channel_id": report_channel_id,
+                    "trigger": "auto_part_success",
+                }
+            except Exception as error:
+                self._logger.error(
+                    "Falha ao gerar post_stream_report automatico para %s: %s",
+                    report_channel_id,
+                    error,
+                )
         if result.get("ok"):
             return result, 200
 

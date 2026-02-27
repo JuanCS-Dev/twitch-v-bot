@@ -171,5 +171,54 @@
         <dd id="intStreamHealthBand">Critical</dd>
       </div>
     </dl>
+
+    <hr style="border: none; border-top: 1px solid var(--border-default)" />
+
+    <div
+      class="form-row"
+      style="
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-3);
+      "
+    >
+      <span id="intPostStreamStatusChip" class="chip pending">NO REPORT</span>
+      <button
+        id="intPostStreamGenerateBtn"
+        class="btn btn-secondary"
+        type="button"
+      >
+        Gerar Post-Stream Report
+      </button>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>Report Generated At</dt>
+        <dd id="intPostStreamGeneratedAt">-</dd>
+      </div>
+      <div>
+        <dt>Trigger</dt>
+        <dd id="intPostStreamTrigger">-</dd>
+      </div>
+    </dl>
+
+    <p id="intPostStreamSummary" class="panel-hint">
+      Sem relatorio pos-live para este canal. Gere manualmente para registrar o
+      resumo da sessao.
+    </p>
+
+    <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
+      Recommendations
+    </p>
+    <ul
+      id="intPostStreamRecommendations"
+      class="events-list"
+      style="max-height: 200px"
+    >
+      <li style="font-style: italic; color: var(--text-muted)">
+        Sem recomendacoes registradas.
+      </li>
+    </ul>
   </article>
 </section>

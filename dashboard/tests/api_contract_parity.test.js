@@ -22,6 +22,7 @@ import { fetchHudMessages } from "../features/hud/api.js";
 import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
+  getPostStreamReportSnapshot,
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
 } from "../features/observability/api.js";
@@ -137,6 +138,7 @@ test("operational runtime APIs keep backend contract", async () => {
   await getChannelContextSnapshot("Canal_Z");
   await getObservabilityHistorySnapshot("Canal_Z", 10000, 12, 4);
   await getSentimentScoresSnapshot("Canal_Z");
+  await getPostStreamReportSnapshot("Canal_Z", 10000, true);
 
   const channelControlCall = findCall(calls, "/api/channel-control", "POST");
   assert.ok(channelControlCall);
@@ -176,4 +178,11 @@ test("operational runtime APIs keep backend contract", async () => {
     ),
   );
   assert.ok(findCall(calls, "/api/sentiment/scores?channel=canal_z", "GET"));
+  assert.ok(
+    findCall(
+      calls,
+      "/api/observability/post-stream-report?channel=canal_z&generate=1",
+      "GET",
+    ),
+  );
 });

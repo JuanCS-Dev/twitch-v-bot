@@ -7,6 +7,7 @@ from bot.dashboard_server_routes import (
     _dashboard_asset_route,
     build_channel_context_payload,
     build_observability_history_payload,
+    build_post_stream_report_payload,
     build_sentiment_scores_payload,
     handle_get,
     handle_get_config_js,
@@ -398,6 +399,94 @@ class TestDashboardRoutesV3:
             handle_get(handler)
 
         mock_payload.assert_called_once_with("canal_a", limit=35, compare_limit=9)
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_build_post_stream_report_payload_loads_latest_when_not_generating(
+        self,
+        mock_persistence,
+    ):
+        mock_persistence.load_observability_channel_history_sync.return_value = [
+            {"captured_at": "2026-02-27T18:40:00Z"}
+        ]
+        mock_persistence.load_latest_post_stream_report_sync.return_value = {
+            "channel_id": "canal_a",
+            "generated_at": "2026-02-27T18:45:00Z",
+            "trigger": "manual_dashboard",
+            "narrative": "Resumo",
+            "recommendations": ["Manter baseline."],
+            "source": "memory",
+        }
+
+        payload = build_post_stream_report_payload("canal_a", generate=False)
+
+        assert payload["ok"] is True
+        assert payload["generated"] is False
+        assert payload["has_report"] is True
+        assert payload["report"]["generated_at"] == "2026-02-27T18:45:00Z"
+        assert payload["history_points"] == 1
+        mock_persistence.load_latest_post_stream_report_sync.assert_called_once_with("canal_a")
+
+    @patch("bot.dashboard_server_routes.persistence")
+    @patch("bot.dashboard_server_routes.build_post_stream_report")
+    @patch("bot.dashboard_server_routes.build_observability_payload")
+    def test_build_post_stream_report_payload_generates_and_persists(
+        self,
+        mock_observability_payload,
+        mock_build_report,
+        mock_persistence,
+    ):
+        mock_observability_payload.return_value = {"agent_outcomes": {"decisions_total_60m": 6}}
+        mock_persistence.load_observability_channel_history_sync.return_value = [
+            {"captured_at": "2026-02-27T18:40:00Z"}
+        ]
+        mock_build_report.return_value = {
+            "channel_id": "canal_a",
+            "generated_at": "2026-02-27T18:46:00Z",
+            "trigger": "manual_dashboard",
+            "narrative": "Resumo calculado",
+            "recommendations": ["Revisar backlog."],
+        }
+        mock_persistence.save_post_stream_report_sync.return_value = {
+            **mock_build_report.return_value,
+            "source": "memory",
+        }
+
+        payload = build_post_stream_report_payload(
+            "canal_a",
+            generate=True,
+            trigger="manual_dashboard",
+        )
+
+        assert payload["ok"] is True
+        assert payload["generated"] is True
+        assert payload["has_report"] is True
+        assert payload["report"]["source"] == "memory"
+        mock_observability_payload.assert_called_once_with("canal_a")
+        mock_build_report.assert_called_once()
+        assert mock_build_report.call_args.kwargs["channel_id"] == "canal_a"
+        mock_persistence.save_post_stream_report_sync.assert_called_once_with(
+            "canal_a",
+            mock_build_report.return_value,
+            trigger="manual_dashboard",
+        )
+
+    @patch("bot.dashboard_server_routes.build_post_stream_report_payload")
+    def test_handle_get_api_post_stream_report(self, mock_build_payload):
+        mock_build_payload.return_value = {"ok": True, "generated": True}
+        handler = MagicMock(path="/api/observability/post-stream-report?channel=Canal_A&generate=1")
+        handler._dashboard_authorized.return_value = True
+
+        handle_get(handler)
+
+        mock_build_payload.assert_called_once_with(
+            "canal_a",
+            generate=True,
+            trigger="manual_dashboard",
+        )
+        handler._send_json.assert_called_once_with(
+            {"ok": True, "generated": True},
+            status_code=200,
+        )
 
     def test_handle_get_api_unauthorized(self):
         handler = MagicMock(path="/api/control-plane")

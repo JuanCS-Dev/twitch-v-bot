@@ -11,6 +11,7 @@ from bot.dashboard_parity_gate import (
 def test_collect_backend_operational_routes_contains_dispatch_and_dynamic_routes():
     routes = set(collect_backend_operational_routes())
     assert ("GET", "/api/observability") in routes
+    assert ("GET", "/api/observability/post-stream-report") in routes
     assert ("PUT", "/api/control-plane") in routes
     assert ("POST", "/api/action-queue/{action_id}/decision") in routes
 
@@ -19,6 +20,7 @@ def test_collect_dashboard_api_routes_contains_core_routes():
     routes = set(collect_dashboard_api_routes())
     expected = {
         "/api/observability",
+        "/api/observability/post-stream-report",
         "/api/sentiment/scores",
         "/api/control-plane",
         "/api/channel-control",

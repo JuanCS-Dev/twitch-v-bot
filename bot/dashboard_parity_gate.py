@@ -85,6 +85,20 @@ PARITY_CONTRACT: tuple[ParityContractEntry, ...] = (
     ),
     ParityContractEntry(
         method="GET",
+        backend_route="/api/observability/post-stream-report",
+        domain="observability",
+        dashboard_surface="intelligence_panel",
+        status="integrated",
+        dashboard_route_prefix="/api/observability/post-stream-report",
+        backend_test_files=("bot/tests/test_dashboard_routes_v3.py",),
+        dashboard_test_files=(
+            "dashboard/tests/api_contract_parity.test.js",
+            "dashboard/tests/multi_channel_focus.test.js",
+        ),
+        route_snippet="/api/observability/post-stream-report",
+    ),
+    ParityContractEntry(
+        method="GET",
         backend_route="/api/control-plane",
         domain="control_plane",
         dashboard_surface="control_plane_panel",

@@ -83,6 +83,7 @@ async function bootstrapDashboard() {
   });
 
   channelControlController.bindChannelControlEvents();
+  observabilityController.bindObservabilityEvents();
   controlPlaneController.bindControlPlaneEvents();
   autonomyController.bindAutonomyEvents();
   actionQueueController.bindActionQueueEvents();

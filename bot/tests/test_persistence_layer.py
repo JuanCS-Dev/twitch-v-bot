@@ -547,6 +547,106 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         mock_load.assert_called_once_with("Canal_A", limit=7)
         mock_latest.assert_called_once_with(limit=4)
 
+    def test_post_stream_report_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        saved = layer.save_post_stream_report_sync(
+            "Canal_A",
+            {
+                "generated_at": "2026-02-27T20:05:00Z",
+                "trigger": "manual_dashboard",
+                "narrative": "Resumo final da live.",
+                "recommendations": ["Priorizar backlog no inicio."],
+            },
+            trigger="manual_dashboard",
+        )
+        loaded = layer.load_latest_post_stream_report_sync("canal_a")
+
+        self.assertEqual(saved["channel_id"], "canal_a")
+        self.assertEqual(saved["source"], "memory")
+        self.assertEqual(loaded["generated_at"], "2026-02-27T20:05:00Z")
+        self.assertEqual(loaded["recommendations"], ["Priorizar backlog no inicio."])
+
+    def test_post_stream_report_supabase_roundtrip(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = (
+            table.select.return_value.eq.return_value.order.return_value.limit.return_value
+        )
+        select_chain.execute.return_value = MagicMock(
+            data=[
+                {
+                    "channel_id": "canal_supabase",
+                    "generated_at": "2026-02-27T20:10:00Z",
+                    "trigger": "manual_dashboard",
+                    "report": {
+                        "narrative": "Resumo supabase",
+                        "recommendations": ["Reforcar CTA inicial."],
+                    },
+                }
+            ]
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_latest_post_stream_report_sync("canal_supabase")
+        saved = layer.save_post_stream_report_sync(
+            "canal_supabase",
+            {
+                "generated_at": "2026-02-27T20:11:00Z",
+                "trigger": "manual_dashboard",
+                "narrative": "Resumo salvo",
+                "recommendations": ["Seguir baseline."],
+            },
+            trigger="manual_dashboard",
+        )
+
+        self.assertEqual(loaded["source"], "supabase")
+        self.assertEqual(loaded["generated_at"], "2026-02-27T20:10:00Z")
+        self.assertEqual(saved["source"], "supabase")
+        self.assertEqual(saved["channel_id"], "canal_supabase")
+        insert_payload = mock_client.table.return_value.insert.call_args[0][0]
+        self.assertEqual(insert_payload["channel_id"], "canal_supabase")
+        self.assertEqual(insert_payload["trigger"], "manual_dashboard")
+        self.assertEqual(insert_payload["generated_at"], "2026-02-27T20:11:00Z")
+
+    async def test_post_stream_report_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer,
+            "save_post_stream_report_sync",
+            return_value={"channel_id": "canal_a", "source": "memory"},
+        ) as mock_save:
+            saved = await layer.save_post_stream_report(
+                "Canal_A",
+                {"narrative": "Resumo"},
+                trigger="manual_dashboard",
+            )
+        with patch.object(
+            layer,
+            "load_latest_post_stream_report_sync",
+            return_value={"channel_id": "canal_a", "source": "memory"},
+        ) as mock_load:
+            loaded = await layer.load_latest_post_stream_report("Canal_A")
+
+        self.assertEqual(saved["channel_id"], "canal_a")
+        self.assertEqual(loaded["channel_id"], "canal_a")
+        mock_save.assert_called_once_with(
+            "Canal_A",
+            {"narrative": "Resumo"},
+            trigger="manual_dashboard",
+        )
+        mock_load.assert_called_once_with("Canal_A")
+
     def test_observability_rollup_memory_fallback_when_disabled(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()

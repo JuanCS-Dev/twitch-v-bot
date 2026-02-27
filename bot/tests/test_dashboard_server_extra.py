@@ -73,22 +73,88 @@ class TestDashboardServerExtra(unittest.TestCase):
     @patch("bot.dashboard_server.irc_channel_control")
     def test_handle_channel_control_irc_runtime_unavailable(self, mock_control):
         mock_control.execute.return_value = {"ok": False, "error": "runtime_unavailable"}
-        result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
+        _result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
         self.assertEqual(code, 503)
 
     @patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc")
     @patch("bot.dashboard_server.irc_channel_control")
     def test_handle_channel_control_irc_runtime_error(self, mock_control):
         mock_control.execute.return_value = {"ok": False, "error": "runtime_error"}
-        result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
+        _result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
         self.assertEqual(code, 500)
 
     @patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc")
     @patch("bot.dashboard_server.irc_channel_control")
     def test_handle_channel_control_irc_bad_request(self, mock_control):
         mock_control.execute.return_value = {"ok": False, "error": "invalid_channel"}
-        result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
+        _result, code = self.handler._handle_channel_control({"action": "join", "channel": "test"})
         self.assertEqual(code, 400)
+
+    @patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc")
+    @patch("bot.dashboard_server.irc_channel_control")
+    @patch("bot.dashboard_server.build_observability_payload")
+    @patch("bot.dashboard_server.build_post_stream_report")
+    @patch("bot.dashboard_server.persistence")
+    def test_handle_channel_control_part_generates_post_stream_report(
+        self,
+        mock_persistence,
+        mock_build_report,
+        mock_build_observability,
+        mock_control,
+    ):
+        mock_control.execute.return_value = {"ok": True}
+        mock_build_observability.return_value = {"agent_outcomes": {"decisions_total_60m": 3}}
+        mock_persistence.load_observability_channel_history_sync.return_value = [
+            {"captured_at": "2026-02-27T19:10:00Z"}
+        ]
+        mock_build_report.return_value = {
+            "channel_id": "canal_part",
+            "generated_at": "2026-02-27T19:15:00Z",
+            "trigger": "auto_part_success",
+            "recommendations": [],
+        }
+
+        result, code = self.handler._handle_channel_control(
+            {"action": "part", "channel": "Canal_Part"}
+        )
+
+        self.assertEqual(code, 200)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["post_stream_report"]["generated"])
+        mock_build_observability.assert_called_once_with("canal_part")
+        mock_persistence.load_observability_channel_history_sync.assert_called_once_with(
+            "canal_part",
+            limit=120,
+        )
+        mock_persistence.save_post_stream_report_sync.assert_called_once_with(
+            "canal_part",
+            mock_build_report.return_value,
+            trigger="auto_part_success",
+        )
+
+    @patch("bot.dashboard_server.TWITCH_CHAT_MODE", "irc")
+    @patch("bot.dashboard_server.irc_channel_control")
+    @patch("bot.dashboard_server.build_observability_payload")
+    @patch("bot.dashboard_server.build_post_stream_report")
+    @patch("bot.dashboard_server.persistence")
+    def test_handle_channel_control_part_keeps_success_when_report_generation_fails(
+        self,
+        _mock_persistence,
+        mock_build_report,
+        mock_build_observability,
+        mock_control,
+    ):
+        mock_control.execute.return_value = {"ok": True}
+        mock_build_observability.return_value = {"agent_outcomes": {}}
+        mock_build_report.side_effect = RuntimeError("generation failed")
+
+        result, code = self.handler._handle_channel_control(
+            {"action": "part", "channel": "Canal_Part"}
+        )
+
+        self.assertEqual(code, 200)
+        self.assertTrue(result["ok"])
+        self.assertNotIn("post_stream_report", result)
 
     def test_do_options(self):
         self.handler.requestline = "OPTIONS / HTTP/1.1"

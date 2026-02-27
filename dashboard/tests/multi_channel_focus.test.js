@@ -10,12 +10,14 @@ import { createChannelControlController } from "../features/channel-control/cont
 import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
+  getPostStreamReportSnapshot,
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
 } from "../features/observability/api.js";
 import {
   renderChannelContextSnapshot,
   renderObservabilityHistorySnapshot,
+  renderPostStreamReportSnapshot,
   renderObservabilitySnapshot,
 } from "../features/observability/view.js";
 import { createObservabilityController } from "../features/observability/controller.js";
@@ -326,6 +328,30 @@ function createObservabilityElements(document) {
       "sentimentProgressBar",
       new MockElement("div", document),
     ),
+    intPostStreamStatusChip: document.registerElement(
+      "intPostStreamStatusChip",
+      new MockElement("span", document),
+    ),
+    intPostStreamGeneratedAt: document.registerElement(
+      "intPostStreamGeneratedAt",
+      new MockElement("dd", document),
+    ),
+    intPostStreamTrigger: document.registerElement(
+      "intPostStreamTrigger",
+      new MockElement("dd", document),
+    ),
+    intPostStreamSummary: document.registerElement(
+      "intPostStreamSummary",
+      new MockElement("p", document),
+    ),
+    intPostStreamRecommendations: document.registerElement(
+      "intPostStreamRecommendations",
+      new MockElement("ul", document),
+    ),
+    intPostStreamGenerateBtn: document.registerElement(
+      "intPostStreamGenerateBtn",
+      new MockElement("button", document),
+    ),
   };
 }
 
@@ -493,6 +519,7 @@ test("observability api resolves channel-scoped endpoints", async () => {
   await getChannelContextSnapshot("Canal_B");
   await getObservabilityHistorySnapshot("Canal_C", 10000, 12, 4);
   await getSentimentScoresSnapshot("Canal_D");
+  await getPostStreamReportSnapshot("Canal_E", 10000, true);
 
   assert.equal(
     calls[0].url,
@@ -510,10 +537,15 @@ test("observability api resolves channel-scoped endpoints", async () => {
     calls[3].url,
     "http://localhost:8000/api/sentiment/scores?channel=canal_d",
   );
+  assert.equal(
+    calls[4].url,
+    "http://localhost:8000/api/observability/post-stream-report?channel=canal_e&generate=1",
+  );
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[1].options.method, "GET");
   assert.equal(calls[2].options.method, "GET");
   assert.equal(calls[3].options.method, "GET");
+  assert.equal(calls[4].options.method, "GET");
 });
 
 test("observability views render focused channel and persisted context state", () => {
@@ -647,6 +679,24 @@ test("observability views render focused channel and persisted context state", (
     },
     els,
   );
+  renderPostStreamReportSnapshot(
+    {
+      ok: true,
+      selected_channel: "canal_a",
+      has_report: true,
+      generated: false,
+      report: {
+        generated_at: "2026-02-27T14:01:00Z",
+        trigger: "auto_part_success",
+        narrative: "Canal #canal_a encerrou com stream health 88/100.",
+        recommendations: [
+          "Reduzir backlog pendente da action queue.",
+          "Aplicar teto operacional de custo por hora.",
+        ],
+      },
+    },
+    els,
+  );
 
   assert.equal(els.ctxSelectedChannelChip.textContent, "canal_a");
   assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
@@ -668,7 +718,10 @@ test("observability views render focused channel and persisted context state", (
     els.persistedHistoryItems.children.map((item) => item.textContent),
     ["viewer: oi", "byte: salve"],
   );
-  assert.equal(els.persistedTimelineHint.className, "panel-hint event-level-info");
+  assert.equal(
+    els.persistedTimelineHint.className,
+    "panel-hint event-level-info",
+  );
   assert.equal(els.persistedChannelTimelineBody.children.length, 1);
   assert.equal(
     els.persistedChannelTimelineBody.children[0].children[1].textContent,
@@ -687,6 +740,14 @@ test("observability views render focused channel and persisted context state", (
     els.persistedChannelComparisonBody.children[0].children[6].textContent,
     "88 (Excellent)",
   );
+  assert.equal(els.intPostStreamStatusChip.textContent, "REPORT READY");
+  assert.equal(
+    els.intPostStreamGeneratedAt.textContent,
+    "2026-02-27T14:01:00Z",
+  );
+  assert.equal(els.intPostStreamTrigger.textContent, "auto part success");
+  assert.match(els.intPostStreamSummary.textContent, /Canal #canal_a/);
+  assert.equal(els.intPostStreamRecommendations.children.length, 2);
 });
 
 test("observability controller fetches observability, context and history for the selected channel", async () => {
@@ -743,6 +804,26 @@ test("observability controller fetches observability, context and history for th
         },
       };
     }
+    if (String(url).includes("/api/observability/post-stream-report")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            selected_channel: "canal_z",
+            has_report: true,
+            generated: false,
+            report: {
+              generated_at: "2026-02-27T13:45:00Z",
+              trigger: "manual_dashboard",
+              narrative: "Resumo pos-live de canal_z",
+              recommendations: ["Reforcar CTA no inicio da live."],
+            },
+          };
+        },
+      };
+    }
     if (String(url).includes("/api/channel-context")) {
       return {
         ok: true,
@@ -789,6 +870,7 @@ test("observability controller fetches observability, context and history for th
     "http://localhost:8000/api/observability?channel=canal_z",
     "http://localhost:8000/api/channel-context?channel=canal_z",
     "http://localhost:8000/api/observability/history?channel=canal_z&limit=24&compare_limit=6",
+    "http://localhost:8000/api/observability/post-stream-report?channel=canal_z",
   ]);
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");
@@ -796,6 +878,70 @@ test("observability controller fetches observability, context and history for th
   assert.equal(obsEls.mStreamHealthScore.textContent, "84");
   assert.equal(obsEls.intStreamHealthBand.textContent, "Stable");
   assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
+  assert.equal(obsEls.intPostStreamStatusChip.textContent, "REPORT READY");
+  assert.match(obsEls.intPostStreamSummary.textContent, /canal_z/i);
+});
+
+test("observability controller triggers manual post-stream generation from intelligence panel", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const obsEls = createObservabilityElements(document);
+  const urls = [];
+
+  globalThis.fetch = async (url) => {
+    const safeUrl = String(url);
+    urls.push(safeUrl);
+    if (safeUrl.includes("/api/observability/post-stream-report?")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            selected_channel: "canal_manual",
+            has_report: true,
+            generated: true,
+            report: {
+              generated_at: "2026-02-27T20:00:00Z",
+              trigger: "manual_dashboard",
+              narrative: "Resumo pos-live manual.",
+              recommendations: ["Ajustar ritmo inicial da proxima live."],
+            },
+          };
+        },
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { ok: true };
+      },
+    };
+  };
+
+  const controller = createObservabilityController({
+    obsEls,
+    ctrlEls: null,
+    cpEls: null,
+    autEls: null,
+  });
+  controller.setSelectedChannel("Canal_Manual");
+  controller.bindObservabilityEvents();
+
+  obsEls.intPostStreamGenerateBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.ok(
+    urls.includes(
+      "http://localhost:8000/api/observability/post-stream-report?channel=canal_manual&generate=1",
+    ),
+  );
+  assert.equal(obsEls.intPostStreamStatusChip.textContent, "REPORT UPDATED");
+  assert.equal(obsEls.intPostStreamTrigger.textContent, "manual dashboard");
 });
 
 test("control plane controller mirrors the focused channel into channel tuning", () => {

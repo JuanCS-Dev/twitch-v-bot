@@ -149,6 +149,18 @@ export function getObservabilityElements() {
     intStreamHealthScore: document.getElementById("intStreamHealthScore"),
     intStreamHealthBand: document.getElementById("intStreamHealthBand"),
     sentimentProgressBar: document.getElementById("sentimentProgressBar"),
+    intPostStreamStatusChip: document.getElementById("intPostStreamStatusChip"),
+    intPostStreamGeneratedAt: document.getElementById(
+      "intPostStreamGeneratedAt",
+    ),
+    intPostStreamTrigger: document.getElementById("intPostStreamTrigger"),
+    intPostStreamSummary: document.getElementById("intPostStreamSummary"),
+    intPostStreamRecommendations: document.getElementById(
+      "intPostStreamRecommendations",
+    ),
+    intPostStreamGenerateBtn: document.getElementById(
+      "intPostStreamGenerateBtn",
+    ),
   };
 }
 
@@ -262,6 +274,14 @@ function renderStringList(items, targetBody, emptyMessage) {
   });
 }
 
+function formatPostStreamTrigger(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return "-";
+  return normalized.replaceAll("_", " ");
+}
+
 function renderPersistedTimelineRows(rows, targetBody) {
   if (!targetBody) return;
   targetBody.innerHTML = "";
@@ -370,7 +390,11 @@ function renderEvents(events, targetBody) {
   });
 }
 
-export function renderObservabilitySnapshot(data, els, sentimentPayload = null) {
+export function renderObservabilitySnapshot(
+  data,
+  els,
+  sentimentPayload = null,
+) {
   const safeData = data && typeof data === "object" ? data : {};
   const bot = safeData.bot || {};
   const metrics = safeData.metrics || {};
@@ -538,14 +562,20 @@ export function renderObservabilitySnapshot(data, els, sentimentPayload = null) 
   setText(els.mSentimentVibe, sentiment.vibe || "Chill");
   setText(els.mSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
   setText(els.mStreamHealthScore, formatStreamHealthScore(streamHealth.score));
-  setText(els.mStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
+  setText(
+    els.mStreamHealthBand,
+    formatStreamHealthBandLabel(streamHealth.band),
+  );
   setText(els.ctxSentimentVibe, sentiment.vibe || "-");
   setText(els.ctxSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
   setText(
     els.ctxStreamHealthScore,
     `${formatStreamHealthScore(streamHealth.score)}/100`,
   );
-  setText(els.ctxStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
+  setText(
+    els.ctxStreamHealthBand,
+    formatStreamHealthBandLabel(streamHealth.band),
+  );
   setText(els.ctxVisionFrames, formatNumber(vision.frame_count));
   setText(els.ctxVisionLast, vision.last_analysis || "-");
 
@@ -562,7 +592,10 @@ export function renderObservabilitySnapshot(data, els, sentimentPayload = null) 
     els.intStreamHealthScore,
     `${formatStreamHealthScore(streamHealth.score)}/100`,
   );
-  setText(els.intStreamHealthBand, formatStreamHealthBandLabel(streamHealth.band));
+  setText(
+    els.intStreamHealthBand,
+    formatStreamHealthBandLabel(streamHealth.band),
+  );
 
   if (els.sentimentProgressBar) {
     const totalSentiments =
@@ -702,5 +735,56 @@ export function renderChannelContextSnapshot(payload, els) {
     channel.persisted_recent_history || [],
     els.persistedHistoryItems,
     "Nenhum histórico persistido disponível para este canal.",
+  );
+}
+
+export function renderPostStreamReportSnapshot(payload, els) {
+  if (!els) return;
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const report =
+    safePayload.report && typeof safePayload.report === "object"
+      ? safePayload.report
+      : {};
+  const hasReport = Boolean(
+    safePayload.has_report && Object.keys(report).length > 0,
+  );
+
+  if (els.intPostStreamStatusChip) {
+    els.intPostStreamStatusChip.classList.remove(
+      "ok",
+      "warn",
+      "error",
+      "pending",
+    );
+    if (hasReport) {
+      setText(
+        els.intPostStreamStatusChip,
+        safePayload.generated ? "REPORT UPDATED" : "REPORT READY",
+      );
+      els.intPostStreamStatusChip.classList.add("ok");
+    } else {
+      setText(els.intPostStreamStatusChip, "NO REPORT");
+      els.intPostStreamStatusChip.classList.add("warn");
+    }
+  }
+
+  setText(
+    els.intPostStreamGeneratedAt,
+    hasReport ? report.generated_at || "-" : "-",
+  );
+  setText(
+    els.intPostStreamTrigger,
+    hasReport ? formatPostStreamTrigger(report.trigger) : "-",
+  );
+  setText(
+    els.intPostStreamSummary,
+    hasReport
+      ? String(report.narrative || "Resumo indisponivel para esta sessao.")
+      : "Sem relatorio pos-live para este canal. Gere manualmente para registrar o resumo da sessao.",
+  );
+  renderStringList(
+    hasReport ? report.recommendations || [] : [],
+    els.intPostStreamRecommendations,
+    "Sem recomendacoes registradas.",
   );
 }
