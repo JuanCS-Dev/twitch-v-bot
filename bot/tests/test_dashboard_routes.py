@@ -162,6 +162,19 @@ class TestDashboardRoutes(unittest.TestCase):
             status_code=200,
         )
 
+    @patch("bot.dashboard_server_routes.build_observability_history_payload")
+    def test_handle_get_observability_history_success(self, mock_build_payload):
+        self.handler.path = "/api/observability/history?channel=Canal_A&limit=10&compare_limit=4"
+        mock_build_payload.return_value = {"ok": True, "selected_channel": "canal_a"}
+
+        routes.handle_get(self.handler)
+
+        mock_build_payload.assert_called_with("canal_a", limit=10, compare_limit=4)
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "selected_channel": "canal_a"},
+            status_code=200,
+        )
+
     def test_handle_put_control_plane_invalid_json(self):
         self.handler.path = "/api/control-plane"
         self.handler._read_json_payload.side_effect = ValueError("Bad JSON")

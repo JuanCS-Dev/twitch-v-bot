@@ -9,10 +9,12 @@ import {
 import { createChannelControlController } from "../features/channel-control/controller.js";
 import {
   getChannelContextSnapshot,
+  getObservabilityHistorySnapshot,
   getObservabilitySnapshot,
 } from "../features/observability/api.js";
 import {
   renderChannelContextSnapshot,
+  renderObservabilityHistorySnapshot,
   renderObservabilitySnapshot,
 } from "../features/observability/view.js";
 import { createObservabilityController } from "../features/observability/controller.js";
@@ -275,6 +277,18 @@ function createObservabilityElements(document) {
       "persistedHistoryItems",
       new MockElement("ul", document),
     ),
+    persistedTimelineHint: document.registerElement(
+      "persistedTimelineHint",
+      new MockElement("p", document),
+    ),
+    persistedChannelTimelineBody: document.registerElement(
+      "persistedChannelTimelineBody",
+      new MockElement("tbody", document),
+    ),
+    persistedChannelComparisonBody: document.registerElement(
+      "persistedChannelComparisonBody",
+      new MockElement("tbody", document),
+    ),
     contextItems: document.registerElement(
       "contextItems",
       new MockElement("ul", document),
@@ -452,6 +466,7 @@ test("observability api resolves channel-scoped endpoints", async () => {
 
   await getObservabilitySnapshot(" Canal_A ");
   await getChannelContextSnapshot("Canal_B");
+  await getObservabilityHistorySnapshot("Canal_C", 10000, 12, 4);
 
   assert.equal(
     calls[0].url,
@@ -461,8 +476,13 @@ test("observability api resolves channel-scoped endpoints", async () => {
     calls[1].url,
     "http://localhost:8000/api/channel-context?channel=canal_b",
   );
+  assert.equal(
+    calls[2].url,
+    "http://localhost:8000/api/observability/history?channel=canal_c&limit=12&compare_limit=4",
+  );
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[1].options.method, "GET");
+  assert.equal(calls[2].options.method, "GET");
 });
 
 test("observability views render focused channel and persisted context state", () => {
@@ -514,6 +534,60 @@ test("observability views render focused channel and persisted context state", (
     els,
   );
 
+  renderObservabilityHistorySnapshot(
+    {
+      selected_channel: "canal_a",
+      timeline: [
+        {
+          channel_id: "canal_a",
+          captured_at: "2026-02-27T13:58:00Z",
+          metrics: {
+            chat_messages_total: 30,
+            byte_triggers_total: 6,
+            replies_total: 5,
+            errors_total: 1,
+          },
+          chatters: {
+            active_60m: 4,
+          },
+        },
+      ],
+      comparison: [
+        {
+          channel_id: "canal_a",
+          captured_at: "2026-02-27T13:58:00Z",
+          metrics: {
+            chat_messages_total: 30,
+            byte_triggers_total: 6,
+            replies_total: 5,
+          },
+          chatters: {
+            active_60m: 4,
+          },
+          agent_outcomes: {
+            ignored_rate_60m: 10.5,
+          },
+        },
+        {
+          channel_id: "canal_b",
+          captured_at: "2026-02-27T13:57:00Z",
+          metrics: {
+            chat_messages_total: 22,
+            byte_triggers_total: 3,
+            replies_total: 2,
+          },
+          chatters: {
+            active_60m: 3,
+          },
+          agent_outcomes: {
+            ignored_rate_60m: 4.2,
+          },
+        },
+      ],
+    },
+    els,
+  );
+
   assert.equal(els.ctxSelectedChannelChip.textContent, "canal_a");
   assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
   assert.equal(els.ctxPersistedStatusChip.textContent, "PERSISTED READY");
@@ -528,9 +602,20 @@ test("observability views render focused channel and persisted context state", (
     els.persistedHistoryItems.children.map((item) => item.textContent),
     ["viewer: oi", "byte: salve"],
   );
+  assert.equal(els.persistedTimelineHint.className, "panel-hint event-level-info");
+  assert.equal(els.persistedChannelTimelineBody.children.length, 1);
+  assert.equal(
+    els.persistedChannelTimelineBody.children[0].children[1].textContent,
+    "30",
+  );
+  assert.equal(els.persistedChannelComparisonBody.children.length, 2);
+  assert.equal(
+    els.persistedChannelComparisonBody.children[0].children[0].textContent,
+    "canal_a (focused)",
+  );
 });
 
-test("observability controller fetches both snapshots for the selected channel", async () => {
+test("observability controller fetches observability, context and history for the selected channel", async () => {
   const { document } = installBrowserEnv();
   document.registerElement(
     "adminTokenInput",
@@ -541,6 +626,27 @@ test("observability controller fetches both snapshots for the selected channel",
 
   globalThis.fetch = async (url) => {
     urls.push(url);
+    if (String(url).includes("/api/observability/history")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            selected_channel: "canal_z",
+            timeline: [
+              {
+                channel_id: "canal_z",
+                captured_at: "2026-02-27T13:40:00Z",
+                metrics: { chat_messages_total: 12 },
+                chatters: { active_60m: 2 },
+              },
+            ],
+            comparison: [],
+          };
+        },
+      };
+    }
     if (String(url).includes("/api/channel-context")) {
       return {
         ok: true,
@@ -585,10 +691,12 @@ test("observability controller fetches both snapshots for the selected channel",
   assert.deepEqual(urls, [
     "http://localhost:8000/api/observability?channel=canal_z",
     "http://localhost:8000/api/channel-context?channel=canal_z",
+    "http://localhost:8000/api/observability/history?channel=canal_z&limit=24&compare_limit=6",
   ]);
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");
   assert.equal(obsEls.ctxRuntimeStatusChip.textContent, "RUNTIME LAZY");
+  assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
 });
 
 test("control plane controller mirrors the focused channel into channel tuning", () => {

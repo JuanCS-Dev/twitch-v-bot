@@ -83,6 +83,7 @@ class PersistenceLayer:
         self._channel_config_cache: dict[str, dict[str, Any]] = {}
         self._agent_notes_cache: dict[str, dict[str, Any]] = {}
         self._observability_rollup_cache: dict[str, Any] | None = None
+        self._observability_channel_history_cache: dict[str, list[dict[str, Any]]] = {}
 
         if self._url and self._key:
             try:
@@ -418,6 +419,221 @@ class PersistenceLayer:
         return self.load_recent_history_sync(channel_id, limit=limit)
 
     # --- Telemetria (Absorvendo supabase_client.py) ---
+
+    @staticmethod
+    def _coerce_history_limit(limit: Any, *, default: int, maximum: int) -> int:
+        try:
+            parsed = int(limit)
+        except (TypeError, ValueError):
+            return default
+        if parsed < 1:
+            return 1
+        return min(parsed, maximum)
+
+    @staticmethod
+    def _normalize_observability_history_point(
+        channel_id: str,
+        payload: dict[str, Any] | None,
+        *,
+        captured_at: str = "",
+    ) -> dict[str, Any]:
+        safe_payload = dict(payload or {})
+        safe_metrics = dict(safe_payload.get("metrics") or {})
+        safe_chatters = dict(safe_payload.get("chatters") or {})
+        safe_analytics = dict(safe_payload.get("chat_analytics") or {})
+        safe_outcomes = dict(safe_payload.get("agent_outcomes") or {})
+        safe_context = dict(safe_payload.get("context") or {})
+        safe_captured_at = (
+            str(captured_at or "")
+            or str(safe_payload.get("captured_at") or "")
+            or str(safe_payload.get("timestamp") or "")
+            or _utc_iso_now()
+        )
+        return {
+            "channel_id": _normalize_channel_id(channel_id) or "default",
+            "captured_at": safe_captured_at,
+            "metrics": {
+                "chat_messages_total": int(safe_metrics.get("chat_messages_total", 0) or 0),
+                "byte_triggers_total": int(safe_metrics.get("byte_triggers_total", 0) or 0),
+                "replies_total": int(safe_metrics.get("replies_total", 0) or 0),
+                "llm_interactions_total": int(safe_metrics.get("llm_interactions_total", 0) or 0),
+                "errors_total": int(safe_metrics.get("errors_total", 0) or 0),
+            },
+            "chatters": {
+                "unique_total": int(safe_chatters.get("unique_total", 0) or 0),
+                "active_60m": int(safe_chatters.get("active_60m", 0) or 0),
+            },
+            "chat_analytics": {
+                "messages_60m": int(safe_analytics.get("messages_60m", 0) or 0),
+                "byte_triggers_60m": int(safe_analytics.get("byte_triggers_60m", 0) or 0),
+                "messages_per_minute_60m": float(
+                    safe_analytics.get("messages_per_minute_60m", 0.0) or 0.0
+                ),
+            },
+            "agent_outcomes": {
+                "useful_engagement_rate_60m": float(
+                    safe_outcomes.get("useful_engagement_rate_60m", 0.0) or 0.0
+                ),
+                "ignored_rate_60m": float(safe_outcomes.get("ignored_rate_60m", 0.0) or 0.0),
+            },
+            "context": {
+                "last_prompt": str(safe_context.get("last_prompt") or ""),
+                "last_reply": str(safe_context.get("last_reply") or ""),
+            },
+        }
+
+    def save_observability_channel_history_sync(
+        self,
+        channel_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id)
+        if not normalized:
+            raise ValueError("channel_id obrigatorio.")
+
+        point = self._normalize_observability_history_point(normalized, payload)
+        cached_points = list(self._observability_channel_history_cache.get(normalized, []))
+        cached_points.append(point)
+        self._observability_channel_history_cache[normalized] = cached_points[-360:]
+
+        if not self._enabled or not self._client:
+            return {**point, "source": "memory"}
+
+        try:
+            self._client.table("observability_channel_history").insert(
+                {
+                    "channel_id": normalized,
+                    "snapshot": point,
+                    "captured_at": "now()",
+                }
+            ).execute()
+            return {**point, "source": "supabase"}
+        except Exception as e:
+            logger.error(
+                "PersistenceLayer: Erro ao salvar histórico de observability para %s: %s",
+                normalized,
+                e,
+            )
+            return {**point, "source": "memory"}
+
+    async def save_observability_channel_history(
+        self,
+        channel_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self.save_observability_channel_history_sync(channel_id, payload)
+
+    def load_observability_channel_history_sync(
+        self,
+        channel_id: str,
+        *,
+        limit: int = 24,
+    ) -> list[dict[str, Any]]:
+        normalized = _normalize_channel_id(channel_id) or "default"
+        safe_limit = self._coerce_history_limit(limit, default=24, maximum=240)
+        cached_points = list(self._observability_channel_history_cache.get(normalized, []))
+
+        if not self._enabled or not self._client:
+            return list(reversed(cached_points[-safe_limit:]))
+
+        try:
+            result = (
+                self._client.table("observability_channel_history")
+                .select("channel_id, snapshot, captured_at")
+                .eq("channel_id", normalized)
+                .order("captured_at", desc=True)
+                .limit(safe_limit)
+                .execute()
+            )
+            rows = result.data or []
+            points = [
+                self._normalize_observability_history_point(
+                    str(row.get("channel_id") or normalized),
+                    dict(row.get("snapshot") or {}),
+                    captured_at=str(row.get("captured_at") or ""),
+                )
+                for row in rows
+            ]
+            self._observability_channel_history_cache[normalized] = list(reversed(points))
+            return points
+        except Exception as e:
+            logger.error(
+                "PersistenceLayer: Erro ao carregar histórico de observability para %s: %s",
+                normalized,
+                e,
+            )
+            return list(reversed(cached_points[-safe_limit:]))
+
+    async def load_observability_channel_history(
+        self,
+        channel_id: str,
+        *,
+        limit: int = 24,
+    ) -> list[dict[str, Any]]:
+        return self.load_observability_channel_history_sync(channel_id, limit=limit)
+
+    def load_latest_observability_channel_snapshots_sync(
+        self,
+        *,
+        limit: int = 6,
+    ) -> list[dict[str, Any]]:
+        safe_limit = self._coerce_history_limit(limit, default=6, maximum=24)
+
+        if not self._enabled or not self._client:
+            latest_points = []
+            for channel_id, rows in self._observability_channel_history_cache.items():
+                if not rows:
+                    continue
+                latest_points.append(
+                    self._normalize_observability_history_point(channel_id, dict(rows[-1] or {}))
+                )
+            latest_points.sort(key=lambda item: str(item.get("captured_at") or ""), reverse=True)
+            return latest_points[:safe_limit]
+
+        scan_limit = max(48, safe_limit * 20)
+        try:
+            result = (
+                self._client.table("observability_channel_history")
+                .select("channel_id, snapshot, captured_at")
+                .order("captured_at", desc=True)
+                .limit(scan_limit)
+                .execute()
+            )
+            rows = result.data or []
+            by_channel: dict[str, dict[str, Any]] = {}
+            for row in rows:
+                channel_id = _normalize_channel_id(str(row.get("channel_id") or ""))
+                if not channel_id or channel_id in by_channel:
+                    continue
+                by_channel[channel_id] = self._normalize_observability_history_point(
+                    channel_id,
+                    dict(row.get("snapshot") or {}),
+                    captured_at=str(row.get("captured_at") or ""),
+                )
+                if len(by_channel) >= safe_limit:
+                    break
+            return list(by_channel.values())
+        except Exception as e:
+            logger.error(
+                "PersistenceLayer: Erro ao carregar comparação multi-canal de observability: %s",
+                e,
+            )
+            latest_points = []
+            for channel_id, rows in self._observability_channel_history_cache.items():
+                if not rows:
+                    continue
+                latest_points.append(
+                    self._normalize_observability_history_point(channel_id, dict(rows[-1] or {}))
+                )
+            latest_points.sort(key=lambda item: str(item.get("captured_at") or ""), reverse=True)
+            return latest_points[:safe_limit]
+
+    async def load_latest_observability_channel_snapshots(
+        self,
+        *,
+        limit: int = 6,
+    ) -> list[dict[str, Any]]:
+        return self.load_latest_observability_channel_snapshots_sync(limit=limit)
 
     def load_observability_rollup_sync(self) -> dict[str, Any] | None:
         cached = self._observability_rollup_cache

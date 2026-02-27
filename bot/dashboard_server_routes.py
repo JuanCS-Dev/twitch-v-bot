@@ -45,6 +45,26 @@ def _resolve_channel_id(
     return default
 
 
+def _resolve_int_query_param(
+    query: dict[str, list[str]],
+    key: str,
+    *,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    raw_value = str((query.get(key) or [str(default)])[0] or str(default)).strip()
+    try:
+        parsed = int(raw_value)
+    except ValueError:
+        return default
+    if parsed < minimum:
+        return minimum
+    if parsed > maximum:
+        return maximum
+    return parsed
+
+
 def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
     runtime_observability = getattr(ctx, "live_observability", {}) or {}
     return {
@@ -92,6 +112,47 @@ def _serialize_persisted_agent_notes(notes: dict[str, Any] | None) -> dict[str, 
         "has_notes": bool(notes.get("has_notes")),
         "updated_at": str(notes.get("updated_at") or ""),
         "source": str(notes.get("source") or ""),
+    }
+
+
+def _serialize_observability_history_point(point: dict[str, Any] | None) -> dict[str, Any]:
+    safe_point = dict(point or {})
+    safe_metrics = dict(safe_point.get("metrics") or {})
+    safe_chatters = dict(safe_point.get("chatters") or {})
+    safe_analytics = dict(safe_point.get("chat_analytics") or {})
+    safe_outcomes = dict(safe_point.get("agent_outcomes") or {})
+    safe_context = dict(safe_point.get("context") or {})
+    return {
+        "channel_id": str(safe_point.get("channel_id") or "default"),
+        "captured_at": str(safe_point.get("captured_at") or ""),
+        "metrics": {
+            "chat_messages_total": int(safe_metrics.get("chat_messages_total", 0) or 0),
+            "byte_triggers_total": int(safe_metrics.get("byte_triggers_total", 0) or 0),
+            "replies_total": int(safe_metrics.get("replies_total", 0) or 0),
+            "llm_interactions_total": int(safe_metrics.get("llm_interactions_total", 0) or 0),
+            "errors_total": int(safe_metrics.get("errors_total", 0) or 0),
+        },
+        "chatters": {
+            "unique_total": int(safe_chatters.get("unique_total", 0) or 0),
+            "active_60m": int(safe_chatters.get("active_60m", 0) or 0),
+        },
+        "chat_analytics": {
+            "messages_60m": int(safe_analytics.get("messages_60m", 0) or 0),
+            "byte_triggers_60m": int(safe_analytics.get("byte_triggers_60m", 0) or 0),
+            "messages_per_minute_60m": float(
+                safe_analytics.get("messages_per_minute_60m", 0.0) or 0.0
+            ),
+        },
+        "agent_outcomes": {
+            "useful_engagement_rate_60m": float(
+                safe_outcomes.get("useful_engagement_rate_60m", 0.0) or 0.0
+            ),
+            "ignored_rate_60m": float(safe_outcomes.get("ignored_rate_60m", 0.0) or 0.0),
+        },
+        "context": {
+            "last_prompt": str(safe_context.get("last_prompt") or ""),
+            "last_reply": str(safe_context.get("last_reply") or ""),
+        },
     }
 
 
@@ -153,6 +214,58 @@ def build_channel_context_payload(channel_id: str | None = None) -> dict[str, An
     }
 
 
+def build_observability_history_payload(
+    channel_id: str | None = None,
+    *,
+    limit: int = 24,
+    compare_limit: int = 6,
+) -> dict[str, Any]:
+    safe_channel_id = str(channel_id or "default").strip().lower() or "default"
+    safe_limit = max(1, min(int(limit or 24), 120))
+    safe_compare_limit = max(1, min(int(compare_limit or 6), 24))
+
+    load_history = getattr(persistence, "load_observability_channel_history_sync", None)
+    load_comparison = getattr(
+        persistence,
+        "load_latest_observability_channel_snapshots_sync",
+        None,
+    )
+    timeline_points = (
+        list(load_history(safe_channel_id, limit=safe_limit)) if callable(load_history) else []
+    )
+    comparison_points = (
+        list(load_comparison(limit=safe_compare_limit)) if callable(load_comparison) else []
+    )
+
+    serialized_timeline = [
+        _serialize_observability_history_point(point) for point in list(timeline_points or [])
+    ]
+    serialized_comparison = [
+        _serialize_observability_history_point(point) for point in list(comparison_points or [])
+    ]
+    selected_present = any(
+        str(point.get("channel_id") or "") == safe_channel_id for point in serialized_comparison
+    )
+    if not selected_present and serialized_timeline:
+        serialized_comparison.insert(0, serialized_timeline[0])
+    serialized_comparison.sort(key=lambda row: str(row.get("captured_at") or ""), reverse=True)
+    serialized_comparison = serialized_comparison[:safe_compare_limit]
+
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "selected_channel": safe_channel_id,
+        "timeline": serialized_timeline,
+        "comparison": serialized_comparison,
+        "has_history": bool(serialized_timeline),
+        "has_comparison": bool(serialized_comparison),
+        "limits": {
+            "timeline": safe_limit,
+            "comparison": safe_compare_limit,
+        },
+    }
+
+
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
@@ -197,6 +310,32 @@ def handle_get(handler: Any) -> None:
     if route == "/api/channel-context":
         channel_id = _resolve_channel_id(query, required=False)
         handler._send_json(build_channel_context_payload(channel_id), status_code=200)
+        return
+
+    if route == "/api/observability/history":
+        channel_id = _resolve_channel_id(query, required=False)
+        limit = _resolve_int_query_param(
+            query,
+            "limit",
+            default=24,
+            minimum=1,
+            maximum=120,
+        )
+        compare_limit = _resolve_int_query_param(
+            query,
+            "compare_limit",
+            default=6,
+            minimum=1,
+            maximum=24,
+        )
+        handler._send_json(
+            build_observability_history_payload(
+                channel_id,
+                limit=limit,
+                compare_limit=compare_limit,
+            ),
+            status_code=200,
+        )
         return
 
     if route == "/api/control-plane":
@@ -436,6 +575,7 @@ from bot.dashboard_server_routes_post import handle_post
 __all__ = [
     "CHANNEL_CONTROL_IRC_ONLY_ACTIONS",
     "_dashboard_asset_route",
+    "build_observability_history_payload",
     "build_observability_payload",
     "handle_get",
     "handle_get_config_js",

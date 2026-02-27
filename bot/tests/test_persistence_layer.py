@@ -377,6 +377,161 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         mock_state.assert_called_once_with("Canal_A")
         mock_history.assert_called_once_with("Canal_A", limit=3)
 
+    def test_observability_channel_history_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        saved = layer.save_observability_channel_history_sync(
+            "Canal_A",
+            {
+                "captured_at": "2026-02-27T17:00:00Z",
+                "metrics": {
+                    "chat_messages_total": 11,
+                    "byte_triggers_total": 3,
+                    "replies_total": 2,
+                    "llm_interactions_total": 2,
+                    "errors_total": 0,
+                },
+                "chatters": {"unique_total": 4, "active_60m": 2},
+                "chat_analytics": {"messages_60m": 8, "byte_triggers_60m": 3},
+                "agent_outcomes": {"ignored_rate_60m": 10.0},
+            },
+        )
+        loaded = layer.load_observability_channel_history_sync("canal_a", limit=5)
+        latest = layer.load_latest_observability_channel_snapshots_sync(limit=3)
+
+        self.assertEqual(saved["source"], "memory")
+        self.assertEqual(loaded[0]["channel_id"], "canal_a")
+        self.assertEqual(loaded[0]["metrics"]["chat_messages_total"], 11)
+        self.assertEqual(latest[0]["channel_id"], "canal_a")
+
+    def test_observability_channel_history_supabase_roundtrip(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = (
+            table.select.return_value.eq.return_value.order.return_value.limit.return_value
+        )
+        select_chain.execute.return_value = MagicMock(
+            data=[
+                {
+                    "channel_id": "canal_supabase",
+                    "captured_at": "2026-02-27T17:10:00Z",
+                    "snapshot": {
+                        "metrics": {
+                            "chat_messages_total": 14,
+                            "byte_triggers_total": 4,
+                            "replies_total": 3,
+                            "llm_interactions_total": 3,
+                            "errors_total": 1,
+                        },
+                        "chatters": {"unique_total": 5, "active_60m": 3},
+                    },
+                }
+            ]
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_observability_channel_history_sync("canal_supabase", limit=6)
+        saved = layer.save_observability_channel_history_sync(
+            "canal_supabase",
+            {
+                "metrics": {
+                    "chat_messages_total": 14,
+                    "byte_triggers_total": 4,
+                    "replies_total": 3,
+                    "llm_interactions_total": 3,
+                    "errors_total": 1,
+                }
+            },
+        )
+
+        self.assertEqual(loaded[0]["channel_id"], "canal_supabase")
+        self.assertEqual(loaded[0]["metrics"]["chat_messages_total"], 14)
+        self.assertEqual(saved["source"], "supabase")
+        insert_payload = mock_client.table.return_value.insert.call_args[0][0]
+        self.assertEqual(insert_payload["channel_id"], "canal_supabase")
+        self.assertEqual(insert_payload["captured_at"], "now()")
+        self.assertIn("snapshot", insert_payload)
+
+    def test_observability_latest_snapshots_supabase_uses_distinct_channels(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = table.select.return_value.order.return_value.limit.return_value
+        select_chain.execute.return_value = MagicMock(
+            data=[
+                {
+                    "channel_id": "canal_a",
+                    "captured_at": "2026-02-27T17:20:00Z",
+                    "snapshot": {"metrics": {"chat_messages_total": 30}},
+                },
+                {
+                    "channel_id": "canal_a",
+                    "captured_at": "2026-02-27T17:19:00Z",
+                    "snapshot": {"metrics": {"chat_messages_total": 29}},
+                },
+                {
+                    "channel_id": "canal_b",
+                    "captured_at": "2026-02-27T17:18:00Z",
+                    "snapshot": {"metrics": {"chat_messages_total": 18}},
+                },
+            ]
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        latest = layer.load_latest_observability_channel_snapshots_sync(limit=2)
+
+        self.assertEqual(len(latest), 2)
+        self.assertEqual(latest[0]["channel_id"], "canal_a")
+        self.assertEqual(latest[1]["channel_id"], "canal_b")
+        self.assertEqual(latest[0]["metrics"]["chat_messages_total"], 30)
+
+    async def test_observability_channel_history_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer,
+            "save_observability_channel_history_sync",
+            return_value={"channel_id": "canal_a", "source": "memory"},
+        ) as mock_save:
+            saved = await layer.save_observability_channel_history(
+                "Canal_A",
+                {"metrics": {"chat_messages_total": 1}},
+            )
+        with patch.object(
+            layer,
+            "load_observability_channel_history_sync",
+            return_value=[{"channel_id": "canal_a"}],
+        ) as mock_load:
+            loaded = await layer.load_observability_channel_history("Canal_A", limit=7)
+        with patch.object(
+            layer,
+            "load_latest_observability_channel_snapshots_sync",
+            return_value=[{"channel_id": "canal_a"}],
+        ) as mock_latest:
+            latest = await layer.load_latest_observability_channel_snapshots(limit=4)
+
+        self.assertEqual(saved["channel_id"], "canal_a")
+        self.assertEqual(loaded[0]["channel_id"], "canal_a")
+        self.assertEqual(latest[0]["channel_id"], "canal_a")
+        mock_save.assert_called_once_with("Canal_A", {"metrics": {"chat_messages_total": 1}})
+        mock_load.assert_called_once_with("Canal_A", limit=7)
+        mock_latest.assert_called_once_with(limit=4)
+
     def test_observability_rollup_memory_fallback_when_disabled(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()

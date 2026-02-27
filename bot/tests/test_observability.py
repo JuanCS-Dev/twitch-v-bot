@@ -11,6 +11,7 @@ class FakePersistence:
         self.fail_load = fail_load
         self.fail_save = fail_save
         self.saved = []
+        self.history_saved = []
 
     def load_observability_rollup_sync(self):
         if self.fail_load:
@@ -28,6 +29,17 @@ class FakePersistence:
         }
         self.saved.append(payload)
         return payload
+
+    def save_observability_channel_history_sync(self, channel_id, payload):
+        if self.fail_save:
+            raise RuntimeError("save failed")
+        point = {
+            "channel_id": str(channel_id or ""),
+            "captured_at": str((payload or {}).get("captured_at") or ""),
+            "metrics": dict((payload or {}).get("metrics") or {}),
+        }
+        self.history_saved.append(point)
+        return point
 
 
 class TestObservabilityState(unittest.TestCase):
@@ -353,6 +365,59 @@ class TestObservabilityState(unittest.TestCase):
             saved_state["channel_scopes"]["canal_a"]["counters"]["chat_messages_total"],
             6,
         )
+
+    def test_state_flush_persists_history_points_per_active_channel(self):
+        persistence = FakePersistence()
+        state = ObservabilityState(
+            persistence_layer=persistence,
+            persist_interval_seconds=1000.0,
+        )
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Boot restored",
+            live_observability={},
+        )
+
+        state.record_chat_message(
+            author_name="alice",
+            source="irc",
+            text="hello",
+            channel_id="canal_a",
+            timestamp=1_700_050_000.0,
+        )
+        state.record_byte_trigger(
+            prompt="status",
+            source="irc",
+            author_name="alice",
+            channel_id="canal_a",
+            timestamp=1_700_050_001.0,
+        )
+        state.record_chat_message(
+            author_name="bob",
+            source="irc",
+            text="oi",
+            channel_id="canal_b",
+            timestamp=1_700_050_002.0,
+        )
+        state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            timestamp=1_700_050_010.0,
+        )
+
+        self.assertGreaterEqual(len(persistence.history_saved), 2)
+        channels = {entry["channel_id"] for entry in persistence.history_saved}
+        self.assertIn("canal_a", channels)
+        self.assertIn("canal_b", channels)
+        channel_a_point = next(
+            entry
+            for entry in reversed(persistence.history_saved)
+            if entry["channel_id"] == "canal_a"
+        )
+        self.assertEqual(channel_a_point["metrics"]["chat_messages_total"], 1)
+        self.assertEqual(channel_a_point["metrics"]["byte_triggers_total"], 1)
 
     def test_state_restores_persisted_rollup_and_exposes_metadata(self):
         persistence = FakePersistence(

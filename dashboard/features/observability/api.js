@@ -3,14 +3,27 @@ import { fetchWithTimeout } from "../shared/api.js";
 
 const OBSERVABILITY_ENDPOINT = "./api/observability";
 const CHANNEL_CONTEXT_ENDPOINT = "./api/channel-context";
+const OBSERVABILITY_HISTORY_ENDPOINT = "./api/observability/history";
 
-function buildChannelQuery(channelId) {
-  const safeChannel = encodeURIComponent(
+function normalizeChannelId(channelId) {
+  return (
     String(channelId || "")
       .trim()
-      .toLowerCase() || "default",
+      .toLowerCase() || "default"
   );
-  return `?channel=${safeChannel}`;
+}
+
+function buildChannelQuery(channelId, extraParams = {}) {
+  const params = new URLSearchParams({
+    channel: normalizeChannelId(channelId),
+  });
+  Object.entries(extraParams || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    params.set(String(key), String(value));
+  });
+  return `?${params.toString()}`;
 }
 
 /**
@@ -27,6 +40,22 @@ export async function getObservabilitySnapshot(channelId, timeoutMs = 10000) {
 export async function getChannelContextSnapshot(channelId, timeoutMs = 10000) {
   return await fetchWithTimeout(
     `${CHANNEL_CONTEXT_ENDPOINT}${buildChannelQuery(channelId)}`,
+    { method: "GET" },
+    timeoutMs,
+  );
+}
+
+export async function getObservabilityHistorySnapshot(
+  channelId,
+  timeoutMs = 10000,
+  limit = 24,
+  compareLimit = 6,
+) {
+  return await fetchWithTimeout(
+    `${OBSERVABILITY_HISTORY_ENDPOINT}${buildChannelQuery(channelId, {
+      limit,
+      compare_limit: compareLimit,
+    })}`,
     { method: "GET" },
     timeoutMs,
   );

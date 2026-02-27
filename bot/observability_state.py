@@ -10,6 +10,7 @@ from bot.observability_helpers import (
     CHAT_EVENTS_MAX_ITEMS,
     EVENT_LOG_MAX_ITEMS,
     LATENCY_WINDOW_MAX_ITEMS,
+    utc_iso,
 )
 from bot.observability_snapshot import build_observability_snapshot
 from bot.observability_state_core import prune_locked, resolve_now
@@ -287,6 +288,22 @@ class ObservabilityState:
             )
         except Exception:
             return
+        history_writer = getattr(self._persistence, "save_observability_channel_history_sync", None)
+        if callable(history_writer):
+            for channel_id, scope in self._channel_scopes.items():
+                if not self._scope_has_activity_locked(scope):
+                    continue
+                try:
+                    history_writer(
+                        channel_id,
+                        self._build_channel_history_payload_locked(
+                            channel_id=channel_id,
+                            scope=scope,
+                            now=now,
+                        ),
+                    )
+                except Exception:
+                    continue
         self._dirty = False
         self._restored_from_persistence = True
         self._last_persisted_monotonic = monotonic_now
@@ -304,6 +321,81 @@ class ObservabilityState:
             scope = _ObservabilityScope()
             self._channel_scopes[safe_channel_id] = scope
         return scope
+
+    @staticmethod
+    def _scope_has_activity_locked(scope: _ObservabilityScope) -> bool:
+        return bool(
+            scope._counters
+            or scope._chat_events
+            or scope._byte_trigger_events
+            or scope._interaction_events
+            or scope._quality_events
+            or scope._recent_events
+        )
+
+    @staticmethod
+    def _count_recent_events_locked(events: deque[dict[str, Any]], *, cutoff: float) -> int:
+        return sum(1 for event in events if float(event.get("ts", 0.0)) >= cutoff)
+
+    def _build_channel_history_payload_locked(
+        self,
+        *,
+        channel_id: str,
+        scope: _ObservabilityScope,
+        now: float,
+    ) -> dict[str, Any]:
+        cutoff_60m = now - 3600
+        messages_60m = self._count_recent_events_locked(scope._chat_events, cutoff=cutoff_60m)
+        triggers_60m = self._count_recent_events_locked(
+            scope._byte_trigger_events,
+            cutoff=cutoff_60m,
+        )
+        interactions_60m = self._count_recent_events_locked(
+            scope._interaction_events,
+            cutoff=cutoff_60m,
+        )
+        ignored_60m = sum(
+            1
+            for event in scope._quality_events
+            if float(event.get("ts", 0.0)) >= cutoff_60m
+            and str(event.get("outcome") or "").strip().lower() == "ignored"
+        )
+        useful_60m = max(0, interactions_60m - ignored_60m)
+        useful_rate = (useful_60m / interactions_60m) * 100 if interactions_60m else 0.0
+        ignored_rate = (ignored_60m / interactions_60m) * 100 if interactions_60m else 0.0
+
+        active_60m = sum(
+            1 for seen in scope._chatter_last_seen.values() if now - float(seen) <= 3600
+        )
+
+        return {
+            "channel_id": _normalize_channel_id(channel_id),
+            "captured_at": utc_iso(now),
+            "metrics": {
+                "chat_messages_total": int(scope._counters.get("chat_messages_total", 0)),
+                "byte_triggers_total": int(scope._counters.get("byte_triggers_total", 0)),
+                "replies_total": int(scope._counters.get("replies_total", 0)),
+                "llm_interactions_total": int(scope._counters.get("llm_interactions_total", 0)),
+                "errors_total": int(scope._counters.get("errors_total", 0)),
+            },
+            "chatters": {
+                "unique_total": int(len(scope._known_chatters)),
+                "active_60m": int(active_60m),
+            },
+            "chat_analytics": {
+                "messages_60m": int(messages_60m),
+                "byte_triggers_60m": int(triggers_60m),
+                "messages_per_minute_60m": round(messages_60m / 60.0, 2),
+            },
+            "agent_outcomes": {
+                "useful_engagement_rate_60m": round(useful_rate, 1),
+                "ignored_rate_60m": round(ignored_rate, 1),
+            },
+            "context": {
+                "last_prompt": str(scope._last_prompt or "")[:120],
+                "last_reply": str(scope._last_reply or "")[:140],
+            },
+        }
 
     def _record_scoped_locked(
         self,

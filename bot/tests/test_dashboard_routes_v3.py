@@ -6,6 +6,7 @@ from bot.dashboard_server import HealthHandler
 from bot.dashboard_server_routes import (
     _dashboard_asset_route,
     build_channel_context_payload,
+    build_observability_history_payload,
     handle_get,
     handle_get_config_js,
 )
@@ -191,6 +192,70 @@ class TestDashboardRoutesV3:
         assert payload["channel"]["persisted_agent_notes"] is None
         assert payload["channel"]["persisted_recent_history"] == []
 
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_build_observability_history_payload(self, mock_persistence):
+        mock_persistence.load_observability_channel_history_sync.return_value = [
+            {
+                "channel_id": "canal_a",
+                "captured_at": "2026-02-27T18:30:00Z",
+                "metrics": {
+                    "chat_messages_total": 21,
+                    "byte_triggers_total": 5,
+                    "replies_total": 4,
+                    "llm_interactions_total": 4,
+                    "errors_total": 0,
+                },
+                "chatters": {
+                    "unique_total": 9,
+                    "active_60m": 3,
+                },
+                "chat_analytics": {
+                    "messages_60m": 14,
+                    "byte_triggers_60m": 5,
+                    "messages_per_minute_60m": 0.23,
+                },
+                "agent_outcomes": {
+                    "useful_engagement_rate_60m": 80.0,
+                    "ignored_rate_60m": 20.0,
+                },
+                "context": {
+                    "last_prompt": "status",
+                    "last_reply": "online",
+                },
+            }
+        ]
+        mock_persistence.load_latest_observability_channel_snapshots_sync.return_value = [
+            {
+                "channel_id": "canal_b",
+                "captured_at": "2026-02-27T18:31:00Z",
+                "metrics": {
+                    "chat_messages_total": 15,
+                    "byte_triggers_total": 2,
+                    "replies_total": 2,
+                    "llm_interactions_total": 2,
+                    "errors_total": 1,
+                },
+            }
+        ]
+
+        payload = build_observability_history_payload("canal_a", limit=12, compare_limit=3)
+
+        assert payload["ok"] is True
+        assert payload["selected_channel"] == "canal_a"
+        assert payload["has_history"] is True
+        assert payload["limits"]["timeline"] == 12
+        assert payload["limits"]["comparison"] == 3
+        assert payload["timeline"][0]["metrics"]["chat_messages_total"] == 21
+        assert payload["comparison"][0]["channel_id"] == "canal_b"
+        assert payload["comparison"][1]["channel_id"] == "canal_a"
+        mock_persistence.load_observability_channel_history_sync.assert_called_once_with(
+            "canal_a",
+            limit=12,
+        )
+        mock_persistence.load_latest_observability_channel_snapshots_sync.assert_called_once_with(
+            limit=3
+        )
+
     @patch("bot.dashboard_server_routes.control_plane")
     def test_handle_get_api_control_plane(self, mock_cp):
         mock_cp.get_config.return_value = {"cfg": 1}
@@ -256,6 +321,34 @@ class TestDashboardRoutesV3:
             handle_get(handler)
         mock_payload.assert_called_with("default")
         handler._send_json.assert_called_once()
+
+    def test_handle_get_api_observability_history_defaults(self):
+        handler = MagicMock(path="/api/observability/history")
+        handler._dashboard_authorized.return_value = True
+        with patch(
+            "bot.dashboard_server_routes.build_observability_history_payload"
+        ) as mock_payload:
+            mock_payload.return_value = {"ok": True, "selected_channel": "default"}
+            handle_get(handler)
+
+        mock_payload.assert_called_once_with("default", limit=24, compare_limit=6)
+        handler._send_json.assert_called_once_with(
+            {"ok": True, "selected_channel": "default"},
+            status_code=200,
+        )
+
+    def test_handle_get_api_observability_history_with_custom_limits(self):
+        handler = MagicMock(
+            path="/api/observability/history?channel=Canal_A&limit=35&compare_limit=9"
+        )
+        handler._dashboard_authorized.return_value = True
+        with patch(
+            "bot.dashboard_server_routes.build_observability_history_payload"
+        ) as mock_payload:
+            mock_payload.return_value = {"ok": True, "selected_channel": "canal_a"}
+            handle_get(handler)
+
+        mock_payload.assert_called_once_with("canal_a", limit=35, compare_limit=9)
 
     def test_handle_get_api_unauthorized(self):
         handler = MagicMock(path="/api/control-plane")

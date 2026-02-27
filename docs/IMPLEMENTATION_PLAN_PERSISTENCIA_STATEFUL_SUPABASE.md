@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.14
+**Versão:** 1.15
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-5 CONCLUÍDAS ✅ | FASE 6 PARCIAL (HISTÓRICO PERSISTIDO E COMPARAÇÃO MULTI-TENANT PENDENTES) COM DASHBOARD FOCUSED CHANNEL + HUD + SNAPSHOT PER-CHANNEL ENTREGUES | FASE 7 CONCLUÍDA COM PANIC CONTROL, CHANNEL TUNING, AGENT NOTES E PAUSE/SILENCE POR CANAL | FASE 8 PLANEJADA | FASE 9 PLANEJADA (CONTRATO DE PARIDADE BACKEND -> DASHBOARD)
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO)
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -49,7 +49,7 @@
 - Snapshot agora expõe metadados de persistência (`enabled/restored/source/updated_at`) e a dashboard mostra o estado do rollup no topo sem criar layout paralelo.
 - Snapshot passou a suportar escopo real por canal com `channel_scopes` (schema v2), mantendo compatibilidade de restore com estado legado.
 
-### Fase 6: Dashboard Integrada (Multi-Channel UI) ⚠️ Parcial
+### Fase 6: Dashboard Integrada (Multi-Channel UI) ✅ Concluída
 
 **Já existe**
 
@@ -62,11 +62,16 @@
 - `/api/observability?channel=` agora consulta snapshot per-channel real (counters/leaderboards/routes/timeline segregados por canal).
 - Novo `GET /api/channel-context` expõe `runtime context + channel_state + channel_history` para inspeção operacional.
 - Painel `Agent Context & Internals` agora mostra snapshot persistido e histórico recente por canal sem inventar uma UI paralela.
+- Novo `GET /api/observability/history` com timeline persistida por canal selecionado e comparação dos snapshots mais recentes por canal.
+- Persistência dedicada de histórico em `observability_channel_history`, com fallback em memória quando Supabase indisponível.
+- Painel `Agent Context & Internals` foi estendido com:
+  - tabela `Persisted Channel Timeline` (histórico do canal focado);
+  - tabela `Multi-Channel Comparison (Persisted)` (comparativo lado a lado).
 
-**Ainda falta**
+**Discovery de layout aplicado nesta entrega**
 
-- Visão realmente multi-tenant para comparar canais lado a lado.
-- Dashboards históricos multi-canal persistidos além do rollup operacional.
+- Estudo da dashboard atual executado antes da implementação para mapear encaixe visual no painel já existente.
+- A integração ficou no fluxo e hierarquia atuais de observabilidade/contexto, sem criação de tela paralela ou padrão genérico.
 
 ### Fase 7: Soberania e Comando ✅ Concluída
 
@@ -130,10 +135,9 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Dashboards históricos multi-canal:** modelar views persistidas além do rollup global único.
-2. **Visão comparativa multi-tenant:** renderizar comparação lado a lado por canal no dashboard.
-3. **Fase 9 (paridade backend -> dashboard):** implantar matriz de cobertura visual obrigatória por capability operacional.
-4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
+2. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
+3. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -151,6 +155,7 @@
 | **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
 | **Pause/Silence por canal (`agent_paused`)** | ✅ | Persistido em `channels_config`, aplicado no runtime e respeitado no prompt/autonomia |
 | **Dashboard focused channel + persisted context** | ✅ | Selector persistido, `/api/observability?channel=` e `/api/channel-context` |
+| **Histórico persistido + comparativo multi-canal na observabilidade** | ✅ | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
 | **Vector Memory** | ❌ | Ainda não implementado |
@@ -166,18 +171,19 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - dashboard operacional funcional;
 - HUD standalone funcional e agora exposta na dashboard;
 - observabilidade per-channel real entregue no backend da dashboard operacional;
+- dashboards históricos multi-canal e comparativo por canal entregues no painel operacional existente;
 - soberania por canal já cobre tuning + notes + pause/silence;
-- dashboards históricos multi-canal ainda pendentes;
-- contrato formal de paridade backend -> dashboard agora está definido como etapa dedicada (Fase 9);
+- contrato formal de paridade backend -> dashboard agora está em execução com discovery de layout aplicado;
 - memória vetorial ainda fora do escopo implementado.
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: métricas per-channel reais para observabilidade operacional.
-- Backend (`observability_state.py`): novo `channel_scopes` com serialização/restauração no rollup (schema v2), mantendo compatibilidade com estado legado.
-- Runtime: fluxo de gravação passou a propagar `channel_id` em IRC, EventSub, Prompt Runtime/Flow, inferência, recap, autonomia e controle IRC para alimentar métricas segregadas sem perder o agregado global.
-- Dashboard: `build_observability_payload` agora consulta snapshot scoped pelo canal focado e mantém `selected_channel/context.channel_id` coerentes.
-- Escopo validado: fase 5 fechada no recorte operacional; pendências remanescentes ficam concentradas em histórico multi-canal persistido e comparação visual multi-tenant.
-- Testes da etapa: suíte focal Python verde (`82 passed` + `19 passed`) e suíte `node:test` da dashboard verde para foco multi-channel.
+- Etapa entregue: visão histórica/multi-canal na dashboard (timeline persistida por canal + comparativo lado a lado).
+- Discovery de layout: integração planejada e executada no painel `Agent Context & Internals`, preservando layout e componentes atuais.
+- Backend (`observability_state.py` + `persistence_layer.py`): flush agora grava snapshots históricos por canal; novo suporte de leitura/consulta para histórico persistido.
+- API (`dashboard_server_routes.py`): novo `GET /api/observability/history` com timeline por canal focado e comparação entre canais.
+- Dashboard (`dashboard/features/observability/*` + `dashboard/partials/analytics_logs.html`): novas tabelas de timeline/comparação renderizadas no fluxo existente, sem UI paralela.
+- Escopo validado: backlog de histórico persistido e comparação multi-canal da fase 6 foi concluído.
+- Testes da etapa: suíte focal Python verde (`95 passed`, `--no-cov`) e suíte `node:test` da dashboard verde para o fluxo multi-channel.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

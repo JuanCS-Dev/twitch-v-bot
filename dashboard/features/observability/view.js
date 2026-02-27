@@ -95,6 +95,13 @@ export function getObservabilityElements() {
     ctxPersistedUpdatedAt: document.getElementById("ctxPersistedUpdatedAt"),
     ctxPersistedHint: document.getElementById("ctxPersistedHint"),
     persistedHistoryItems: document.getElementById("persistedHistoryItems"),
+    persistedTimelineHint: document.getElementById("persistedTimelineHint"),
+    persistedChannelTimelineBody: document.getElementById(
+      "persistedChannelTimelineBody",
+    ),
+    persistedChannelComparisonBody: document.getElementById(
+      "persistedChannelComparisonBody",
+    ),
 
     // Intelligence Overview Panel
     intVisionStatus: document.getElementById("intVisionStatus"),
@@ -216,6 +223,64 @@ function renderStringList(items, targetBody, emptyMessage) {
     const li = document.createElement("li");
     li.textContent = String(item || "-");
     targetBody.appendChild(li);
+  });
+}
+
+function renderPersistedTimelineRows(rows, targetBody) {
+  if (!targetBody) return;
+  targetBody.innerHTML = "";
+  const safeRows = asArray(rows);
+  if (!safeRows.length) {
+    targetBody.appendChild(createCellRow(["-", 0, 0, 0, 0, 0]));
+    return;
+  }
+  safeRows.slice(0, 16).forEach((item) => {
+    const metrics = item?.metrics || {};
+    const chatters = item?.chatters || {};
+    targetBody.appendChild(
+      createCellRow([
+        String(item?.captured_at || "-"),
+        formatNumber(metrics.chat_messages_total),
+        formatNumber(metrics.byte_triggers_total),
+        formatNumber(metrics.replies_total),
+        formatNumber(chatters.active_60m),
+        formatNumber(metrics.errors_total),
+      ]),
+    );
+  });
+}
+
+function renderPersistedComparisonRows(rows, targetBody, selectedChannel) {
+  if (!targetBody) return;
+  targetBody.innerHTML = "";
+  const safeRows = asArray(rows);
+  if (!safeRows.length) {
+    targetBody.appendChild(createCellRow(["-", 0, 0, 0, 0, "0.0%", "-"]));
+    return;
+  }
+  safeRows.slice(0, 12).forEach((item) => {
+    const channelId =
+      String(item?.channel_id || "-")
+        .trim()
+        .toLowerCase() || "-";
+    const metrics = item?.metrics || {};
+    const chatters = item?.chatters || {};
+    const outcomes = item?.agent_outcomes || {};
+    const channelLabel =
+      selectedChannel && channelId === selectedChannel
+        ? `${channelId} (focused)`
+        : channelId;
+    targetBody.appendChild(
+      createCellRow([
+        channelLabel,
+        formatNumber(metrics.chat_messages_total),
+        formatNumber(metrics.byte_triggers_total),
+        formatNumber(metrics.replies_total),
+        formatNumber(chatters.active_60m),
+        formatPercent(outcomes.ignored_rate_60m),
+        String(item?.captured_at || "-"),
+      ]),
+    );
   });
 }
 
@@ -456,6 +521,40 @@ export function renderObservabilitySnapshot(data, els) {
     return;
   }
   setText(els.lastUpdate, `Atualizado as: ${new Date().toLocaleTimeString()}`);
+}
+
+export function renderObservabilityHistorySnapshot(payload, els) {
+  if (!els) return;
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const selectedChannel =
+    String(safePayload.selected_channel || "default")
+      .trim()
+      .toLowerCase() || "default";
+  const timeline = asArray(safePayload.timeline);
+  const comparison = asArray(safePayload.comparison);
+
+  renderPersistedTimelineRows(timeline, els.persistedChannelTimelineBody);
+  renderPersistedComparisonRows(
+    comparison,
+    els.persistedChannelComparisonBody,
+    selectedChannel,
+  );
+
+  if (els.persistedTimelineHint) {
+    if (timeline.length > 0) {
+      setText(
+        els.persistedTimelineHint,
+        `Timeline persistida de #${selectedChannel} carregada com comparação multi-canal no mesmo layout operacional.`,
+      );
+      els.persistedTimelineHint.className = "panel-hint event-level-info";
+    } else {
+      setText(
+        els.persistedTimelineHint,
+        `Sem timeline persistida para #${selectedChannel} ainda. Assim que houver atividade, os snapshots históricos serão exibidos aqui.`,
+      );
+      els.persistedTimelineHint.className = "panel-hint event-level-warn";
+    }
+  }
 }
 
 export function renderChannelContextSnapshot(payload, els) {

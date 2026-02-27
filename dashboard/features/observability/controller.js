@@ -1,6 +1,11 @@
-import { getChannelContextSnapshot, getObservabilitySnapshot } from "./api.js";
+import {
+  getChannelContextSnapshot,
+  getObservabilityHistorySnapshot,
+  getObservabilitySnapshot,
+} from "./api.js";
 import {
   renderChannelContextSnapshot,
+  renderObservabilityHistorySnapshot,
   renderObservabilitySnapshot,
   setConnectionState,
 } from "./view.js";
@@ -10,6 +15,8 @@ import { renderAutonomyRuntime } from "../autonomy/view.js";
 
 const OBSERVABILITY_INTERVAL_MS = 10000;
 const OBSERVABILITY_TIMEOUT_MS = 8000;
+const OBSERVABILITY_HISTORY_LIMIT = 24;
+const OBSERVABILITY_COMPARE_LIMIT = 6;
 
 export function createObservabilityController({
   obsEls,
@@ -38,12 +45,19 @@ export function createObservabilityController({
     isPolling = true;
     setConnectionState("pending", obsEls);
     try {
-      const [data, channelData] = await Promise.all([
+      const [data, channelData, historyData] = await Promise.all([
         getObservabilitySnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
         getChannelContextSnapshot(selectedChannel, OBSERVABILITY_TIMEOUT_MS),
+        getObservabilityHistorySnapshot(
+          selectedChannel,
+          OBSERVABILITY_TIMEOUT_MS,
+          OBSERVABILITY_HISTORY_LIMIT,
+          OBSERVABILITY_COMPARE_LIMIT,
+        ),
       ]);
       renderObservabilitySnapshot(data, obsEls);
       renderChannelContextSnapshot(channelData, obsEls);
+      renderObservabilityHistorySnapshot(historyData, obsEls);
       setConnectionState("ok", obsEls);
       applyRuntimeCapabilities(data?.capabilities || {}, data?.bot?.mode || "");
       renderAutonomyRuntime(data?.autonomy || {}, autEls);
