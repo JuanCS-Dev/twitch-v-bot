@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.4
+**Versão:** 1.5
 **Data:** 26 de Fevereiro de 2026
-**Status:** FASES 1-3 CONCLUÍDAS ✅ | FASES 4-8 PLANEJADAS
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-8 PLANEJADAS
 **Objetivo:** Transicionar o Byte Bot para um modelo stateful, resiliente e totalmente controlável (Soberania do Agente).
 
 ---
@@ -17,9 +17,11 @@
 
 ## 2. Roteiro de Implementação (Fases 4-8)
 
-### Fase 4: Canais Dinâmicos e Boot Sequence [PRÓXIMA]
-*   **Ação:** Implementar comando `byte join` salvando em `channels_config`.
-*   **Refatoração:** `resolve_irc_channel_logins` passa a ler do banco.
+### Fase 4: Canais Dinâmicos e Boot Sequence ✅ [CONCLUÍDA]
+*   **Status:** IMPLEMENTADA em `bootstrap_runtime.py:42`
+*   `resolve_irc_channel_logins()` agora lê primeiro do Supabase (tabela `channels_config`)
+*   Fallback para variáveis de ambiente quando banco indisponível
+*   **Próximo passo:** Implementar comando `byte join` para adicionar canais dinamicamente
 
 ### Fase 5: Observabilidade Stateful (Métricas Globais)
 *   Persistência de contadores e métricas acumuladas.
@@ -51,7 +53,8 @@
 ---
 
 ## 4. Conclusão da Auditoria de Controle
-A arquitetura multi-tenant criada nas Fases 1-3 foi o alicerce. Agora, as Fases 4-7 darão o "volante" do bot para você. O bot deixará de ser apenas "isolado" e passará a ser **governança-ready**.
+A arquitetura multi-tenant criada nas Fases 1-4 foi o alicerce. Agora, as Fases 5-8 darão o "volante" do bot para você. O bot deixará de ser apenas "isolado" e pasará a ser **governança-ready**.
 
 ---
+
 *Plano de Soberania do Agente consolidado para execução.*
