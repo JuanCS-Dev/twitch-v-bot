@@ -12,6 +12,8 @@ def test_collect_backend_operational_routes_contains_dispatch_and_dynamic_routes
     routes = set(collect_backend_operational_routes())
     assert ("GET", "/api/observability") in routes
     assert ("GET", "/api/observability/post-stream-report") in routes
+    assert ("GET", "/api/semantic-memory") in routes
+    assert ("PUT", "/api/semantic-memory") in routes
     assert ("PUT", "/api/control-plane") in routes
     assert ("POST", "/api/action-queue/{action_id}/decision") in routes
 
@@ -21,6 +23,7 @@ def test_collect_dashboard_api_routes_contains_core_routes():
     expected = {
         "/api/observability",
         "/api/observability/post-stream-report",
+        "/api/semantic-memory",
         "/api/sentiment/scores",
         "/api/control-plane",
         "/api/channel-control",

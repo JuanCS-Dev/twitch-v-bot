@@ -175,6 +175,26 @@ class TestDashboardRoutes(unittest.TestCase):
             status_code=200,
         )
 
+    @patch("bot.dashboard_server_routes.build_semantic_memory_payload")
+    def test_handle_get_semantic_memory_success(self, mock_build_payload):
+        self.handler.path = (
+            "/api/semantic-memory?channel=Canal_A&query=lore&limit=7&search_limit=40"
+        )
+        mock_build_payload.return_value = {"ok": True, "selected_channel": "canal_a"}
+
+        routes.handle_get(self.handler)
+
+        mock_build_payload.assert_called_with(
+            "canal_a",
+            query="lore",
+            limit=7,
+            search_limit=40,
+        )
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "selected_channel": "canal_a"},
+            status_code=200,
+        )
+
     def test_handle_put_control_plane_invalid_json(self):
         self.handler.path = "/api/control-plane"
         self.handler._read_json_payload.side_effect = ValueError("Bad JSON")
@@ -345,6 +365,69 @@ class TestDashboardRoutes(unittest.TestCase):
                 "ok": False,
                 "error": "invalid_request",
                 "message": "agent_notes excede o tamanho permitido.",
+            },
+            status_code=400,
+        )
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_semantic_memory_success(self, mock_persistence):
+        self.handler.path = "/api/semantic-memory"
+        self.handler._read_json_payload.return_value = {
+            "channel_id": "canal_a",
+            "content": "Priorize lore sem spoiler.",
+            "memory_type": "instruction",
+            "tags": "lore,spoiler",
+        }
+        mock_persistence.save_semantic_memory_entry_sync.return_value = {
+            "entry_id": "mem_1",
+            "channel_id": "canal_a",
+            "memory_type": "instruction",
+            "content": "Priorize lore sem spoiler.",
+            "tags": ["lore", "spoiler"],
+            "source": "memory",
+        }
+
+        routes.handle_put(self.handler)
+
+        mock_persistence.save_semantic_memory_entry_sync.assert_called_with(
+            "canal_a",
+            content="Priorize lore sem spoiler.",
+            memory_type="instruction",
+            tags="lore,spoiler",
+            context=None,
+            entry_id=None,
+        )
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": True,
+                "mode": routes.TWITCH_CHAT_MODE,
+                "entry": {
+                    "entry_id": "mem_1",
+                    "channel_id": "canal_a",
+                    "memory_type": "instruction",
+                    "content": "Priorize lore sem spoiler.",
+                    "tags": ["lore", "spoiler"],
+                    "source": "memory",
+                },
+            },
+            status_code=200,
+        )
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_semantic_memory_invalid_request(self, mock_persistence):
+        self.handler.path = "/api/semantic-memory"
+        self.handler._read_json_payload.return_value = {"channel_id": "canal_a", "content": ""}
+        mock_persistence.save_semantic_memory_entry_sync.side_effect = ValueError(
+            "semantic_memory_content obrigatorio."
+        )
+
+        routes.handle_put(self.handler)
+
+        self.handler._send_json.assert_called_with(
+            {
+                "ok": False,
+                "error": "invalid_request",
+                "message": "semantic_memory_content obrigatorio.",
             },
             status_code=400,
         )

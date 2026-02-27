@@ -8,6 +8,7 @@ from bot.dashboard_server_routes import (
     build_channel_context_payload,
     build_observability_history_payload,
     build_post_stream_report_payload,
+    build_semantic_memory_payload,
     build_sentiment_scores_payload,
     handle_get,
     handle_get_config_js,
@@ -485,6 +486,74 @@ class TestDashboardRoutesV3:
         )
         handler._send_json.assert_called_once_with(
             {"ok": True, "generated": True},
+            status_code=200,
+        )
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_build_semantic_memory_payload(self, mock_persistence):
+        mock_persistence.load_semantic_memory_entries_sync.return_value = [
+            {
+                "entry_id": "mem_1",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Canal curte lore.",
+            }
+        ]
+        mock_persistence.search_semantic_memory_entries_sync.return_value = [
+            {
+                "entry_id": "mem_1",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Canal curte lore.",
+                "similarity": 0.92,
+            }
+        ]
+
+        payload = build_semantic_memory_payload(
+            "canal_a",
+            query="lore",
+            limit=5,
+            search_limit=30,
+        )
+
+        assert payload["ok"] is True
+        assert payload["selected_channel"] == "canal_a"
+        assert payload["query"] == "lore"
+        assert payload["has_entries"] is True
+        assert payload["has_matches"] is True
+        assert payload["limits"]["list"] == 5
+        assert payload["limits"]["search"] == 30
+        assert payload["entries"][0]["entry_id"] == "mem_1"
+        assert payload["matches"][0]["similarity"] == 0.92
+        mock_persistence.load_semantic_memory_entries_sync.assert_called_once_with(
+            "canal_a",
+            limit=30,
+        )
+        mock_persistence.search_semantic_memory_entries_sync.assert_called_once_with(
+            "canal_a",
+            query="lore",
+            limit=5,
+            search_limit=30,
+        )
+
+    @patch("bot.dashboard_server_routes.build_semantic_memory_payload")
+    def test_handle_get_api_semantic_memory(self, mock_build_payload):
+        mock_build_payload.return_value = {"ok": True, "has_entries": True}
+        handler = MagicMock(
+            path="/api/semantic-memory?channel=Canal_A&query=lore&limit=7&search_limit=40"
+        )
+        handler._dashboard_authorized.return_value = True
+
+        handle_get(handler)
+
+        mock_build_payload.assert_called_once_with(
+            "canal_a",
+            query="lore",
+            limit=7,
+            search_limit=40,
+        )
+        handler._send_json.assert_called_once_with(
+            {"ok": True, "has_entries": True},
             status_code=200,
         )
 

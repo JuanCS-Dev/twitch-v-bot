@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.22
+**Versão:** 1.24
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 CONCLUÍDA ✅ (GATE FORMAL BACKEND -> DASHBOARD + CHECKLIST DE RELEASE ATIVO NA CI) | FASE 10 CONCLUÍDA ✅ (10.1-10.4) | FASE 11 CONCLUÍDA ✅ (STREAM HEALTH SCORE MULTI-CANAL + INTEGRAÇÃO VISUAL NO LAYOUT ATUAL) | FASE 12 NO TOPO DO BACKLOG
+**Status:** FASES 1-12 CONCLUÍDAS ✅ (INCLUINDO MEMÓRIA SEMÂNTICA OPERACIONAL + STREAM HEALTH SCORE + POST-STREAM REPORT + PARIDADE VISUAL FORMAL) | FASE 13 NO TOPO DO BACKLOG
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -91,11 +91,50 @@
 - `agent_notes` agora é injetado de forma segura no system prompt antes da inferência.
 - Dashboard expõe leitura/escrita de `agent_notes` e o painel de contexto mostra o snapshot persistido dessas notas.
 
-### Fase 8: Gestão de Memória Semântica (Vector Memory) ❌ Não implementada
+### Fase 8: Gestão de Memória Semântica (Vector Memory) ✅ Concluída
 
-- Não há integração `pgvector` no código atual.
-- Não existe interface de dashboard para inspeção/edição de memória semântica.
-- Deve permanecer como fase futura, separada do escopo operacional imediato.
+**Escopo entregue no ciclo atual**
+
+- Backend:
+  - módulo determinístico de embeddings/ranking em `bot/semantic_memory.py` (sem dependência de LLM);
+  - persistência dedicada `semantic_memory_entries` via `bot/persistence_semantic_memory_repository.py`;
+  - facade da persistência estendida em `bot/persistence_layer.py` (`save/load/search` síncrono + assíncrono);
+  - novas rotas operacionais no fluxo existente:
+    - `GET /api/semantic-memory?channel=&query=&limit=&search_limit=`;
+    - `PUT /api/semantic-memory`.
+- Dashboard (layout atual preservado):
+  - consumo na camada `dashboard/features/observability/api.js`;
+  - integração no painel `Intelligence Overview` existente (sem tela paralela), com:
+    - busca semântica por canal focado;
+    - edição/salvamento de memória;
+    - lista de correspondências e entradas recentes.
+- Paridade formal:
+  - `bot/dashboard_parity_gate.py` atualizado para `GET/PUT /api/semantic-memory` como `integrated`.
+
+**Nota de escopo**
+
+- A fase operacional de memória semântica foi concluída sem regressão.
+- Otimização ANN/indexação dedicada com `pgvector` permanece como evolução futura, separada do caminho crítico operacional.
+
+**Fechamento da Fase 8 (ciclo atual)**
+
+- Backend/infra:
+  - `bot/semantic_memory.py` implementa embedding/ranking determinístico (sem LLM externo);
+  - `bot/persistence_semantic_memory_repository.py` implementa persistência por canal com fallback em memória;
+  - `bot/persistence_layer.py` expõe facade síncrona/assíncrona (`save/load/search`);
+  - `bot/dashboard_server_routes.py` entrega `GET/PUT /api/semantic-memory`.
+- Dashboard:
+  - `dashboard/features/observability/api.js` consome a rota no contrato atual;
+  - `dashboard/features/observability/controller.js` integra busca/salvamento no polling existente;
+  - `dashboard/features/observability/view.js` + `dashboard/partials/intelligence_panel.html` renderizam e operam a memória semântica no `Intelligence Overview`.
+- Paridade e cobertura:
+  - `bot/dashboard_parity_gate.py` inclui `/api/semantic-memory` como `integrated`;
+  - testes novos em `bot/tests/test_semantic_memory.py`;
+  - testes backend/dashboard ajustados para o fluxo real sem regressão.
+- Evidências de validação da fase:
+  - `pytest -q --no-cov bot/tests/test_semantic_memory.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py bot/tests/test_dashboard_parity_gate.py` (`118 passed`);
+  - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js` (`18 passed`);
+  - `python -m bot.dashboard_parity_gate` (`ok integrated=21 headless_approved=2`).
 
 ### Fase 9: Paridade Backend -> Dashboard (Contrato de Integração Visual) ✅ Concluída
 
@@ -286,15 +325,14 @@
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 12 (Post-Stream Intelligence Report):** transformar histórico persistido em relatório pós-live acionável.
-2. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
-3. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
-4. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
-5. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
-6. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
-7. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
-8. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
-9. **Vector memory:** manter explicitamente fora do caminho crítico do dashboard operacional.
+1. **Fase 13 (Goal-Driven Autonomy 2.0):** evoluir objetivos da autonomia para contrato mensurável por sessão.
+2. **Fase 14 (Ops Playbooks):** adicionar trilha determinística sobre a action queue para operações críticas.
+3. **Fase 15 (Per-Channel Identity):** perfil estruturado por canal para persona operacional consistente.
+4. **Fase 16 (Coaching + Churn Risk no HUD):** alertas táticos e risco de perda de audiência no layout atual.
+5. **Fase 17 (Revenue Attribution Trace):** fechar loop de ROI com correlação temporal entre ação e conversão.
+6. **Fase 18 (Outbound Webhook API):** camada de integração B2B com retry e assinatura.
+7. **Fase 19 (Autonomous Clip Suggestion Intelligence):** camada de detecção ao vivo no pipeline de clips já existente.
+8. **Otimização `pgvector` para memória semântica (fase futura):** indexação ANN para escala, mantendo o fluxo operacional já entregue na Fase 8.
 
 ---
 
@@ -403,7 +441,7 @@
 | **Stream Health Score multi-canal (score + banda + histórico persistido)**                     | ✅               | Fase 11 concluída com endpoint por canal (`/api/sentiment/scores`) e render no layout atual                        |
 | **Post-Stream Intelligence Report (manual + auto-part + persistência + painel existente)**     | ✅               | Fase 12 concluída com `/api/observability/post-stream-report` e integração no `Intelligence Overview`              |
 | **Roadmap de posicionamento (F1-F10 do report) convertido em fases executáveis sem duplicação** | ✅               | Triado contra código atual e consolidado nas Fases 11-19                                                           |
-| **Vector Memory**                                                                               | ❌               | Ainda não implementado                                                                                             |
+| **Vector Memory (busca + edição + persistência por canal)**                                    | ✅               | Fase 8 concluída com `/api/semantic-memory` (`GET/PUT`) + integração no `Intelligence Overview`                   |
 
 ---
 
@@ -423,7 +461,7 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 - stream health score multi-canal foi concluído (Fase 11) com contrato versionado e exposição no layout operacional existente;
 - post-stream intelligence report foi concluído (Fase 12) com geração determinística, persistência dedicada e integração no painel `Intelligence Overview`;
 - roadmap do report de posicionamento foi convertido em fases técnicas executáveis (F11-F19), com filtragem de itens já parciais no código para evitar duplicação;
-- memória vetorial ainda fora do escopo implementado.
+- memória semântica operacional (Fase 8) concluída no backend/dashboard, com otimização ANN/`pgvector` planejada como evolução futura.
 
 ### Fechamento da Etapa Atual
 

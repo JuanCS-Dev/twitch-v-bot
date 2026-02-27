@@ -84,6 +84,16 @@ def _resolve_bool_query_param(
     return raw_value in {"1", "true", "yes", "on"}
 
 
+def _resolve_text_query_param(
+    query: dict[str, list[str]],
+    key: str,
+    *,
+    default: str = "",
+) -> str:
+    raw_value = str((query.get(key) or [default])[0] or default)
+    return raw_value.strip()
+
+
 def _serialize_runtime_context(ctx: Any) -> dict[str, Any]:
     runtime_observability = getattr(ctx, "live_observability", {}) or {}
     return {
@@ -313,6 +323,50 @@ def build_post_stream_report_payload(
     }
 
 
+def build_semantic_memory_payload(
+    channel_id: str | None = None,
+    *,
+    query: str = "",
+    limit: int = 8,
+    search_limit: int = 60,
+) -> dict[str, Any]:
+    safe_channel_id = str(channel_id or "default").strip().lower() or "default"
+    safe_limit = max(1, min(int(limit or 8), 20))
+    safe_search_limit = max(1, min(int(search_limit or 60), 360))
+    safe_query = str(query or "").strip()
+
+    entries = persistence.load_semantic_memory_entries_sync(
+        safe_channel_id,
+        limit=safe_search_limit,
+    )
+    matches = (
+        persistence.search_semantic_memory_entries_sync(
+            safe_channel_id,
+            query=safe_query,
+            limit=safe_limit,
+            search_limit=safe_search_limit,
+        )
+        if safe_query
+        else list(entries[:safe_limit])
+    )
+    selected_entries = list(entries[:safe_limit])
+
+    return {
+        "ok": True,
+        "mode": TWITCH_CHAT_MODE,
+        "selected_channel": safe_channel_id,
+        "query": safe_query,
+        "entries": selected_entries,
+        "matches": list(matches or []),
+        "has_entries": bool(selected_entries),
+        "has_matches": bool(matches),
+        "limits": {
+            "list": safe_limit,
+            "search": safe_search_limit,
+        },
+    }
+
+
 def _dashboard_asset_route(handler: Any, route: str) -> bool:
     if route in {"/", "/dashboard", "/dashboard/"}:
         handler._send_dashboard_asset("index.html", "text/html; charset=utf-8")
@@ -480,6 +534,34 @@ def _handle_get_post_stream_report(handler: Any, query: dict[str, list[str]]) ->
     )
 
 
+def _handle_get_semantic_memory(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    limit = _resolve_int_query_param(
+        query,
+        "limit",
+        default=8,
+        minimum=1,
+        maximum=20,
+    )
+    search_limit = _resolve_int_query_param(
+        query,
+        "search_limit",
+        default=60,
+        minimum=1,
+        maximum=360,
+    )
+    memory_query = _resolve_text_query_param(query, "query", default="")
+    handler._send_json(
+        build_semantic_memory_payload(
+            channel_id,
+            query=memory_query,
+            limit=limit,
+            search_limit=search_limit,
+        ),
+        status_code=200,
+    )
+
+
 def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> None:
     handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
 
@@ -500,6 +582,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/hud/messages": _handle_get_hud_messages,
     "/api/sentiment/scores": _handle_get_sentiment_scores,
     "/api/observability/post-stream-report": _handle_get_post_stream_report,
+    "/api/semantic-memory": _handle_get_semantic_memory,
     "/api/vision/status": _handle_get_vision_status,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
@@ -613,10 +696,40 @@ def _handle_put_control_plane(
     )
 
 
+def _handle_put_semantic_memory(
+    handler: Any,
+    query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        channel_id = _resolve_channel_id(query, payload)
+        entry = persistence.save_semantic_memory_entry_sync(
+            channel_id,
+            content=payload.get("content"),
+            memory_type=payload.get("memory_type"),
+            tags=payload.get("tags"),
+            context=payload.get("context"),
+            entry_id=payload.get("entry_id"),
+        )
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "entry": entry,
+        },
+        status_code=200,
+    )
+
+
 _PUT_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]], dict[str, Any]], None]] = {
     "/api/control-plane": _handle_put_control_plane,
     "/api/channel-config": _handle_put_channel_config,
     "/api/agent-notes": _handle_put_agent_notes,
+    "/api/semantic-memory": _handle_put_semantic_memory,
 }
 
 
@@ -643,6 +756,7 @@ __all__ = [
     "build_observability_history_payload",
     "build_observability_payload",
     "build_post_stream_report_payload",
+    "build_semantic_memory_payload",
     "build_sentiment_scores_payload",
     "handle_get",
     "handle_get_config_js",

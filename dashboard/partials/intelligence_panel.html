@@ -220,5 +220,96 @@
         Sem recomendacoes registradas.
       </li>
     </ul>
+
+    <hr style="border: none; border-top: 1px solid var(--border-default)" />
+
+    <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
+      Semantic Memory
+    </p>
+    <p id="intSemanticMemoryStatusHint" class="panel-hint">
+      Memoria semantica por canal com busca e edicao no fluxo operacional atual.
+    </p>
+
+    <div
+      class="form-row"
+      style="
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-2);
+        margin-bottom: var(--spacing-2);
+        flex-wrap: wrap;
+      "
+    >
+      <input
+        id="intSemanticMemoryQueryInput"
+        type="text"
+        placeholder="Buscar memoria semantica por frase..."
+        style="flex: 1; min-width: 220px"
+      />
+      <button
+        id="intSemanticMemorySearchBtn"
+        class="btn btn-secondary"
+        type="button"
+      >
+        Buscar
+      </button>
+    </div>
+
+    <div class="form-row" style="gap: var(--spacing-2); margin-bottom: var(--spacing-2)">
+      <input
+        id="intSemanticMemoryTypeInput"
+        type="text"
+        value="fact"
+        placeholder="Tipo (fact/preference/event/instruction/context)"
+        style="max-width: 220px"
+      />
+      <input
+        id="intSemanticMemoryTagsInput"
+        type="text"
+        placeholder="Tags (ex: game,lore,meta)"
+        style="flex: 1"
+      />
+    </div>
+
+    <div
+      class="form-row"
+      style="
+        align-items: center;
+        gap: var(--spacing-2);
+        margin-bottom: var(--spacing-2);
+      "
+    >
+      <input
+        id="intSemanticMemoryContentInput"
+        type="text"
+        placeholder="Nova memoria semantica para o canal focado..."
+        style="flex: 1"
+      />
+      <button
+        id="intSemanticMemorySaveBtn"
+        class="btn btn-primary"
+        type="button"
+      >
+        Salvar
+      </button>
+    </div>
+
+    <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
+      Search Matches
+    </p>
+    <ul id="intSemanticMemoryMatches" class="events-list" style="max-height: 180px">
+      <li style="font-style: italic; color: var(--text-muted)">
+        Sem correspondencias semanticas.
+      </li>
+    </ul>
+
+    <p class="panel-hint" style="margin-top: var(--spacing-3); margin-bottom: var(--spacing-2)">
+      Latest Entries
+    </p>
+    <ul id="intSemanticMemoryEntries" class="events-list" style="max-height: 180px">
+      <li style="font-style: italic; color: var(--text-muted)">
+        Nenhuma memoria persistida para este canal.
+      </li>
+    </ul>
   </article>
 </section>

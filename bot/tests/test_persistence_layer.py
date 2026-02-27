@@ -647,6 +647,131 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
         )
         mock_load.assert_called_once_with("Canal_A")
 
+    def test_semantic_memory_memory_fallback_when_disabled(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        saved = layer.save_semantic_memory_entry_sync(
+            "Canal_A",
+            content="Viewer prefere lore sem spoiler.",
+            memory_type="preference",
+            tags="lore,spoiler",
+        )
+        loaded = layer.load_semantic_memory_entries_sync("canal_a", limit=5)
+        matches = layer.search_semantic_memory_entries_sync(
+            "canal_a",
+            query="lore",
+            limit=3,
+            search_limit=15,
+        )
+
+        self.assertEqual(saved["channel_id"], "canal_a")
+        self.assertEqual(saved["memory_type"], "preference")
+        self.assertEqual(saved["source"], "memory")
+        self.assertEqual(loaded[0]["entry_id"], saved["entry_id"])
+        self.assertGreaterEqual(matches[0]["similarity"], 0.0)
+
+    def test_semantic_memory_supabase_roundtrip(self):
+        mock_client = MagicMock()
+        table = mock_client.table.return_value
+        select_chain = (
+            table.select.return_value.eq.return_value.order.return_value.limit.return_value
+        )
+        select_chain.execute.return_value = MagicMock(
+            data=[
+                {
+                    "entry_id": "entry_1",
+                    "channel_id": "canal_supabase",
+                    "memory_type": "fact",
+                    "content": "Canal prioriza gameplay limpo.",
+                    "tags": ["gameplay"],
+                    "context": {"source": "runtime"},
+                    "embedding": [0.0] * 48,
+                    "created_at": "2026-02-27T20:20:00Z",
+                    "updated_at": "2026-02-27T20:20:00Z",
+                }
+            ]
+        )
+
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test_key"},
+            clear=True,
+        ):
+            with patch("bot.persistence_layer.create_client", return_value=mock_client):
+                layer = PersistenceLayer()
+
+        loaded = layer.load_semantic_memory_entries_sync("canal_supabase", limit=4)
+        saved = layer.save_semantic_memory_entry_sync(
+            "canal_supabase",
+            content="Atualizar lore da season.",
+            memory_type="instruction",
+            tags="lore,season",
+        )
+
+        self.assertEqual(loaded[0]["source"], "supabase")
+        self.assertEqual(loaded[0]["entry_id"], "entry_1")
+        self.assertEqual(saved["channel_id"], "canal_supabase")
+        self.assertEqual(saved["source"], "supabase")
+        upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
+        self.assertEqual(upsert_payload["channel_id"], "canal_supabase")
+        self.assertEqual(upsert_payload["memory_type"], "instruction")
+        self.assertEqual(upsert_payload["updated_at"], "now()")
+
+    async def test_semantic_memory_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer,
+            "save_semantic_memory_entry_sync",
+            return_value={"channel_id": "canal_a", "source": "memory"},
+        ) as mock_save:
+            saved = await layer.save_semantic_memory_entry(
+                "Canal_A",
+                content="memo",
+                memory_type="fact",
+                tags="meta",
+                context={"scene": "boss"},
+                entry_id="entry_1",
+            )
+        with patch.object(
+            layer,
+            "load_semantic_memory_entries_sync",
+            return_value=[{"channel_id": "canal_a"}],
+        ) as mock_load:
+            loaded = await layer.load_semantic_memory_entries("Canal_A", limit=6)
+        with patch.object(
+            layer,
+            "search_semantic_memory_entries_sync",
+            return_value=[{"channel_id": "canal_a", "similarity": 0.7}],
+        ) as mock_search:
+            matches = await layer.search_semantic_memory_entries(
+                "Canal_A",
+                query="lore",
+                limit=2,
+                search_limit=20,
+            )
+
+        self.assertEqual(saved["channel_id"], "canal_a")
+        self.assertEqual(loaded[0]["channel_id"], "canal_a")
+        self.assertEqual(matches[0]["channel_id"], "canal_a")
+        mock_save.assert_called_once_with(
+            "Canal_A",
+            content="memo",
+            memory_type="fact",
+            tags="meta",
+            context={"scene": "boss"},
+            entry_id="entry_1",
+        )
+        mock_load.assert_called_once_with("Canal_A", limit=6)
+        mock_search.assert_called_once_with(
+            "Canal_A",
+            query="lore",
+            limit=2,
+            search_limit=20,
+        )
+
     def test_observability_rollup_memory_fallback_when_disabled(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()

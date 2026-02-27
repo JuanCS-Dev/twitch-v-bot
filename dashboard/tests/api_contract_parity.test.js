@@ -23,8 +23,10 @@ import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
   getPostStreamReportSnapshot,
+  getSemanticMemorySnapshot,
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
+  upsertSemanticMemoryEntry,
 } from "../features/observability/api.js";
 
 const TOKEN_KEY = "byte_dashboard_admin_token";
@@ -139,6 +141,13 @@ test("operational runtime APIs keep backend contract", async () => {
   await getObservabilityHistorySnapshot("Canal_Z", 10000, 12, 4);
   await getSentimentScoresSnapshot("Canal_Z");
   await getPostStreamReportSnapshot("Canal_Z", 10000, true);
+  await getSemanticMemorySnapshot("Canal_Z", 10000, "lore", 6, 50);
+  await upsertSemanticMemoryEntry({
+    channel_id: "canal_z",
+    content: "Priorizar lore sem spoiler",
+    memory_type: "instruction",
+    tags: "lore,moderation",
+  });
 
   const channelControlCall = findCall(calls, "/api/channel-control", "POST");
   assert.ok(channelControlCall);
@@ -184,5 +193,18 @@ test("operational runtime APIs keep backend contract", async () => {
       "/api/observability/post-stream-report?channel=canal_z&generate=1",
       "GET",
     ),
+  );
+  assert.ok(
+    findCall(
+      calls,
+      "/api/semantic-memory?channel=canal_z&query=lore&limit=6&search_limit=50",
+      "GET",
+    ),
+  );
+  const semanticUpsertCall = findCall(calls, "/api/semantic-memory", "PUT");
+  assert.ok(semanticUpsertCall);
+  assert.equal(
+    JSON.parse(String(semanticUpsertCall.options.body)).memory_type,
+    "instruction",
   );
 });

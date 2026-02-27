@@ -6,6 +6,7 @@ from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_layer import PersistenceLayer
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
+from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
 
 
 def test_channel_config_repository_memory_roundtrip_when_disabled():
@@ -83,6 +84,34 @@ def test_post_stream_report_repository_memory_roundtrip():
     assert loaded["recommendations"] == ["Ajustar ritmo de respostas."]
 
 
+def test_semantic_memory_repository_memory_roundtrip_and_search():
+    cache: dict[str, list[dict[str, object]]] = {}
+    repository = SemanticMemoryRepository(enabled=False, client=None, cache=cache)
+
+    saved = repository.save_entry_sync(
+        "Canal_A",
+        content="Streamer prefere lore sem spoiler.",
+        memory_type="preference",
+        tags="lore,spoiler,chat",
+    )
+    loaded = repository.load_channel_entries_sync("canal_a", limit=5)
+    matches = repository.search_entries_sync(
+        "canal_a",
+        query="lore",
+        limit=3,
+        search_limit=10,
+    )
+
+    assert saved["channel_id"] == "canal_a"
+    assert saved["source"] == "memory"
+    assert saved["memory_type"] == "preference"
+    assert saved["tags"] == ["lore", "spoiler", "chat"]
+    assert len(saved["embedding"]) == 48
+    assert loaded[0]["content"] == "Streamer prefere lore sem spoiler."
+    assert matches[0]["entry_id"] == saved["entry_id"]
+    assert matches[0]["similarity"] >= 0
+
+
 def test_persistence_layer_facade_shares_repository_caches():
     with patch.dict(os.environ, {}, clear=True):
         layer = PersistenceLayer()
@@ -91,3 +120,4 @@ def test_persistence_layer_facade_shares_repository_caches():
     assert layer._agent_notes_repo._cache is layer._agent_notes_cache
     assert layer._observability_history_repo._cache is layer._observability_channel_history_cache
     assert layer._post_stream_report_repo._cache is layer._post_stream_report_cache
+    assert layer._semantic_memory_repo._cache is layer._semantic_memory_cache

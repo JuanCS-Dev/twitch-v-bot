@@ -11,13 +11,16 @@ import {
   getChannelContextSnapshot,
   getObservabilityHistorySnapshot,
   getPostStreamReportSnapshot,
+  getSemanticMemorySnapshot,
   getObservabilitySnapshot,
   getSentimentScoresSnapshot,
+  upsertSemanticMemoryEntry,
 } from "../features/observability/api.js";
 import {
   renderChannelContextSnapshot,
   renderObservabilityHistorySnapshot,
   renderPostStreamReportSnapshot,
+  renderSemanticMemorySnapshot,
   renderObservabilitySnapshot,
 } from "../features/observability/view.js";
 import { createObservabilityController } from "../features/observability/controller.js";
@@ -352,6 +355,42 @@ function createObservabilityElements(document) {
       "intPostStreamGenerateBtn",
       new MockElement("button", document),
     ),
+    intSemanticMemoryStatusHint: document.registerElement(
+      "intSemanticMemoryStatusHint",
+      new MockElement("p", document),
+    ),
+    intSemanticMemoryQueryInput: document.registerElement(
+      "intSemanticMemoryQueryInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemorySearchBtn: document.registerElement(
+      "intSemanticMemorySearchBtn",
+      new MockElement("button", document),
+    ),
+    intSemanticMemoryTypeInput: document.registerElement(
+      "intSemanticMemoryTypeInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemoryTagsInput: document.registerElement(
+      "intSemanticMemoryTagsInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemoryContentInput: document.registerElement(
+      "intSemanticMemoryContentInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemorySaveBtn: document.registerElement(
+      "intSemanticMemorySaveBtn",
+      new MockElement("button", document),
+    ),
+    intSemanticMemoryMatches: document.registerElement(
+      "intSemanticMemoryMatches",
+      new MockElement("ul", document),
+    ),
+    intSemanticMemoryEntries: document.registerElement(
+      "intSemanticMemoryEntries",
+      new MockElement("ul", document),
+    ),
   };
 }
 
@@ -520,6 +559,13 @@ test("observability api resolves channel-scoped endpoints", async () => {
   await getObservabilityHistorySnapshot("Canal_C", 10000, 12, 4);
   await getSentimentScoresSnapshot("Canal_D");
   await getPostStreamReportSnapshot("Canal_E", 10000, true);
+  await getSemanticMemorySnapshot("Canal_F", 10000, "meta", 7, 40);
+  await upsertSemanticMemoryEntry({
+    channel_id: "canal_f",
+    content: "Viewer prefere lore sem spoiler.",
+    memory_type: "preference",
+    tags: "lore,spoiler",
+  });
 
   assert.equal(
     calls[0].url,
@@ -541,11 +587,22 @@ test("observability api resolves channel-scoped endpoints", async () => {
     calls[4].url,
     "http://localhost:8000/api/observability/post-stream-report?channel=canal_e&generate=1",
   );
+  assert.equal(
+    calls[5].url,
+    "http://localhost:8000/api/semantic-memory?channel=canal_f&query=meta&limit=7&search_limit=40",
+  );
+  assert.equal(calls[6].url, "http://localhost:8000/api/semantic-memory");
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[1].options.method, "GET");
   assert.equal(calls[2].options.method, "GET");
   assert.equal(calls[3].options.method, "GET");
   assert.equal(calls[4].options.method, "GET");
+  assert.equal(calls[5].options.method, "GET");
+  assert.equal(calls[6].options.method, "PUT");
+  assert.equal(
+    JSON.parse(String(calls[6].options.body)).memory_type,
+    "preference",
+  );
 });
 
 test("observability views render focused channel and persisted context state", () => {
@@ -697,6 +754,33 @@ test("observability views render focused channel and persisted context state", (
     },
     els,
   );
+  renderSemanticMemorySnapshot(
+    {
+      ok: true,
+      selected_channel: "canal_a",
+      query: "lore",
+      has_entries: true,
+      has_matches: true,
+      entries: [
+        {
+          entry_id: "mem_1",
+          memory_type: "fact",
+          content: "Streamer joga modo hardcore.",
+          tags: ["game", "hardcore"],
+        },
+      ],
+      matches: [
+        {
+          entry_id: "mem_2",
+          memory_type: "preference",
+          content: "Evitar spoiler de lore no chat.",
+          tags: ["lore", "spoiler"],
+          similarity: 0.934,
+        },
+      ],
+    },
+    els,
+  );
 
   assert.equal(els.ctxSelectedChannelChip.textContent, "canal_a");
   assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
@@ -748,6 +832,19 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.intPostStreamTrigger.textContent, "auto part success");
   assert.match(els.intPostStreamSummary.textContent, /Canal #canal_a/);
   assert.equal(els.intPostStreamRecommendations.children.length, 2);
+  assert.match(
+    els.intSemanticMemoryStatusHint.textContent,
+    /Busca semantica ativa em #canal_a/i,
+  );
+  assert.equal(els.intSemanticMemoryMatches.children.length, 1);
+  assert.match(
+    els.intSemanticMemoryMatches.children[0].textContent,
+    /\[preference\]/i,
+  );
+  assert.match(
+    els.intSemanticMemoryEntries.children[0].textContent,
+    /hardcore/i,
+  );
 });
 
 test("observability controller fetches observability, context and history for the selected channel", async () => {
@@ -824,6 +921,38 @@ test("observability controller fetches observability, context and history for th
         },
       };
     }
+    if (String(url).includes("/api/semantic-memory")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            selected_channel: "canal_z",
+            query: "",
+            has_entries: true,
+            has_matches: true,
+            entries: [
+              {
+                entry_id: "mem_a",
+                memory_type: "fact",
+                content: "Canal z prioriza game indie.",
+                tags: ["game", "indie"],
+              },
+            ],
+            matches: [
+              {
+                entry_id: "mem_a",
+                memory_type: "fact",
+                content: "Canal z prioriza game indie.",
+                tags: ["game", "indie"],
+                similarity: 0.87,
+              },
+            ],
+          };
+        },
+      };
+    }
     if (String(url).includes("/api/channel-context")) {
       return {
         ok: true,
@@ -871,6 +1000,7 @@ test("observability controller fetches observability, context and history for th
     "http://localhost:8000/api/channel-context?channel=canal_z",
     "http://localhost:8000/api/observability/history?channel=canal_z&limit=24&compare_limit=6",
     "http://localhost:8000/api/observability/post-stream-report?channel=canal_z",
+    "http://localhost:8000/api/semantic-memory?channel=canal_z&limit=8&search_limit=60",
   ]);
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");
@@ -880,6 +1010,8 @@ test("observability controller fetches observability, context and history for th
   assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
   assert.equal(obsEls.intPostStreamStatusChip.textContent, "REPORT READY");
   assert.match(obsEls.intPostStreamSummary.textContent, /canal_z/i);
+  assert.match(obsEls.intSemanticMemoryStatusHint.textContent, /carregada/i);
+  assert.equal(obsEls.intSemanticMemoryEntries.children.length, 1);
 });
 
 test("observability controller triggers manual post-stream generation from intelligence panel", async () => {
@@ -942,6 +1074,117 @@ test("observability controller triggers manual post-stream generation from intel
   );
   assert.equal(obsEls.intPostStreamStatusChip.textContent, "REPORT UPDATED");
   assert.equal(obsEls.intPostStreamTrigger.textContent, "manual dashboard");
+});
+
+test("observability controller triggers semantic memory search and save in intelligence panel", async () => {
+  const { document } = installBrowserEnv();
+  document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const obsEls = createObservabilityElements(document);
+  const calls = [];
+
+  globalThis.fetch = async (url, options = {}) => {
+    const safeUrl = String(url);
+    const method = String(options?.method || "GET").toUpperCase();
+    calls.push({ url: safeUrl, method, body: options?.body || "" });
+
+    if (safeUrl.includes("/api/semantic-memory") && method === "PUT") {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            entry: {
+              channel_id: "canal_mem",
+              memory_type: "preference",
+              content: "Nao spoiler de lore.",
+            },
+          };
+        },
+      };
+    }
+
+    if (safeUrl.includes("/api/semantic-memory")) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            ok: true,
+            selected_channel: "canal_mem",
+            query: "lore",
+            has_entries: true,
+            has_matches: true,
+            entries: [
+              {
+                entry_id: "m1",
+                memory_type: "preference",
+                content: "Nao spoiler de lore.",
+                tags: ["lore", "chat"],
+              },
+            ],
+            matches: [
+              {
+                entry_id: "m1",
+                memory_type: "preference",
+                content: "Nao spoiler de lore.",
+                tags: ["lore", "chat"],
+                similarity: 0.941,
+              },
+            ],
+          };
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { ok: true };
+      },
+    };
+  };
+
+  const controller = createObservabilityController({
+    obsEls,
+    ctrlEls: null,
+    cpEls: null,
+    autEls: null,
+  });
+  controller.setSelectedChannel("Canal_Mem");
+  controller.bindObservabilityEvents();
+
+  obsEls.intSemanticMemoryQueryInput.value = "lore";
+  obsEls.intSemanticMemorySearchBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  obsEls.intSemanticMemoryTypeInput.value = "preference";
+  obsEls.intSemanticMemoryTagsInput.value = "lore,chat";
+  obsEls.intSemanticMemoryContentInput.value = "Nao spoiler de lore.";
+  obsEls.intSemanticMemorySaveBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const searchCall = calls.find(
+    (call) =>
+      call.method === "GET" &&
+      call.url.includes("/api/semantic-memory?channel=canal_mem&query=lore"),
+  );
+  assert.ok(searchCall);
+
+  const saveCall = calls.find(
+    (call) => call.method === "PUT" && call.url.includes("/api/semantic-memory"),
+  );
+  assert.ok(saveCall);
+  const savePayload = JSON.parse(String(saveCall?.body || "{}"));
+  assert.equal(savePayload.channel_id, "canal_mem");
+  assert.equal(savePayload.memory_type, "preference");
+  assert.equal(savePayload.content, "Nao spoiler de lore.");
+  assert.equal(obsEls.intSemanticMemoryContentInput.value, "");
+  assert.match(obsEls.intSemanticMemoryStatusHint.textContent, /busca semantica/i);
 });
 
 test("control plane controller mirrors the focused channel into channel tuning", () => {

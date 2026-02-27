@@ -8,6 +8,7 @@ from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
+from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
 from bot.persistence_utils import normalize_channel_id, utc_iso_now
 
 logger = logging.getLogger("byte.persistence")
@@ -29,6 +30,7 @@ class PersistenceLayer:
         self._observability_rollup_cache: dict[str, Any] | None = None
         self._observability_channel_history_cache: dict[str, list[dict[str, Any]]] = {}
         self._post_stream_report_cache: dict[str, dict[str, Any]] = {}
+        self._semantic_memory_cache: dict[str, list[dict[str, Any]]] = {}
 
         if self._url and self._key:
             try:
@@ -59,6 +61,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._post_stream_report_cache,
+        )
+        self._semantic_memory_repo = SemanticMemoryRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._semantic_memory_cache,
         )
 
     @property
@@ -303,6 +310,90 @@ class PersistenceLayer:
         channel_id: str,
     ) -> dict[str, Any] | None:
         return self.load_latest_post_stream_report_sync(channel_id)
+
+    def save_semantic_memory_entry_sync(
+        self,
+        channel_id: str,
+        *,
+        content: Any,
+        memory_type: Any = "fact",
+        tags: Any = None,
+        context: Any = None,
+        entry_id: Any = None,
+    ) -> dict[str, Any]:
+        return self._semantic_memory_repo.save_entry_sync(
+            channel_id,
+            content=content,
+            memory_type=memory_type,
+            tags=tags,
+            context=context,
+            entry_id=entry_id,
+        )
+
+    async def save_semantic_memory_entry(
+        self,
+        channel_id: str,
+        *,
+        content: Any,
+        memory_type: Any = "fact",
+        tags: Any = None,
+        context: Any = None,
+        entry_id: Any = None,
+    ) -> dict[str, Any]:
+        return self.save_semantic_memory_entry_sync(
+            channel_id,
+            content=content,
+            memory_type=memory_type,
+            tags=tags,
+            context=context,
+            entry_id=entry_id,
+        )
+
+    def load_semantic_memory_entries_sync(
+        self,
+        channel_id: str,
+        *,
+        limit: int = 12,
+    ) -> list[dict[str, Any]]:
+        return self._semantic_memory_repo.load_channel_entries_sync(channel_id, limit=limit)
+
+    async def load_semantic_memory_entries(
+        self,
+        channel_id: str,
+        *,
+        limit: int = 12,
+    ) -> list[dict[str, Any]]:
+        return self.load_semantic_memory_entries_sync(channel_id, limit=limit)
+
+    def search_semantic_memory_entries_sync(
+        self,
+        channel_id: str,
+        *,
+        query: Any,
+        limit: int = 5,
+        search_limit: int = 60,
+    ) -> list[dict[str, Any]]:
+        return self._semantic_memory_repo.search_entries_sync(
+            channel_id,
+            query=query,
+            limit=limit,
+            search_limit=search_limit,
+        )
+
+    async def search_semantic_memory_entries(
+        self,
+        channel_id: str,
+        *,
+        query: Any,
+        limit: int = 5,
+        search_limit: int = 60,
+    ) -> list[dict[str, Any]]:
+        return self.search_semantic_memory_entries_sync(
+            channel_id,
+            query=query,
+            limit=limit,
+            search_limit=search_limit,
+        )
 
     def load_observability_rollup_sync(self) -> dict[str, Any] | None:
         cached = self._observability_rollup_cache

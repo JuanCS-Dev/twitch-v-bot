@@ -161,6 +161,29 @@ export function getObservabilityElements() {
     intPostStreamGenerateBtn: document.getElementById(
       "intPostStreamGenerateBtn",
     ),
+    intSemanticMemoryStatusHint: document.getElementById(
+      "intSemanticMemoryStatusHint",
+    ),
+    intSemanticMemoryQueryInput: document.getElementById(
+      "intSemanticMemoryQueryInput",
+    ),
+    intSemanticMemorySearchBtn: document.getElementById(
+      "intSemanticMemorySearchBtn",
+    ),
+    intSemanticMemoryTypeInput: document.getElementById(
+      "intSemanticMemoryTypeInput",
+    ),
+    intSemanticMemoryTagsInput: document.getElementById(
+      "intSemanticMemoryTagsInput",
+    ),
+    intSemanticMemoryContentInput: document.getElementById(
+      "intSemanticMemoryContentInput",
+    ),
+    intSemanticMemorySaveBtn: document.getElementById(
+      "intSemanticMemorySaveBtn",
+    ),
+    intSemanticMemoryMatches: document.getElementById("intSemanticMemoryMatches"),
+    intSemanticMemoryEntries: document.getElementById("intSemanticMemoryEntries"),
   };
 }
 
@@ -280,6 +303,39 @@ function formatPostStreamTrigger(value) {
     .toLowerCase();
   if (!normalized) return "-";
   return normalized.replaceAll("_", " ");
+}
+
+function formatSemanticMemoryTags(tags) {
+  const safeTags = asArray(tags)
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  if (!safeTags.length) return "-";
+  return safeTags.map((value) => `#${value}`).join(" ");
+}
+
+function renderSemanticMemoryRows(rows, targetBody, emptyMessage, withSimilarity = false) {
+  if (!targetBody) return;
+  targetBody.innerHTML = "";
+  const safeRows = asArray(rows);
+  if (!safeRows.length) {
+    const li = document.createElement("li");
+    li.style.fontStyle = "italic";
+    li.style.color = "var(--text-muted)";
+    li.textContent = emptyMessage;
+    targetBody.appendChild(li);
+    return;
+  }
+
+  safeRows.slice(0, 8).forEach((item) => {
+    const li = document.createElement("li");
+    const type = String(item?.memory_type || "fact").trim().toLowerCase() || "fact";
+    const content = String(item?.content || "-").trim() || "-";
+    const tags = formatSemanticMemoryTags(item?.tags);
+    const similarity = Number(item?.similarity || 0);
+    const score = withSimilarity ? ` | sim ${similarity.toFixed(3)}` : "";
+    li.textContent = `[${type}] ${content} | ${tags}${score}`;
+    targetBody.appendChild(li);
+  });
 }
 
 function renderPersistedTimelineRows(rows, targetBody) {
@@ -786,5 +842,60 @@ export function renderPostStreamReportSnapshot(payload, els) {
     hasReport ? report.recommendations || [] : [],
     els.intPostStreamRecommendations,
     "Sem recomendacoes registradas.",
+  );
+}
+
+export function renderSemanticMemorySnapshot(payload, els) {
+  if (!els) return;
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const selectedChannel =
+    String(safePayload.selected_channel || "default")
+      .trim()
+      .toLowerCase() || "default";
+  const query = String(safePayload.query || "").trim();
+  const hasEntries = Boolean(safePayload.has_entries);
+  const hasMatches = Boolean(safePayload.has_matches);
+  const entries = asArray(safePayload.entries);
+  const matches = asArray(safePayload.matches);
+
+  if (els.intSemanticMemoryStatusHint) {
+    if (!hasEntries) {
+      setText(
+        els.intSemanticMemoryStatusHint,
+        `Sem memoria semantica registrada para #${selectedChannel} ainda.`,
+      );
+      els.intSemanticMemoryStatusHint.className = "panel-hint event-level-warn";
+    } else if (query && hasMatches) {
+      setText(
+        els.intSemanticMemoryStatusHint,
+        `Busca semantica ativa em #${selectedChannel} para "${query}".`,
+      );
+      els.intSemanticMemoryStatusHint.className = "panel-hint event-level-info";
+    } else if (query && !hasMatches) {
+      setText(
+        els.intSemanticMemoryStatusHint,
+        `Sem correspondencias para "${query}" em #${selectedChannel}.`,
+      );
+      els.intSemanticMemoryStatusHint.className = "panel-hint event-level-warn";
+    } else {
+      setText(
+        els.intSemanticMemoryStatusHint,
+        `Memoria semantica de #${selectedChannel} carregada no painel atual.`,
+      );
+      els.intSemanticMemoryStatusHint.className = "panel-hint event-level-info";
+    }
+  }
+
+  renderSemanticMemoryRows(
+    matches,
+    els.intSemanticMemoryMatches,
+    "Sem correspondencias semanticas.",
+    true,
+  );
+  renderSemanticMemoryRows(
+    entries,
+    els.intSemanticMemoryEntries,
+    "Nenhuma memoria persistida para este canal.",
+    false,
   );
 }
