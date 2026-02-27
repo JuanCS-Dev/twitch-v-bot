@@ -55,7 +55,7 @@ class IrcChannelStateMixin:
 
         ctx = context_manager.get(target_channel)
         ctx.remember_bot_reply(safe_text)
-        observability.record_reply(text=safe_text)
+        observability.record_reply(text=safe_text, channel_id=target_channel)
         await self._send_raw(f"PRIVMSG #{target_channel} :{safe_text}")
 
     def _mark_channel_joined(self, channel_login: str) -> bool:
@@ -141,6 +141,7 @@ class IrcChannelStateMixin:
             observability.record_error(
                 category="irc_channel_control",
                 details=f"timeout aguardando {action} #{channel_login}",
+                channel_id=channel_login,
             )
             return False
         finally:

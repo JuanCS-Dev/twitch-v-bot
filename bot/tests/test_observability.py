@@ -186,6 +186,174 @@ class TestObservabilityState(unittest.TestCase):
         self.assertTrue(snapshot["recent_events"])
         self.assertEqual(snapshot["recent_events"][0]["event"], "quality_gate")
 
+    def test_snapshot_supports_per_channel_isolation_and_global_rollup(self):
+        state = ObservabilityState()
+        base = 1_700_011_000.0
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Bot Online",
+            live_observability={},
+        )
+
+        state.record_chat_message(
+            author_name="alice",
+            source="irc",
+            text="byte status",
+            channel_id="canal_a",
+            timestamp=base,
+        )
+        state.record_byte_trigger(
+            prompt="status",
+            source="irc",
+            author_name="alice",
+            channel_id="canal_a",
+            timestamp=base + 1,
+        )
+        state.record_reply(text="online", channel_id="canal_a", timestamp=base + 2)
+        state.record_chat_message(
+            author_name="bob",
+            source="irc",
+            text="bom dia",
+            channel_id="canal_b",
+            timestamp=base + 3,
+        )
+
+        global_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            timestamp=base + 120,
+        )
+        channel_a_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_a",
+            timestamp=base + 120,
+        )
+        channel_b_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_b",
+            timestamp=base + 120,
+        )
+        unknown_channel_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_x",
+            timestamp=base + 120,
+        )
+
+        self.assertEqual(global_snapshot["metrics"]["chat_messages_total"], 2)
+        self.assertEqual(global_snapshot["metrics"]["byte_triggers_total"], 1)
+        self.assertEqual(global_snapshot["metrics"]["replies_total"], 1)
+        self.assertEqual(global_snapshot["chatters"]["unique_total"], 2)
+        self.assertEqual(global_snapshot["leaderboards"]["top_chatters_60m"][0]["author"], "alice")
+
+        self.assertEqual(channel_a_snapshot["metrics"]["chat_messages_total"], 1)
+        self.assertEqual(channel_a_snapshot["metrics"]["byte_triggers_total"], 1)
+        self.assertEqual(channel_a_snapshot["metrics"]["replies_total"], 1)
+        self.assertEqual(channel_a_snapshot["chatters"]["unique_total"], 1)
+        self.assertEqual(
+            channel_a_snapshot["leaderboards"]["top_trigger_users_60m"][0],
+            {"author": "alice", "triggers": 1},
+        )
+
+        self.assertEqual(channel_b_snapshot["metrics"]["chat_messages_total"], 1)
+        self.assertEqual(channel_b_snapshot["metrics"]["byte_triggers_total"], 0)
+        self.assertEqual(channel_b_snapshot["metrics"]["replies_total"], 0)
+        self.assertEqual(channel_b_snapshot["chatters"]["unique_total"], 1)
+        self.assertEqual(channel_b_snapshot["leaderboards"]["top_trigger_users_60m"], [])
+
+        self.assertEqual(unknown_channel_snapshot["metrics"]["chat_messages_total"], 0)
+        self.assertEqual(unknown_channel_snapshot["metrics"]["byte_triggers_total"], 0)
+        self.assertEqual(unknown_channel_snapshot["chatters"]["unique_total"], 0)
+
+    def test_state_restores_and_persists_channel_scopes(self):
+        persistence = FakePersistence(
+            loaded={
+                "rollup_key": "global",
+                "updated_at": "2026-02-27T15:55:00Z",
+                "source": "supabase",
+                "state": {
+                    "counters": {"chat_messages_total": 2},
+                    "channel_scopes": {
+                        "Canal_A": {
+                            "counters": {
+                                "chat_messages_total": 5,
+                                "replies_total": 2,
+                            },
+                            "route_counts": {"llm_default": 1},
+                        },
+                        "canal_b": {
+                            "counters": {"chat_messages_total": 1},
+                        },
+                    },
+                },
+            }
+        )
+        state = ObservabilityState(
+            persistence_layer=persistence,
+            persist_interval_seconds=1000.0,
+        )
+        stream_context = SimpleNamespace(
+            stream_vibe="Conversa",
+            last_event="Boot restored",
+            live_observability={},
+        )
+
+        channel_a_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_a",
+            timestamp=1_700_012_000.0,
+        )
+        channel_b_snapshot = state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            channel_id="canal_b",
+            timestamp=1_700_012_000.0,
+        )
+
+        self.assertEqual(channel_a_snapshot["metrics"]["chat_messages_total"], 5)
+        self.assertEqual(channel_a_snapshot["metrics"]["replies_total"], 2)
+        self.assertEqual(channel_b_snapshot["metrics"]["chat_messages_total"], 1)
+
+        state.record_chat_message(
+            author_name="alice",
+            source="irc",
+            text="novo evento",
+            channel_id="canal_a",
+            timestamp=1_700_012_001.0,
+        )
+        state.snapshot(
+            bot_brand="Byte",
+            bot_version="1.5",
+            bot_mode="irc",
+            stream_context=stream_context,
+            timestamp=1_700_012_010.0,
+        )
+
+        self.assertGreater(len(persistence.saved), 0)
+        saved_state = persistence.saved[-1]["state"]
+        self.assertEqual(saved_state["schema_version"], 2)
+        self.assertIn("channel_scopes", saved_state)
+        self.assertIn("canal_a", saved_state["channel_scopes"])
+        self.assertEqual(
+            saved_state["channel_scopes"]["canal_a"]["counters"]["chat_messages_total"],
+            6,
+        )
+
     def test_state_restores_persisted_rollup_and_exposes_metadata(self):
         persistence = FakePersistence(
             loaded={

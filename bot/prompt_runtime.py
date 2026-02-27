@@ -79,7 +79,9 @@ def _is_channel_paused(ctx: Any) -> bool:
     return bool(getattr(ctx, "channel_paused", False))
 
 
-def _record_channel_paused_skip(prompt: str, author_name: str, route: str) -> None:
+def _record_channel_paused_skip(
+    prompt: str, author_name: str, route: str, channel_id: str | None = None
+) -> None:
     observability.record_byte_interaction(
         route=route,
         author_name=author_name,
@@ -90,6 +92,7 @@ def _record_channel_paused_skip(prompt: str, author_name: str, route: str) -> No
         follow_up=False,
         current_events=False,
         latency_ms=0.0,
+        channel_id=channel_id,
     )
 
 
@@ -137,7 +140,12 @@ async def handle_movie_fact_sheet_prompt(
 ) -> None:
     ctx = _resolve_channel_context(channel_id)
     if _is_channel_paused(ctx):
-        _record_channel_paused_skip(prompt, author_name, route="channel_paused_movie_fact")
+        _record_channel_paused_skip(
+            prompt,
+            author_name,
+            route="channel_paused_movie_fact",
+            channel_id=channel_id,
+        )
         return
     await handle_movie_fact_sheet_prompt_impl(
         prompt,
@@ -156,7 +164,9 @@ async def handle_byte_prompt_text(
 ) -> None:
     ctx = _resolve_channel_context(channel_id)
     if _is_channel_paused(ctx):
-        _record_channel_paused_skip(prompt, author_name, route="channel_paused")
+        _record_channel_paused_skip(
+            prompt, author_name, route="channel_paused", channel_id=channel_id
+        )
         return
     # Recap detection — short-circuit to recap engine
     from bot.recap_engine import generate_recap, is_recap_prompt
@@ -176,6 +186,7 @@ async def handle_byte_prompt_text(
                 follow_up=False,
                 current_events=False,
                 latency_ms=0.0,
+                channel_id=channel_id,
             )
         return
 

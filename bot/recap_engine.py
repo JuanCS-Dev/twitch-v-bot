@@ -57,7 +57,7 @@ async def generate_recap(channel_id: str | None = None) -> str:
         return safe.strip() or "Sem contexto suficiente pra recap agora."
     except Exception as error:
         logger.error("Recap generation error: %s", error)
-        observability.record_error(category="recap", details=str(error))
+        observability.record_error(category="recap", details=str(error), channel_id=channel_id)
         return "Sem contexto suficiente pra recap agora."
 
 

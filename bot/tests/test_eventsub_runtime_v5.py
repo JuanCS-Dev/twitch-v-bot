@@ -150,6 +150,43 @@ class TestEventSubRuntimeV5:
                     bot.handle_byte_prompt.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch("bot.eventsub_runtime.observability")
+    @patch("bot.eventsub_runtime.context_manager")
+    async def test_bytebot_event_message_records_channel_scoped_observability(
+        self, mock_context_manager, mock_observability
+    ):
+        with (
+            patch("bot.eventsub_runtime.CLIENT_ID", "123"),
+            patch("bot.eventsub_runtime.BOT_ID", "456"),
+            patch("bot.eventsub_runtime.ENABLE_LIVE_CONTEXT_LEARNING", False),
+            patch("bot.eventsub_runtime.parse_byte_prompt", return_value="oi"),
+        ):
+            bot = ByteBot("secret")
+            msg = MagicMock()
+            msg.echo = False
+            msg.text = "byte oi"
+            msg.channel.name = "Canal_A"
+            msg.author.name = "viewer"
+            bot.handle_byte_prompt = AsyncMock()
+            mock_context_manager.get.return_value = MagicMock()
+
+            await bot.event_message(msg)
+
+        mock_observability.record_chat_message.assert_called_once_with(
+            author_name="viewer",
+            source="eventsub",
+            text="byte oi",
+            channel_id="canal_a",
+        )
+        mock_observability.record_byte_trigger.assert_called_once_with(
+            prompt="oi",
+            source="eventsub",
+            author_name="viewer",
+            channel_id="canal_a",
+        )
+        bot.handle_byte_prompt.assert_awaited_once_with(msg, "oi")
+
+    @pytest.mark.asyncio
     async def test_bytebot_event_ready(self):
         with (
             patch("bot.eventsub_runtime.CLIENT_ID", "123"),

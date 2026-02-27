@@ -103,6 +103,7 @@ async def handle_byte_prompt_text(
     sent_replies: list[str] = []
     interaction_started_at = time.perf_counter()
     server_time_instruction = runtime.build_server_time_anchor_instruction()
+    channel_id = str(getattr(runtime.context, "channel_id", "default") or "default")
 
     async def tracked_reply(text: str) -> None:
         final_text = runtime.format_chat_reply(text)
@@ -110,7 +111,7 @@ async def handle_byte_prompt_text(
             return
         sent_replies.append(final_text)
         runtime.context.remember_bot_reply(final_text)
-        runtime.observability.record_reply(text=final_text)
+        runtime.observability.record_reply(text=final_text, channel_id=channel_id)
         await reply_fn(final_text)
 
     def log_interaction(route: str) -> None:
@@ -138,6 +139,7 @@ async def handle_byte_prompt_text(
             follow_up=follow_up_mode,
             current_events=current_events_mode,
             latency_ms=latency_ms,
+            channel_id=channel_id,
         )
 
     if not normalized_prompt or lowered_prompt in {"ajuda", "help", "comandos"}:
@@ -208,7 +210,11 @@ async def handle_byte_prompt_text(
     )
     quality_failed, quality_reason = runtime.is_low_quality_answer(normalized_prompt, answer)
     if quality_failed:
-        runtime.observability.record_quality_gate(outcome="retry", reason=quality_reason)
+        runtime.observability.record_quality_gate(
+            outcome="retry",
+            reason=quality_reason,
+            channel_id=channel_id,
+        )
         retry_prompt = runtime.build_quality_rewrite_prompt(
             normalized_prompt,
             answer,
@@ -242,7 +248,9 @@ async def handle_byte_prompt_text(
             answer = retry_answer
             quality_route_suffix = "_quality_retry"
             runtime.observability.record_quality_gate(
-                outcome="retry_success", reason=quality_reason
+                outcome="retry_success",
+                reason=quality_reason,
+                channel_id=channel_id,
             )
         else:
             answer = runtime.build_current_events_safe_fallback_reply(
@@ -251,10 +259,14 @@ async def handle_byte_prompt_text(
             )
             quality_route_suffix = "_quality_fallback"
             runtime.observability.record_quality_gate(
-                outcome="fallback", reason=retry_reason or quality_reason
+                outcome="fallback",
+                reason=retry_reason or quality_reason,
+                channel_id=channel_id,
             )
     else:
-        runtime.observability.record_quality_gate(outcome="pass", reason="ok")
+        runtime.observability.record_quality_gate(
+            outcome="pass", reason="ok", channel_id=channel_id
+        )
 
     await tracked_reply(answer)
     route_prefix = "llm_serious" if serious_mode else "llm_default"

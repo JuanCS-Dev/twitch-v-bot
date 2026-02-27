@@ -26,6 +26,7 @@ class TestPromptFlowV2:
         rt.client = MagicMock()
         rt.context = MagicMock()
         rt.context.live_observability = {}
+        rt.context.channel_id = "canal_a"
         rt.observability = MagicMock()
         rt.logger = MagicMock()
         rt.byte_help_message = "Help message"
@@ -86,6 +87,10 @@ class TestPromptFlowV2:
         reply_fn = AsyncMock()
         await handle_byte_prompt_text("help", "user", reply_fn, runtime=runtime_mock)
         reply_fn.assert_called_with("Formatted: Help message")
+        runtime_mock.observability.record_reply.assert_called_once_with(
+            text="Formatted: Help message",
+            channel_id="canal_a",
+        )
         runtime_mock.logger.info.assert_called()
 
     @pytest.mark.asyncio
@@ -156,10 +161,14 @@ class TestPromptFlowV2:
         assert runtime_mock.agent_inference.call_count == 2
         reply_fn.assert_called_with("Formatted: Better answer")
         runtime_mock.observability.record_quality_gate.assert_any_call(
-            outcome="retry", reason="too short"
+            outcome="retry",
+            reason="too short",
+            channel_id="canal_a",
         )
         runtime_mock.observability.record_quality_gate.assert_any_call(
-            outcome="retry_success", reason="too short"
+            outcome="retry_success",
+            reason="too short",
+            channel_id="canal_a",
         )
 
     @pytest.mark.asyncio
@@ -174,7 +183,9 @@ class TestPromptFlowV2:
         assert runtime_mock.agent_inference.call_count == 2
         reply_fn.assert_called_with("Formatted: Fallback")
         runtime_mock.observability.record_quality_gate.assert_any_call(
-            outcome="fallback", reason="still bad"
+            outcome="fallback",
+            reason="still bad",
+            channel_id="canal_a",
         )
 
     @pytest.mark.asyncio

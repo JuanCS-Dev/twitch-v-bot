@@ -1,6 +1,8 @@
 import threading
 import time
 from collections import Counter, deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from bot.observability_helpers import (
@@ -25,6 +27,49 @@ from bot.observability_state_recorders import (
     record_token_usage_locked,
     record_vision_frame_locked,
 )
+
+
+def _normalize_channel_id(channel_id: str | None) -> str:
+    normalized = str(channel_id or "").strip().lower()
+    return normalized or "default"
+
+
+@dataclass
+class _ObservabilityScope:
+    _counters: Counter[str] = field(default_factory=Counter)
+    _route_counts: Counter[str] = field(default_factory=Counter)
+    _minute_buckets: dict[int, dict[str, int]] = field(default_factory=dict)
+    _latencies_ms: deque[float] = field(
+        default_factory=lambda: deque(maxlen=LATENCY_WINDOW_MAX_ITEMS)
+    )
+    _recent_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=EVENT_LOG_MAX_ITEMS)
+    )
+    _chatter_last_seen: dict[str, float] = field(default_factory=dict)
+    _known_chatters: set[str] = field(default_factory=set)
+    _chat_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=CHAT_EVENTS_MAX_ITEMS)
+    )
+    _byte_trigger_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+    )
+    _interaction_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+    )
+    _quality_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+    )
+    _token_usage_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+    )
+    _autonomy_goal_events: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS)
+    )
+    _chatter_message_totals: Counter[str] = field(default_factory=Counter)
+    _trigger_user_totals: Counter[str] = field(default_factory=Counter)
+    _last_prompt: str = ""
+    _last_reply: str = ""
+    _estimated_cost_usd_total: float = 0.0
 
 
 class ObservabilityState:
@@ -73,41 +118,126 @@ class ObservabilityState:
             "token_valid": False,
             "scope_ok": False,
         }
+        self._channel_scopes: dict[str, _ObservabilityScope] = {}
         self._restore_from_persistence()
+
+    def _serialize_scope_locked(self, scope: Any) -> dict[str, Any]:
+        return {
+            "counters": {key: int(value) for key, value in scope._counters.items()},
+            "route_counts": {key: int(value) for key, value in scope._route_counts.items()},
+            "minute_buckets": {
+                str(key): {name: int(amount) for name, amount in bucket.items()}
+                for key, bucket in scope._minute_buckets.items()
+            },
+            "latencies_ms": [float(value) for value in scope._latencies_ms],
+            "recent_events": list(scope._recent_events),
+            "chatter_last_seen": {
+                str(key): float(value) for key, value in scope._chatter_last_seen.items()
+            },
+            "known_chatters": sorted(scope._known_chatters),
+            "chat_events": list(scope._chat_events),
+            "byte_trigger_events": list(scope._byte_trigger_events),
+            "interaction_events": list(scope._interaction_events),
+            "quality_events": list(scope._quality_events),
+            "token_usage_events": list(scope._token_usage_events),
+            "autonomy_goal_events": list(scope._autonomy_goal_events),
+            "chatter_message_totals": {
+                key: int(value) for key, value in scope._chatter_message_totals.items()
+            },
+            "trigger_user_totals": {
+                key: int(value) for key, value in scope._trigger_user_totals.items()
+            },
+            "last_prompt": str(scope._last_prompt or ""),
+            "last_reply": str(scope._last_reply or ""),
+            "estimated_cost_usd_total": float(scope._estimated_cost_usd_total or 0.0),
+        }
+
+    def _restore_scope_locked(self, scope: Any, raw_state: dict[str, Any]) -> None:
+        scope._counters = Counter(
+            {str(key): int(value) for key, value in dict(raw_state.get("counters") or {}).items()}
+        )
+        scope._route_counts = Counter(
+            {
+                str(key): int(value)
+                for key, value in dict(raw_state.get("route_counts") or {}).items()
+            }
+        )
+        scope._minute_buckets = {
+            int(key): {
+                str(bucket_key): int(bucket_value)
+                for bucket_key, bucket_value in dict(bucket or {}).items()
+            }
+            for key, bucket in dict(raw_state.get("minute_buckets") or {}).items()
+            if str(key).lstrip("-").isdigit()
+        }
+        scope._latencies_ms = deque(
+            [float(value) for value in list(raw_state.get("latencies_ms") or [])],
+            maxlen=LATENCY_WINDOW_MAX_ITEMS,
+        )
+        scope._recent_events = deque(
+            list(raw_state.get("recent_events") or []),
+            maxlen=EVENT_LOG_MAX_ITEMS,
+        )
+        scope._chatter_last_seen = {
+            str(key): float(value)
+            for key, value in dict(raw_state.get("chatter_last_seen") or {}).items()
+        }
+        scope._known_chatters = {
+            str(value).strip().lower()
+            for value in list(raw_state.get("known_chatters") or [])
+            if str(value).strip()
+        }
+        scope._chat_events = deque(
+            list(raw_state.get("chat_events") or []),
+            maxlen=CHAT_EVENTS_MAX_ITEMS,
+        )
+        scope._byte_trigger_events = deque(
+            list(raw_state.get("byte_trigger_events") or []),
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
+        )
+        scope._interaction_events = deque(
+            list(raw_state.get("interaction_events") or []),
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
+        )
+        scope._quality_events = deque(
+            list(raw_state.get("quality_events") or []),
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
+        )
+        scope._token_usage_events = deque(
+            list(raw_state.get("token_usage_events") or []),
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
+        )
+        scope._autonomy_goal_events = deque(
+            list(raw_state.get("autonomy_goal_events") or []),
+            maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
+        )
+        scope._chatter_message_totals = Counter(
+            {
+                str(key): int(value)
+                for key, value in dict(raw_state.get("chatter_message_totals") or {}).items()
+            }
+        )
+        scope._trigger_user_totals = Counter(
+            {
+                str(key): int(value)
+                for key, value in dict(raw_state.get("trigger_user_totals") or {}).items()
+            }
+        )
+        scope._last_prompt = str(raw_state.get("last_prompt") or "")
+        scope._last_reply = str(raw_state.get("last_reply") or "")
+        scope._estimated_cost_usd_total = float(raw_state.get("estimated_cost_usd_total") or 0.0)
 
     def _build_rollup_payload_locked(self) -> dict[str, Any]:
         return {
-            "schema_version": 1,
-            "counters": {key: int(value) for key, value in self._counters.items()},
-            "route_counts": {key: int(value) for key, value in self._route_counts.items()},
-            "minute_buckets": {
-                str(key): {name: int(amount) for name, amount in bucket.items()}
-                for key, bucket in self._minute_buckets.items()
-            },
-            "latencies_ms": [float(value) for value in self._latencies_ms],
-            "recent_events": list(self._recent_events),
-            "chatter_last_seen": {
-                str(key): float(value) for key, value in self._chatter_last_seen.items()
-            },
-            "known_chatters": sorted(self._known_chatters),
-            "chat_events": list(self._chat_events),
-            "byte_trigger_events": list(self._byte_trigger_events),
-            "interaction_events": list(self._interaction_events),
-            "quality_events": list(self._quality_events),
-            "token_usage_events": list(self._token_usage_events),
-            "autonomy_goal_events": list(self._autonomy_goal_events),
-            "chatter_message_totals": {
-                key: int(value) for key, value in self._chatter_message_totals.items()
-            },
-            "trigger_user_totals": {
-                key: int(value) for key, value in self._trigger_user_totals.items()
-            },
-            "last_prompt": str(self._last_prompt or ""),
-            "last_reply": str(self._last_reply or ""),
-            "estimated_cost_usd_total": float(self._estimated_cost_usd_total or 0.0),
+            "schema_version": 2,
+            **self._serialize_scope_locked(self),
             "clips_status": {
                 "token_valid": bool(self._clips_status.get("token_valid", False)),
                 "scope_ok": bool(self._clips_status.get("scope_ok", False)),
+            },
+            "channel_scopes": {
+                channel_id: self._serialize_scope_locked(scope)
+                for channel_id, scope in self._channel_scopes.items()
             },
         }
 
@@ -122,84 +252,21 @@ class ObservabilityState:
             return
         state = dict(persisted.get("state") or {})
         with self._lock:
-            self._counters = Counter(
-                {str(key): int(value) for key, value in dict(state.get("counters") or {}).items()}
-            )
-            self._route_counts = Counter(
-                {
-                    str(key): int(value)
-                    for key, value in dict(state.get("route_counts") or {}).items()
-                }
-            )
-            self._minute_buckets = {
-                int(key): {
-                    str(bucket_key): int(bucket_value)
-                    for bucket_key, bucket_value in dict(bucket or {}).items()
-                }
-                for key, bucket in dict(state.get("minute_buckets") or {}).items()
-                if str(key).lstrip("-").isdigit()
-            }
-            self._latencies_ms = deque(
-                [float(value) for value in list(state.get("latencies_ms") or [])],
-                maxlen=LATENCY_WINDOW_MAX_ITEMS,
-            )
-            self._recent_events = deque(
-                list(state.get("recent_events") or []),
-                maxlen=EVENT_LOG_MAX_ITEMS,
-            )
-            self._chatter_last_seen = {
-                str(key): float(value)
-                for key, value in dict(state.get("chatter_last_seen") or {}).items()
-            }
-            self._known_chatters = {
-                str(value).strip().lower()
-                for value in list(state.get("known_chatters") or [])
-                if str(value).strip()
-            }
-            self._chat_events = deque(
-                list(state.get("chat_events") or []),
-                maxlen=CHAT_EVENTS_MAX_ITEMS,
-            )
-            self._byte_trigger_events = deque(
-                list(state.get("byte_trigger_events") or []),
-                maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
-            )
-            self._interaction_events = deque(
-                list(state.get("interaction_events") or []),
-                maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
-            )
-            self._quality_events = deque(
-                list(state.get("quality_events") or []),
-                maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
-            )
-            self._token_usage_events = deque(
-                list(state.get("token_usage_events") or []),
-                maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
-            )
-            self._autonomy_goal_events = deque(
-                list(state.get("autonomy_goal_events") or []),
-                maxlen=BYTE_TRIGGER_EVENTS_MAX_ITEMS,
-            )
-            self._chatter_message_totals = Counter(
-                {
-                    str(key): int(value)
-                    for key, value in dict(state.get("chatter_message_totals") or {}).items()
-                }
-            )
-            self._trigger_user_totals = Counter(
-                {
-                    str(key): int(value)
-                    for key, value in dict(state.get("trigger_user_totals") or {}).items()
-                }
-            )
-            self._last_prompt = str(state.get("last_prompt") or "")
-            self._last_reply = str(state.get("last_reply") or "")
-            self._estimated_cost_usd_total = float(state.get("estimated_cost_usd_total") or 0.0)
+            self._restore_scope_locked(self, state)
             restored_clips_status = dict(state.get("clips_status") or {})
             self._clips_status = {
                 "token_valid": bool(restored_clips_status.get("token_valid", False)),
                 "scope_ok": bool(restored_clips_status.get("scope_ok", False)),
             }
+            self._channel_scopes = {}
+            raw_scopes = dict(state.get("channel_scopes") or {})
+            for raw_channel_id, raw_scope_state in raw_scopes.items():
+                if not isinstance(raw_scope_state, dict):
+                    continue
+                channel_id = _normalize_channel_id(str(raw_channel_id))
+                scope = _ObservabilityScope()
+                self._restore_scope_locked(scope, dict(raw_scope_state))
+                self._channel_scopes[channel_id] = scope
             self._restored_from_persistence = True
             self._persistence_source = str(persisted.get("source") or "memory")
             self._persistence_updated_at = str(persisted.get("updated_at") or "")
@@ -230,6 +297,25 @@ class ObservabilityState:
         self._dirty = True
         self._persist_if_needed_locked(now, force=False)
 
+    def _get_or_create_channel_scope_locked(self, channel_id: str | None) -> _ObservabilityScope:
+        safe_channel_id = _normalize_channel_id(channel_id)
+        scope = self._channel_scopes.get(safe_channel_id)
+        if scope is None:
+            scope = _ObservabilityScope()
+            self._channel_scopes[safe_channel_id] = scope
+        return scope
+
+    def _record_scoped_locked(
+        self,
+        *,
+        channel_id: str | None,
+        recorder: Callable[..., None],
+        now: float,
+        **kwargs: Any,
+    ) -> None:
+        recorder(self, now=now, **kwargs)
+        recorder(self._get_or_create_channel_scope_locked(channel_id), now=now, **kwargs)
+
     def update_clips_auth_status(
         self, *, token_valid: bool, scope_ok: bool, timestamp: float | None = None
     ) -> None:
@@ -239,12 +325,19 @@ class ObservabilityState:
             self._mark_dirty_locked(resolve_now(timestamp))
 
     def record_chat_message(
-        self, *, author_name: str, source: str, text: str = "", timestamp: float | None = None
+        self,
+        *,
+        author_name: str,
+        source: str,
+        text: str = "",
+        channel_id: str | None = None,
+        timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_chat_message_locked(
-                self,
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_chat_message_locked,
                 now=now,
                 author_name=author_name,
                 source=source,
@@ -253,12 +346,19 @@ class ObservabilityState:
             self._mark_dirty_locked(now)
 
     def record_byte_trigger(
-        self, *, prompt: str, source: str, author_name: str = "", timestamp: float | None = None
+        self,
+        *,
+        prompt: str,
+        source: str,
+        author_name: str = "",
+        channel_id: str | None = None,
+        timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_byte_trigger_locked(
-                self,
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_byte_trigger_locked,
                 now=now,
                 prompt=prompt,
                 source=source,
@@ -266,18 +366,36 @@ class ObservabilityState:
             )
             self._mark_dirty_locked(now)
 
-    def record_reply(self, *, text: str, timestamp: float | None = None) -> None:
-        now = resolve_now(timestamp)
-        with self._lock:
-            record_reply_locked(self, now=now, text=text)
-            self._mark_dirty_locked(now)
-
-    def record_quality_gate(
-        self, *, outcome: str, reason: str, timestamp: float | None = None
+    def record_reply(
+        self, *, text: str, channel_id: str | None = None, timestamp: float | None = None
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_quality_gate_locked(self, now=now, outcome=outcome, reason=reason)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_reply_locked,
+                now=now,
+                text=text,
+            )
+            self._mark_dirty_locked(now)
+
+    def record_quality_gate(
+        self,
+        *,
+        outcome: str,
+        reason: str,
+        channel_id: str | None = None,
+        timestamp: float | None = None,
+    ) -> None:
+        now = resolve_now(timestamp)
+        with self._lock:
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_quality_gate_locked,
+                now=now,
+                outcome=outcome,
+                reason=reason,
+            )
             self._mark_dirty_locked(now)
 
     def record_byte_interaction(
@@ -292,12 +410,14 @@ class ObservabilityState:
         follow_up: bool,
         current_events: bool,
         latency_ms: float,
+        channel_id: str | None = None,
         timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_byte_interaction_locked(
-                self,
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_byte_interaction_locked,
                 now=now,
                 route=route,
                 author_name=author_name,
@@ -317,12 +437,14 @@ class ObservabilityState:
         input_tokens: int,
         output_tokens: int,
         estimated_cost_usd: float,
+        channel_id: str | None = None,
         timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_token_usage_locked(
-                self,
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_token_usage_locked,
                 now=now,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
@@ -336,12 +458,14 @@ class ObservabilityState:
         risk: str,
         outcome: str,
         details: str = "",
+        channel_id: str | None = None,
         timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_autonomy_goal_locked(
-                self,
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_autonomy_goal_locked,
                 now=now,
                 risk=risk,
                 outcome=outcome,
@@ -350,35 +474,78 @@ class ObservabilityState:
             self._mark_dirty_locked(now)
 
     def record_auto_scene_update(
-        self, *, update_types: list[str], timestamp: float | None = None
+        self,
+        *,
+        update_types: list[str],
+        channel_id: str | None = None,
+        timestamp: float | None = None,
     ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_auto_scene_update_locked(self, now=now, update_types=update_types)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_auto_scene_update_locked,
+                now=now,
+                update_types=update_types,
+            )
             self._mark_dirty_locked(now)
 
-    def record_token_refresh(self, *, reason: str, timestamp: float | None = None) -> None:
+    def record_token_refresh(
+        self, *, reason: str, channel_id: str | None = None, timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_token_refresh_locked(self, now=now, reason=reason)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_token_refresh_locked,
+                now=now,
+                reason=reason,
+            )
             self._mark_dirty_locked(now)
 
-    def record_auth_failure(self, *, details: str, timestamp: float | None = None) -> None:
+    def record_auth_failure(
+        self, *, details: str, channel_id: str | None = None, timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_auth_failure_locked(self, now=now, details=details)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_auth_failure_locked,
+                now=now,
+                details=details,
+            )
             self._mark_dirty_locked(now)
 
-    def record_error(self, *, category: str, details: str, timestamp: float | None = None) -> None:
+    def record_error(
+        self,
+        *,
+        category: str,
+        details: str,
+        channel_id: str | None = None,
+        timestamp: float | None = None,
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_error_locked(self, now=now, category=category, details=details)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_error_locked,
+                now=now,
+                category=category,
+                details=details,
+            )
             self._mark_dirty_locked(now)
 
-    def record_vision_frame(self, *, analysis: str, timestamp: float | None = None) -> None:
+    def record_vision_frame(
+        self, *, analysis: str, channel_id: str | None = None, timestamp: float | None = None
+    ) -> None:
         now = resolve_now(timestamp)
         with self._lock:
-            record_vision_frame_locked(self, now=now, analysis=analysis)
+            self._record_scoped_locked(
+                channel_id=channel_id,
+                recorder=record_vision_frame_locked,
+                now=now,
+                analysis=analysis,
+            )
             self._mark_dirty_locked(now)
 
     def snapshot(
@@ -388,33 +555,42 @@ class ObservabilityState:
         bot_version: str,
         bot_mode: str,
         stream_context: Any,
+        channel_id: str | None = None,
         timestamp: float | None = None,
     ) -> dict[str, Any]:
         now = resolve_now(timestamp)
         with self._lock:
             prune_locked(self, now)
+            for scope in self._channel_scopes.values():
+                prune_locked(scope, now)
             self._persist_if_needed_locked(now, force=True)
+            scope: Any = self
+            if channel_id is not None:
+                scope = (
+                    self._channel_scopes.get(_normalize_channel_id(channel_id))
+                    or _ObservabilityScope()
+                )
             snapshot = build_observability_snapshot(
                 now=now,
                 started_at=self._started_at,
-                counters=dict(self._counters),
-                route_counts=dict(self._route_counts),
-                latencies_ms=list(self._latencies_ms),
-                minute_buckets={key: value.copy() for key, value in self._minute_buckets.items()},
-                recent_events=list(self._recent_events),
-                chatter_last_seen=dict(self._chatter_last_seen),
-                chat_events=list(self._chat_events),
-                byte_trigger_events=list(self._byte_trigger_events),
-                interaction_events=list(self._interaction_events),
-                quality_events=list(self._quality_events),
-                token_usage_events=list(self._token_usage_events),
-                autonomy_goal_events=list(self._autonomy_goal_events),
-                chatter_message_totals=dict(self._chatter_message_totals),
-                trigger_user_totals=dict(self._trigger_user_totals),
-                unique_chatters_total=len(self._known_chatters),
-                last_prompt=self._last_prompt,
-                last_reply=self._last_reply,
-                estimated_cost_usd_total=float(self._estimated_cost_usd_total),
+                counters=dict(scope._counters),
+                route_counts=dict(scope._route_counts),
+                latencies_ms=list(scope._latencies_ms),
+                minute_buckets={key: value.copy() for key, value in scope._minute_buckets.items()},
+                recent_events=list(scope._recent_events),
+                chatter_last_seen=dict(scope._chatter_last_seen),
+                chat_events=list(scope._chat_events),
+                byte_trigger_events=list(scope._byte_trigger_events),
+                interaction_events=list(scope._interaction_events),
+                quality_events=list(scope._quality_events),
+                token_usage_events=list(scope._token_usage_events),
+                autonomy_goal_events=list(scope._autonomy_goal_events),
+                chatter_message_totals=dict(scope._chatter_message_totals),
+                trigger_user_totals=dict(scope._trigger_user_totals),
+                unique_chatters_total=len(scope._known_chatters),
+                last_prompt=scope._last_prompt,
+                last_reply=scope._last_reply,
+                estimated_cost_usd_total=float(scope._estimated_cost_usd_total),
                 clips_status=dict(self._clips_status),
                 bot_brand=bot_brand,
                 bot_version=bot_version,

@@ -108,4 +108,5 @@ class ScientificIrcControlTestsMixin(ScientificTestCase):
                 "#canal_a msg_requires_verified_phone_number: "
                 "Your phone number must be verified to chat in this channel."
             ),
+            channel_id="canal_a",
         )

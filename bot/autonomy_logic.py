@@ -85,6 +85,7 @@ async def process_autonomy_goal(
         observability.record_error(
             category="autonomy_channel_config",
             details=str(error),
+            channel_id=channel_id,
         )
         ctx = context_manager.get(channel_id)
 
@@ -93,6 +94,7 @@ async def process_autonomy_goal(
             risk=risk,
             outcome="channel_paused",
             details=goal_id,
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -108,6 +110,7 @@ async def process_autonomy_goal(
         observability.record_error(
             category="autonomy_goal",
             details=f"{goal_id}: resposta vazia",
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -121,9 +124,22 @@ async def process_autonomy_goal(
         )
 
     if risk == RISK_CLIP_CANDIDATE:
-        return _handle_clip_candidate(goal_id, risk, goal_name, generated_text)
+        return _handle_clip_candidate(
+            goal_id,
+            risk,
+            goal_name,
+            generated_text,
+            channel_id=channel_id,
+        )
 
-    return _handle_generic_suggestion(goal_id, risk, goal_name, safe_prompt, generated_text)
+    return _handle_generic_suggestion(
+        goal_id,
+        risk,
+        goal_name,
+        safe_prompt,
+        generated_text,
+        channel_id=channel_id,
+    )
 
 
 async def _handle_auto_chat(
@@ -141,6 +157,7 @@ async def _handle_auto_chat(
             risk=risk,
             outcome="budget_blocked",
             details=block_reason,
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -163,6 +180,7 @@ async def _handle_auto_chat(
             risk=risk,
             outcome="queued_no_dispatcher",
             details=goal_id,
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -178,6 +196,7 @@ async def _handle_auto_chat(
         observability.record_error(
             category="autonomy_dispatch",
             details=str(error),
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -189,11 +208,12 @@ async def _handle_auto_chat(
     control_plane.register_auto_chat_sent()
     ctx = context_manager.get(channel_id)
     ctx.remember_bot_reply(text)
-    observability.record_reply(text=text)
+    observability.record_reply(text=text, channel_id=channel_id)
     observability.record_autonomy_goal(
         risk=risk,
         outcome="auto_chat_sent",
         details=goal_id,
+        channel_id=channel_id,
     )
     return {
         "goal_id": goal_id,
@@ -207,6 +227,7 @@ def _handle_clip_candidate(
     risk: str,
     goal_name: str,
     text: str,
+    channel_id: str | None = None,
 ) -> dict[str, Any]:
     cfg = control_plane.get_config()
     if not cfg.get("clip_pipeline_enabled"):
@@ -214,6 +235,7 @@ def _handle_clip_candidate(
             risk=risk,
             outcome="disabled",
             details="clip_pipeline_disabled",
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -227,6 +249,7 @@ def _handle_clip_candidate(
             risk=risk,
             outcome="no_candidate",
             details="LLM retornou NADA",
+            channel_id=channel_id,
         )
         return {
             "goal_id": goal_id,
@@ -259,6 +282,7 @@ def _handle_clip_candidate(
         risk=risk,
         outcome="queued",
         details=queued_item.get("id", ""),
+        channel_id=channel_id,
     )
     return {
         "goal_id": goal_id,
@@ -274,6 +298,7 @@ def _handle_generic_suggestion(
     goal_name: str,
     prompt: str,
     text: str,
+    channel_id: str | None = None,
 ) -> dict[str, Any]:
     action_kind = "suggestion" if risk == RISK_SUGGEST_STREAMER else "moderation_review"
     queued_item = control_plane.enqueue_action(
@@ -292,6 +317,7 @@ def _handle_generic_suggestion(
         risk=risk,
         outcome="queued",
         details=queued_item.get("id", ""),
+        channel_id=channel_id,
     )
     if risk == RISK_SUGGEST_STREAMER:
         hud_runtime.push_message(text, source="autonomy")

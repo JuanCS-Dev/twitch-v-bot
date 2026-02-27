@@ -96,6 +96,7 @@ class IrcLineHandlersMixin:
             observability.record_error(
                 category="irc_notice",
                 details=f"{target_label} {msg_id or 'notice'}: {message}",
+                channel_id=target_channel if target.startswith("#") else None,
             )
 
     async def _handle_privmsg(self, line: str) -> None:
@@ -132,7 +133,12 @@ class IrcLineHandlersMixin:
 
                 asyncio.create_task(persistence.append_history(channel, author.name, text))
 
-            observability.record_chat_message(author_name=author.name, source="irc", text=text)
+            observability.record_chat_message(
+                author_name=author.name,
+                source="irc",
+                text=text,
+                channel_id=channel,
+            )
             sentiment_engine.ingest_message(channel, text)
 
         updates: list[str] = []
@@ -146,11 +152,16 @@ class IrcLineHandlersMixin:
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
             )
             logger.info("Observabilidade automatica atualizada: %s", labels)
-            observability.record_auto_scene_update(update_types=updates)
+            observability.record_auto_scene_update(update_types=updates, channel_id=channel)
 
         if byte_prompt is None:
             return
-        observability.record_byte_trigger(prompt=byte_prompt, source="irc", author_name=author.name)
+        observability.record_byte_trigger(
+            prompt=byte_prompt,
+            source="irc",
+            author_name=author.name,
+            channel_id=channel,
+        )
         management_handled = await self._handle_channel_management_prompt(
             byte_prompt, author, channel
         )

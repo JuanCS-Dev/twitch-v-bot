@@ -97,11 +97,13 @@ def _serialize_persisted_agent_notes(notes: dict[str, Any] | None) -> dict[str, 
 
 def build_observability_payload(channel_id: str | None = None) -> dict[str, Any]:
     ctx = _get_context_sync(channel_id)
+    selected_channel = str(getattr(ctx, "channel_id", channel_id or "default") or "default")
     snapshot = observability.snapshot(
         bot_brand=BOT_BRAND,
         bot_version=BYTE_VERSION,
         bot_mode=TWITCH_CHAT_MODE,
         stream_context=ctx,
+        channel_id=selected_channel,
     )
     capabilities = control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE)
     autonomy = control_plane.runtime_snapshot()
@@ -115,12 +117,10 @@ def build_observability_payload(channel_id: str | None = None) -> dict[str, Any]
     }
     snapshot["capabilities"] = capabilities
     snapshot["autonomy"] = autonomy
-    snapshot["selected_channel"] = str(
-        getattr(ctx, "channel_id", channel_id or "default") or "default"
-    )
+    snapshot["selected_channel"] = selected_channel
     snapshot["context"] = {
         **(snapshot.get("context") or {}),
-        "channel_id": str(getattr(ctx, "channel_id", channel_id or "default") or "default"),
+        "channel_id": selected_channel,
     }
     snapshot["ok"] = True
     return snapshot

@@ -74,6 +74,7 @@ class TestIrcHandlersV3:
                 await handler._handle_notice_line(line)
                 mock_record.assert_called_once()
                 assert "msg_banned" in mock_record.call_args[1]["details"]
+                assert mock_record.call_args[1]["channel_id"] == "channel1"
 
     @pytest.mark.asyncio
     async def test_handle_privmsg_byte_prompt(self):
@@ -87,6 +88,7 @@ class TestIrcHandlersV3:
             patch(
                 "bot.irc_handlers.auto_update_scene_from_message", new_callable=AsyncMock
             ) as mock_auto,
+            patch("bot.irc_handlers.observability") as mock_observability,
             patch(
                 "bot.irc_handlers.handle_byte_prompt_text", new_callable=AsyncMock
             ) as mock_handle,
@@ -97,6 +99,22 @@ class TestIrcHandlersV3:
             await handler._handle_privmsg(line)
 
             mock_ctx.remember_user_message.assert_called_with("User", "byte hello")
+            mock_observability.record_chat_message.assert_called_once_with(
+                author_name="User",
+                source="irc",
+                text="byte hello",
+                channel_id="channel1",
+            )
+            mock_observability.record_auto_scene_update.assert_called_once_with(
+                update_types=["movie"],
+                channel_id="channel1",
+            )
+            mock_observability.record_byte_trigger.assert_called_once_with(
+                prompt="hello",
+                source="irc",
+                author_name="User",
+                channel_id="channel1",
+            )
             mock_handle.assert_called_once()
 
     @pytest.mark.asyncio

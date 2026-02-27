@@ -85,9 +85,33 @@ class TestDashboardRoutesV3:
 
         res = build_observability_payload("canal_a")
         mock_get_context.assert_called_with("canal_a")
+        assert mock_obs.snapshot.call_args.kwargs["channel_id"] == "canal_a"
         assert res["ok"] is True
         assert res["selected_channel"] == "canal_a"
         assert res["agent_outcomes"]["ignored_total_60m"] == 5
+
+    @patch("bot.dashboard_server_routes._get_context_sync")
+    @patch("bot.dashboard_server_routes.observability")
+    @patch("bot.dashboard_server_routes.control_plane")
+    def test_build_observability_payload_uses_context_channel_when_missing_query(
+        self,
+        mock_cp,
+        mock_obs,
+        mock_get_context,
+    ):
+        from bot.dashboard_server_routes import build_observability_payload
+
+        mock_get_context.return_value = MagicMock(channel_id="canal_ctx")
+        mock_obs.snapshot.return_value = {"agent_outcomes": {}}
+        mock_cp.runtime_snapshot.return_value = {"queue_window_60m": {}}
+        mock_cp.build_capabilities.return_value = {"cap": 1}
+
+        res = build_observability_payload(None)
+
+        mock_get_context.assert_called_with(None)
+        assert mock_obs.snapshot.call_args.kwargs["channel_id"] == "canal_ctx"
+        assert res["selected_channel"] == "canal_ctx"
+        assert res["context"]["channel_id"] == "canal_ctx"
 
     @patch("bot.dashboard_server_routes.persistence")
     @patch("bot.dashboard_server_routes.context_manager")

@@ -6,6 +6,7 @@ from bot.logic_inference import (
     _build_agent_notes_instruction,
     _build_messages,
     _execute_inference,
+    _record_token_usage,
     _resolve_generation_params,
 )
 
@@ -41,6 +42,7 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res, "Resposta do bot")
         self.assertEqual(mock_execute.await_args.kwargs["temperature"], 0.15)
         self.assertIsNone(mock_execute.await_args.kwargs["top_p"])
+        self.assertEqual(mock_execute.await_args.kwargs["channel_id"], "test")
 
     @patch("bot.logic_inference._execute_inference_with_retry")
     async def test_agent_inference_uses_channel_generation_overrides(self, mock_execute):
@@ -59,6 +61,21 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res, "Resposta tunada")
         self.assertEqual(mock_execute.await_args.kwargs["temperature"], 0.42)
         self.assertEqual(mock_execute.await_args.kwargs["top_p"], 0.88)
+        self.assertEqual(mock_execute.await_args.kwargs["channel_id"], "override_channel")
+
+    @patch("bot.logic_inference.observability")
+    def test_record_token_usage_includes_channel_id(self, mock_observability):
+        response = MagicMock()
+        response.usage.prompt_tokens = 11
+        response.usage.completion_tokens = 7
+
+        _record_token_usage(response, channel_id="canal_a")
+
+        self.assertEqual(mock_observability.record_token_usage.call_count, 1)
+        self.assertEqual(
+            mock_observability.record_token_usage.call_args.kwargs["channel_id"],
+            "canal_a",
+        )
 
     async def test_execute_inference_includes_optional_top_p(self):
         mock_client = MagicMock()

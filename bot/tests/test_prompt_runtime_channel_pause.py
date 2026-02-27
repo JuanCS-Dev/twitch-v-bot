@@ -29,6 +29,10 @@ class TestPromptRuntimeChannelPause(unittest.IsolatedAsyncioTestCase):
             mock_observability.record_byte_interaction.call_args.kwargs["route"],
             "channel_paused",
         )
+        self.assertEqual(
+            mock_observability.record_byte_interaction.call_args.kwargs["channel_id"],
+            "canal_a",
+        )
 
     async def test_handle_byte_prompt_text_runs_when_channel_is_not_paused(self):
         ctx = MagicMock(channel_paused=False)
@@ -77,4 +81,8 @@ class TestPromptRuntimeChannelPause(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             mock_observability.record_byte_interaction.call_args.kwargs["route"],
             "channel_paused_movie_fact",
+        )
+        self.assertEqual(
+            mock_observability.record_byte_interaction.call_args.kwargs["channel_id"],
+            "canal_a",
         )

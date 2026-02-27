@@ -170,7 +170,7 @@ def _build_agent_notes_instruction(context: Any) -> str:
     )
 
 
-def _record_token_usage(response: Any) -> None:
+def _record_token_usage(response: Any, *, channel_id: str | None = None) -> None:
     """Record token usage metrics to observability."""
     from bot.logic_constants import MODEL_INPUT_COST_PER_1M_USD, MODEL_OUTPUT_COST_PER_1M_USD
 
@@ -184,6 +184,7 @@ def _record_token_usage(response: Any) -> None:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             estimated_cost_usd=cost,
+            channel_id=channel_id,
         )
 
 
@@ -243,6 +244,7 @@ async def _execute_inference_with_retry(
     *,
     temperature: float,
     top_p: float | None = None,
+    channel_id: str | None = None,
 ) -> Any:
     """Execute inference with retry logic for rate limits and timeouts."""
 
@@ -254,7 +256,7 @@ async def _execute_inference_with_retry(
 
     async def _execute_and_record(*args: Any, **kwargs: Any) -> Any:
         response = await _execute_inference(*args, **kwargs)
-        _record_token_usage(response)
+        _record_token_usage(response, channel_id=channel_id)
         return response
 
     return await retry_async(
@@ -365,6 +367,7 @@ async def agent_inference(
             messages,
             temperature=temperature,
             top_p=top_p,
+            channel_id=str(getattr(context, "channel_id", "") or "") or None,
         )
         reply = _process_response(response, max_lines, max_length)
 

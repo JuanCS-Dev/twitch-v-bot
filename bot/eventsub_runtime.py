@@ -225,7 +225,10 @@ class ByteBot(commands.Bot):
                 asyncio.create_task(persistence.append_history(channel, author_name, raw_text))
 
             observability.record_chat_message(
-                author_name=author_name, source="eventsub", text=raw_text
+                author_name=author_name,
+                source="eventsub",
+                text=raw_text,
+                channel_id=channel,
             )
             sentiment_engine.ingest_message(channel, raw_text)
 
@@ -239,11 +242,14 @@ class ByteBot(commands.Bot):
                 OBSERVABILITY_TYPES.get(content_type, content_type) for content_type in updates
             )
             logger.info("Observabilidade automatica atualizada: %s", labels)
-            observability.record_auto_scene_update(update_types=updates)
+            observability.record_auto_scene_update(update_types=updates, channel_id=channel)
 
         if byte_prompt is not None:
             observability.record_byte_trigger(
-                prompt=byte_prompt, source="eventsub", author_name=author_name
+                prompt=byte_prompt,
+                source="eventsub",
+                author_name=author_name,
+                channel_id=channel,
             )
             await self.handle_byte_prompt(message, byte_prompt)
             return
