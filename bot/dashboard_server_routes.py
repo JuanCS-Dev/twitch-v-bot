@@ -1,10 +1,17 @@
 import asyncio
 import mimetypes
+from collections.abc import Callable
 from typing import Any
-from urllib.parse import parse_qs, urlparse
 
 from bot.clip_jobs_runtime import clip_jobs
 from bot.control_plane import control_plane
+from bot.dashboard_http_helpers import (
+    build_control_plane_state_payload,
+    parse_dashboard_request_path,
+    require_auth_and_read_payload,
+    require_dashboard_auth,
+    send_invalid_request,
+)
 from bot.hud_runtime import hud_runtime
 from bot.logic import BOT_BRAND, context_manager
 from bot.observability import observability
@@ -253,170 +260,6 @@ def _dashboard_asset_route(handler: Any, route: str) -> bool:
     return False
 
 
-def handle_get(handler: Any) -> None:
-    parsed_path = urlparse(handler.path or "/")
-    route = parsed_path.path or "/"
-    query = parse_qs(parsed_path.query or "")
-    if route in HEALTH_ROUTES:
-        handler._send_text("AGENT_ONLINE", status_code=200)
-        return
-
-    is_dashboard_route = route in {"/dashboard", "/dashboard/"} or route.startswith("/dashboard/")
-    if _is_api_route(route) and not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-
-    if route == "/api/observability":
-        channel_id = _resolve_channel_id(query, required=False)
-        handler._send_json(handler._build_observability_payload(channel_id), status_code=200)
-        return
-
-    if route == "/api/channel-context":
-        channel_id = _resolve_channel_id(query, required=False)
-        handler._send_json(build_channel_context_payload(channel_id), status_code=200)
-        return
-
-    if route == "/api/observability/history":
-        channel_id = _resolve_channel_id(query, required=False)
-        limit = _resolve_int_query_param(
-            query,
-            "limit",
-            default=24,
-            minimum=1,
-            maximum=120,
-        )
-        compare_limit = _resolve_int_query_param(
-            query,
-            "compare_limit",
-            default=6,
-            minimum=1,
-            maximum=24,
-        )
-        handler._send_json(
-            build_observability_history_payload(
-                channel_id,
-                limit=limit,
-                compare_limit=compare_limit,
-            ),
-            status_code=200,
-        )
-        return
-
-    if route == "/api/control-plane":
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "config": control_plane.get_config(),
-                "autonomy": control_plane.runtime_snapshot(),
-                "capabilities": control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE),
-            },
-            status_code=200,
-        )
-        return
-
-    if route == "/api/channel-config":
-        try:
-            channel_id = _resolve_channel_id(query)
-        except ValueError as error:
-            handler._send_json(
-                {"ok": False, "error": "invalid_request", "message": str(error)},
-                status_code=400,
-            )
-            return
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "channel": persistence.load_channel_config_sync(channel_id),
-            },
-            status_code=200,
-        )
-        return
-
-    if route == "/api/agent-notes":
-        try:
-            channel_id = _resolve_channel_id(query)
-        except ValueError as error:
-            handler._send_json(
-                {"ok": False, "error": "invalid_request", "message": str(error)},
-                status_code=400,
-            )
-            return
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "note": persistence.load_agent_notes_sync(channel_id),
-            },
-            status_code=200,
-        )
-        return
-
-    if route == "/api/action-queue":
-        status_filter = str((query.get("status") or [""])[0] or "").strip().lower()
-        limit_raw = str((query.get("limit") or ["80"])[0] or "80")
-        try:
-            limit = int(limit_raw)
-        except ValueError:
-            limit = 80
-        queue_payload = control_plane.list_actions(
-            status=status_filter or None,
-            limit=limit,
-        )
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                **queue_payload,
-            },
-            status_code=200,
-        )
-        return
-
-    if route == "/api/clip-jobs":
-        jobs = clip_jobs.get_jobs()
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "items": jobs,
-            },
-            status_code=200,
-        )
-        return
-
-    if route == "/api/hud/messages":
-        since_raw = str((query.get("since") or ["0"])[0] or "0")
-        try:
-            since = float(since_raw)
-        except ValueError:
-            since = 0.0
-        messages = hud_runtime.get_messages(since=since)
-        handler._send_json({"ok": True, "messages": messages}, status_code=200)
-        return
-
-    if route == "/api/sentiment/scores":
-        # Usamos o canal default para o dashboard simplificado
-        scores = sentiment_engine.get_scores("default")
-        scores["vibe"] = sentiment_engine.get_vibe("default")
-        handler._send_json({"ok": True, **scores}, status_code=200)
-        return
-
-    if route == "/api/vision/status":
-        handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
-        return
-
-    if route == "/dashboard/config.js":
-        handle_get_config_js(handler)
-        return
-
-    if _dashboard_asset_route(handler, route):
-        return
-
-    handler._send_text("Not Found", status_code=404)
-
-
 def handle_get_config_js(handler: Any) -> None:
     from bot.runtime_config import BYTE_DASHBOARD_ADMIN_TOKEN
 
@@ -426,112 +269,280 @@ def handle_get_config_js(handler: Any) -> None:
     )
 
 
-def handle_put(handler: Any) -> None:
-    parsed_path = urlparse(handler.path or "/")
-    route = parsed_path.path or "/"
-    query = parse_qs(parsed_path.query or "")
-    if route not in {"/api/control-plane", "/api/channel-config", "/api/agent-notes"}:
-        handler._send_text("Not Found", status_code=404)
-        return
-
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-
+def _resolve_action_queue_limit(query: dict[str, list[str]]) -> int:
+    limit_raw = str((query.get("limit") or ["80"])[0] or "80")
     try:
-        payload = handler._read_json_payload()
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
-        return
+        return int(limit_raw)
+    except ValueError:
+        return 80
 
-    if route == "/api/channel-config":
-        try:
-            channel_id = _resolve_channel_id(query, payload)
-            current_config = persistence.load_channel_config_sync(channel_id)
-            next_agent_paused = (
-                payload.get("agent_paused")
-                if "agent_paused" in payload
-                else current_config.get("agent_paused", False)
-            )
-            channel_config = persistence.save_channel_config_sync(
-                channel_id,
-                temperature=payload.get("temperature"),
-                top_p=payload.get("top_p"),
-                agent_paused=next_agent_paused,
-            )
-            context_manager.apply_channel_config(
-                channel_id,
-                temperature=channel_config.get("temperature"),
-                top_p=channel_config.get("top_p"),
-                agent_paused=bool(channel_config.get("agent_paused", False)),
-            )
-        except ValueError as error:
-            handler._send_json(
-                {"ok": False, "error": "invalid_request", "message": str(error)},
-                status_code=400,
-            )
-            return
 
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "channel": channel_config,
-            },
-            status_code=200,
-        )
-        return
+def _handle_get_observability(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    handler._send_json(handler._build_observability_payload(channel_id), status_code=200)
 
-    if route == "/api/agent-notes":
-        try:
-            channel_id = _resolve_channel_id(query, payload)
-            agent_notes = persistence.save_agent_notes_sync(
-                channel_id,
-                notes=payload.get("notes"),
-            )
-            context_manager.apply_agent_notes(
-                channel_id,
-                notes=str(agent_notes.get("notes") or ""),
-            )
-        except ValueError as error:
-            handler._send_json(
-                {"ok": False, "error": "invalid_request", "message": str(error)},
-                status_code=400,
-            )
-            return
 
-        handler._send_json(
-            {
-                "ok": True,
-                "mode": TWITCH_CHAT_MODE,
-                "note": agent_notes,
-            },
-            status_code=200,
-        )
-        return
+def _handle_get_channel_context(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    handler._send_json(build_channel_context_payload(channel_id), status_code=200)
 
+
+def _handle_get_observability_history(handler: Any, query: dict[str, list[str]]) -> None:
+    channel_id = _resolve_channel_id(query, required=False)
+    limit = _resolve_int_query_param(
+        query,
+        "limit",
+        default=24,
+        minimum=1,
+        maximum=120,
+    )
+    compare_limit = _resolve_int_query_param(
+        query,
+        "compare_limit",
+        default=6,
+        minimum=1,
+        maximum=24,
+    )
+    handler._send_json(
+        build_observability_history_payload(
+            channel_id,
+            limit=limit,
+            compare_limit=compare_limit,
+        ),
+        status_code=200,
+    )
+
+
+def _handle_get_control_plane(handler: Any, _query: dict[str, list[str]]) -> None:
+    handler._send_json(build_control_plane_state_payload(), status_code=200)
+
+
+def _handle_get_channel_config(handler: Any, query: dict[str, list[str]]) -> None:
     try:
-        updated_config = control_plane.update_config(payload)
+        channel_id = _resolve_channel_id(query)
     except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
+        send_invalid_request(handler, str(error))
+        return
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "channel": persistence.load_channel_config_sync(channel_id),
+        },
+        status_code=200,
+    )
+
+
+def _handle_get_agent_notes(handler: Any, query: dict[str, list[str]]) -> None:
+    try:
+        channel_id = _resolve_channel_id(query)
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "note": persistence.load_agent_notes_sync(channel_id),
+        },
+        status_code=200,
+    )
+
+
+def _handle_get_action_queue(handler: Any, query: dict[str, list[str]]) -> None:
+    status_filter = str((query.get("status") or [""])[0] or "").strip().lower()
+    queue_payload = control_plane.list_actions(
+        status=status_filter or None,
+        limit=_resolve_action_queue_limit(query),
+    )
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            **queue_payload,
+        },
+        status_code=200,
+    )
+
+
+def _handle_get_clip_jobs(handler: Any, _query: dict[str, list[str]]) -> None:
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "items": clip_jobs.get_jobs(),
+        },
+        status_code=200,
+    )
+
+
+def _handle_get_hud_messages(handler: Any, query: dict[str, list[str]]) -> None:
+    since_raw = str((query.get("since") or ["0"])[0] or "0")
+    try:
+        since = float(since_raw)
+    except ValueError:
+        since = 0.0
+    messages = hud_runtime.get_messages(since=since)
+    handler._send_json({"ok": True, "messages": messages}, status_code=200)
+
+
+def _handle_get_sentiment_scores(handler: Any, _query: dict[str, list[str]]) -> None:
+    scores = sentiment_engine.get_scores("default")
+    scores["vibe"] = sentiment_engine.get_vibe("default")
+    handler._send_json({"ok": True, **scores}, status_code=200)
+
+
+def _handle_get_vision_status(handler: Any, _query: dict[str, list[str]]) -> None:
+    handler._send_json({"ok": True, **vision_runtime.get_status()}, status_code=200)
+
+
+def _handle_get_dashboard_config(handler: Any, _query: dict[str, list[str]]) -> None:
+    handle_get_config_js(handler)
+
+
+_GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
+    "/api/observability": _handle_get_observability,
+    "/api/channel-context": _handle_get_channel_context,
+    "/api/observability/history": _handle_get_observability_history,
+    "/api/control-plane": _handle_get_control_plane,
+    "/api/channel-config": _handle_get_channel_config,
+    "/api/agent-notes": _handle_get_agent_notes,
+    "/api/action-queue": _handle_get_action_queue,
+    "/api/clip-jobs": _handle_get_clip_jobs,
+    "/api/hud/messages": _handle_get_hud_messages,
+    "/api/sentiment/scores": _handle_get_sentiment_scores,
+    "/api/vision/status": _handle_get_vision_status,
+    "/dashboard/config.js": _handle_get_dashboard_config,
+}
+
+
+def handle_get(handler: Any) -> None:
+    route, query = parse_dashboard_request_path(handler.path)
+    if route in HEALTH_ROUTES:
+        handler._send_text("AGENT_ONLINE", status_code=200)
+        return
+
+    if _is_api_route(route) and not require_dashboard_auth(handler):
+        return
+
+    route_handler = _GET_ROUTE_HANDLERS.get(route)
+    if route_handler is not None:
+        route_handler(handler, query)
+        return
+
+    if _dashboard_asset_route(handler, route):
+        return
+
+    handler._send_text("Not Found", status_code=404)
+
+
+def _handle_put_channel_config(
+    handler: Any,
+    query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        channel_id = _resolve_channel_id(query, payload)
+        current_config = persistence.load_channel_config_sync(channel_id)
+        next_agent_paused = (
+            payload.get("agent_paused")
+            if "agent_paused" in payload
+            else current_config.get("agent_paused", False)
         )
+        channel_config = persistence.save_channel_config_sync(
+            channel_id,
+            temperature=payload.get("temperature"),
+            top_p=payload.get("top_p"),
+            agent_paused=next_agent_paused,
+        )
+        context_manager.apply_channel_config(
+            channel_id,
+            temperature=channel_config.get("temperature"),
+            top_p=channel_config.get("top_p"),
+            agent_paused=bool(channel_config.get("agent_paused", False)),
+        )
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
         return
 
     handler._send_json(
         {
             "ok": True,
             "mode": TWITCH_CHAT_MODE,
-            "config": updated_config,
-            "autonomy": control_plane.runtime_snapshot(),
-            "capabilities": control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE),
+            "channel": channel_config,
         },
         status_code=200,
     )
+
+
+def _handle_put_agent_notes(
+    handler: Any,
+    query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        channel_id = _resolve_channel_id(query, payload)
+        agent_notes = persistence.save_agent_notes_sync(
+            channel_id,
+            notes=payload.get("notes"),
+        )
+        context_manager.apply_agent_notes(
+            channel_id,
+            notes=str(agent_notes.get("notes") or ""),
+        )
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "note": agent_notes,
+        },
+        status_code=200,
+    )
+
+
+def _handle_put_control_plane(
+    handler: Any,
+    _query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        updated_config = control_plane.update_config(payload)
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+
+    handler._send_json(
+        {
+            **build_control_plane_state_payload(),
+            "config": updated_config,
+        },
+        status_code=200,
+    )
+
+
+_PUT_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]], dict[str, Any]], None]] = {
+    "/api/control-plane": _handle_put_control_plane,
+    "/api/channel-config": _handle_put_channel_config,
+    "/api/agent-notes": _handle_put_agent_notes,
+}
+
+
+def handle_put(handler: Any) -> None:
+    route, query = parse_dashboard_request_path(handler.path)
+    route_handler = _PUT_ROUTE_HANDLERS.get(route)
+    if route_handler is None:
+        handler._send_text("Not Found", status_code=404)
+        return
+
+    payload = require_auth_and_read_payload(handler)
+    if payload is None:
+        return
+
+    route_handler(handler, query, payload)
 
 
 from bot.dashboard_server_routes_post import handle_post

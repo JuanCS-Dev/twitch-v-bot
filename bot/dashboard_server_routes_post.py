@@ -1,54 +1,38 @@
+from collections.abc import Callable
 from typing import Any
-from urllib.parse import urlparse
 
 from bot.autonomy_runtime import autonomy_runtime
 from bot.control_plane import control_plane
+from bot.dashboard_http_helpers import (
+    build_control_plane_state_payload,
+    parse_dashboard_request_path,
+    read_json_payload_or_error,
+    require_auth_and_read_payload,
+    require_dashboard_auth,
+    send_invalid_request,
+)
 from bot.runtime_config import TWITCH_CHAT_MODE
 from bot.vision_runtime import vision_runtime
 
 
 def handle_post(handler: Any) -> None:
-    parsed_path = urlparse(handler.path or "/")
-    route = parsed_path.path or "/"
-
-    if route == "/api/channel-control":
-        _handle_channel_control_post(handler)
-        return
-
-    if route == "/api/autonomy/tick":
-        _handle_autonomy_tick(handler)
-        return
-
-    if route == "/api/agent/suspend":
-        _handle_agent_suspend(handler)
-        return
-
-    if route == "/api/agent/resume":
-        _handle_agent_resume(handler)
-        return
+    route, _query = parse_dashboard_request_path(handler.path)
 
     if route.startswith("/api/action-queue/") and route.endswith("/decision"):
         _handle_action_decision(handler, route)
         return
 
-    if route == "/api/vision/ingest":
-        _handle_vision_ingest(handler)
+    route_handler = _POST_ROUTE_HANDLERS.get(route)
+    if route_handler is not None:
+        route_handler(handler)
         return
 
     handler._send_text("Not Found", status_code=404)
 
 
 def _handle_channel_control_post(handler: Any) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-    try:
-        payload = handler._read_json_payload()
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+    payload = require_auth_and_read_payload(handler)
+    if payload is None:
         return
 
     try:
@@ -63,16 +47,8 @@ def _handle_channel_control_post(handler: Any) -> None:
 
 
 def _handle_autonomy_tick(handler: Any) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-    try:
-        payload = handler._read_json_payload(allow_empty=True)
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+    payload = require_auth_and_read_payload(handler, allow_empty=True)
+    if payload is None:
         return
     force = bool(payload.get("force", True))
     reason = str(payload.get("reason", "manual") or "manual")
@@ -90,29 +66,17 @@ def _handle_autonomy_tick(handler: Any) -> None:
 def _send_control_plane_state(handler: Any, *, action: str, reason: str) -> None:
     handler._send_json(
         {
-            "ok": True,
+            **build_control_plane_state_payload(),
             "action": action,
             "reason": reason,
-            "mode": TWITCH_CHAT_MODE,
-            "config": control_plane.get_config(),
-            "autonomy": control_plane.runtime_snapshot(),
-            "capabilities": control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE),
         },
         status_code=200,
     )
 
 
 def _handle_agent_suspend(handler: Any) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-    try:
-        payload = handler._read_json_payload(allow_empty=True)
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+    payload = require_auth_and_read_payload(handler, allow_empty=True)
+    if payload is None:
         return
 
     reason = str(payload.get("reason", "manual_dashboard") or "manual_dashboard")
@@ -121,16 +85,8 @@ def _handle_agent_suspend(handler: Any) -> None:
 
 
 def _handle_agent_resume(handler: Any) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
-        return
-    try:
-        payload = handler._read_json_payload(allow_empty=True)
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+    payload = require_auth_and_read_payload(handler, allow_empty=True)
+    if payload is None:
         return
 
     reason = str(payload.get("reason", "manual_dashboard") or "manual_dashboard")
@@ -139,8 +95,7 @@ def _handle_agent_resume(handler: Any) -> None:
 
 
 def _handle_action_decision(handler: Any, route: str) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
+    if not require_dashboard_auth(handler):
         return
     action_id = route.removeprefix("/api/action-queue/").removesuffix("/decision").strip()
     if not action_id:
@@ -149,13 +104,8 @@ def _handle_action_decision(handler: Any, route: str) -> None:
             status_code=400,
         )
         return
-    try:
-        payload = handler._read_json_payload()
-    except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+    payload = read_json_payload_or_error(handler)
+    if payload is None:
         return
     decision = str(payload.get("decision", "") or "").strip().lower()
     note = str(payload.get("note", "") or "").strip()
@@ -166,10 +116,7 @@ def _handle_action_decision(handler: Any, route: str) -> None:
             note=note,
         )
     except ValueError as error:
-        handler._send_json(
-            {"ok": False, "error": "invalid_request", "message": str(error)},
-            status_code=400,
-        )
+        send_invalid_request(handler, str(error))
         return
     except KeyError:
         handler._send_json(
@@ -195,8 +142,7 @@ def _handle_action_decision(handler: Any, route: str) -> None:
 
 
 def _handle_vision_ingest(handler: Any) -> None:
-    if not handler._dashboard_authorized():
-        handler._send_forbidden()
+    if not require_dashboard_auth(handler):
         return
 
     content_type = str(handler.headers.get("Content-Type", "") or "").strip().lower()
@@ -225,3 +171,12 @@ def _handle_vision_ingest(handler: Any) -> None:
         200 if result.get("ok") else 429 if result.get("reason") == "rate_limited" else 400
     )
     handler._send_json(result, status_code=status_code)
+
+
+_POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
+    "/api/channel-control": _handle_channel_control_post,
+    "/api/autonomy/tick": _handle_autonomy_tick,
+    "/api/agent/suspend": _handle_agent_suspend,
+    "/api/agent/resume": _handle_agent_resume,
+    "/api/vision/ingest": _handle_vision_ingest,
+}

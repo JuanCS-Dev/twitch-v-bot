@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.16
+**Versão:** 1.17
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1 CONCLUÍDA, PRÓXIMA: 10.2)
+**Status:** FASES 1-7 CONCLUÍDAS ✅ (INCLUINDO HISTÓRICO PERSISTIDO + COMPARAÇÃO MULTI-CANAL NA DASHBOARD OPERACIONAL) | FASE 8 PLANEJADA | FASE 9 EM EXECUÇÃO (CONTRATO DE PARIDADE BACKEND -> DASHBOARD COM DISCOVERY DE LAYOUT APLICADO) | FASE 10 EM EXECUÇÃO (10.1-10.2 CONCLUÍDAS, PRÓXIMA: 10.3)
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -152,7 +152,7 @@
 1. **Fase 10.1 - Normalização de contratos de payload** ✅ Concluída
    - Contrato compartilhado extraído para `bot/observability_history_contract.py`.
    - Duplicação de shape JSON removida entre camada de persistência e camada HTTP para histórico de observabilidade.
-2. **Fase 10.2 - Refactor do roteamento HTTP**
+2. **Fase 10.2 - Refactor do roteamento HTTP** ✅ Concluída
    - Introduzir helpers comuns para guardas (`auth required`), parse de payload e respostas de erro padrão.
    - Reorganizar `handle_get` para dispatch table por rota (reduzir branching encadeado).
 3. **Fase 10.3 - Fatiamento da camada de persistência**
@@ -178,11 +178,28 @@
   - `bot/tests/test_dashboard_routes_v3.py` (serialização HTTP preservada sem fallback implícito de `timestamp`).
 - Validação executada: `pytest -q --no-cov bot/tests/test_observability_history_contract.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py` (`92 passed`).
 
+**Fechamento da Fase 10.2 (ciclo atual)**
+
+- Helpers HTTP compartilhados extraídos para `bot/dashboard_http_helpers.py`:
+  - parse de rota/query (`parse_dashboard_request_path`);
+  - guarda de autorização (`require_dashboard_auth`);
+  - leitura/validação de payload JSON (`read_json_payload_or_error`, `require_auth_and_read_payload`);
+  - resposta padrão `invalid_request` (`send_invalid_request`);
+  - payload único de control plane (`build_control_plane_state_payload`).
+- `bot/dashboard_server_routes.py` foi reorganizado para dispatch table em GET/PUT (`_GET_ROUTE_HANDLERS`, `_PUT_ROUTE_HANDLERS`) com handlers menores por rota.
+- `bot/dashboard_server_routes_post.py` foi reorganizado para dispatch table em POST (`_POST_ROUTE_HANDLERS`) e removeu repetição de blocos de auth/payload/erro.
+- Testes novos da etapa em `bot/tests/test_dashboard_http_helpers.py` cobrindo parsing, auth, payload JSON, fluxo combinado auth+payload e payload de control plane.
+- Validação executada:
+  - `pytest -q --no-cov bot/tests/test_dashboard_http_helpers.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py` (`67 passed`);
+  - `ruff check bot/dashboard_http_helpers.py bot/dashboard_server_routes.py bot/dashboard_server_routes_post.py bot/tests/test_dashboard_http_helpers.py` (verde);
+  - `ruff format --check bot/dashboard_http_helpers.py bot/dashboard_server_routes.py bot/dashboard_server_routes_post.py bot/tests/test_dashboard_http_helpers.py` (verde);
+  - `PYLINTHOME=/tmp/pylint-cache pylint --disable=all --enable=R0801 bot/dashboard_server_routes.py bot/dashboard_server_routes_post.py` (verde).
+
 ---
 
 ## 3. Backlog Prioritário Real
 
-1. **Fase 10.2 (saneamento estrutural):** refactor do roteamento HTTP para reduzir complexidade e remover duplicação de guardas/erros.
+1. **Fase 10.3 (saneamento estrutural):** fatiamento da camada de persistência para reduzir acoplamento e tamanho do módulo.
 2. **Fase 9 (paridade backend -> dashboard):** transformar o contrato em gate formal de review/release com checklist obrigatório.
 3. **Matriz de cobertura visual por capability:** consolidar e manter rastreabilidade backend -> painel UI -> teste.
 4. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
@@ -206,7 +223,7 @@
 | **Histórico persistido + comparativo multi-canal na observabilidade** | ✅ | `observability_channel_history` + `/api/observability/history` + tabelas no painel `Agent Context & Internals` |
 | **Thought Injection (`agent_notes`)** | ✅ | Persistido em `agent_notes`, restaurado no contexto, injetado com sanitização na inferência e exposto na dashboard |
 | **Contrato backend -> dashboard (paridade visual por capability)** | ⚠️ | Fase 9 planejada para virar gate obrigatório de entrega operacional |
-| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1 concluída, próxima etapa: 10.2) |
+| **Saneamento anti-espaguete/anti-duplicação** | 🚧 | Fase 10 em andamento (10.1-10.2 concluídas, próxima etapa: 10.3) |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
 ---
