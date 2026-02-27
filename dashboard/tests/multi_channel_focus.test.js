@@ -17,6 +17,7 @@ import {
 } from "../features/observability/view.js";
 import { createObservabilityController } from "../features/observability/controller.js";
 import { createControlPlaneController } from "../features/control-plane/controller.js";
+import { createHudController } from "../features/hud/controller.js";
 
 class MockClassList {
   constructor(element) {
@@ -277,6 +278,31 @@ function createObservabilityElements(document) {
   };
 }
 
+function createHudElements(document) {
+  return {
+    messagesList: document.registerElement(
+      "hudMessagesList",
+      new MockElement("ul", document),
+    ),
+    messageCount: document.registerElement(
+      "hudMessageCount",
+      new MockElement("span", document),
+    ),
+    ttsToggle: document.registerElement(
+      "hudTtsToggle",
+      new MockElement("input", document),
+    ),
+    overlayLink: document.registerElement(
+      "hudOverlayLink",
+      new MockElement("a", document),
+    ),
+    overlayUrl: document.registerElement(
+      "hudOverlayUrl",
+      new MockElement("code", document),
+    ),
+  };
+}
+
 test("channel focus input normalizes and persists dashboard selection", () => {
   const { document, localStorage } = installBrowserEnv({
     byte_dashboard_focus_channel: "old_channel",
@@ -492,4 +518,45 @@ test("control plane controller mirrors the focused channel into channel tuning",
   controller.setSelectedChannel(" Canal_Teste ");
 
   assert.equal(cpEls.channelIdInput.value, "canal_teste");
+});
+
+test("hud controller syncs overlay url with the active admin token", () => {
+  const { document, localStorage, window } = installBrowserEnv({
+    byte_dashboard_admin_token: "local-token",
+  });
+  const tokenInput = document.registerElement(
+    "adminTokenInput",
+    new MockElement("input", document),
+  );
+  const hudEls = createHudElements(document);
+  const controller = createHudController({ hudEls });
+
+  controller.bindEvents();
+
+  assert.equal(
+    hudEls.overlayLink.href,
+    "http://localhost:8000/dashboard/hud?auth=local-token",
+  );
+  assert.equal(
+    hudEls.overlayUrl.textContent,
+    "http://localhost:8000/dashboard/hud?auth=local-token",
+  );
+
+  window.BYTE_CONFIG.adminToken = "server-token";
+  tokenInput.value = "dom-token";
+  tokenInput.dispatchEvent({ type: "input" });
+
+  assert.equal(
+    hudEls.overlayLink.href,
+    "http://localhost:8000/dashboard/hud?auth=dom-token",
+  );
+
+  tokenInput.value = "";
+  localStorage.removeItem("byte_dashboard_admin_token");
+  tokenInput.dispatchEvent({ type: "change" });
+
+  assert.equal(
+    hudEls.overlayLink.href,
+    "http://localhost:8000/dashboard/hud?auth=server-token",
+  );
 });

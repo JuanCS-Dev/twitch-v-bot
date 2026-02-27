@@ -1,79 +1,135 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Byte HUD Overlay</title>
-  <link rel="stylesheet" href="/dashboard/styles/tokens.css" />
-  <style>
-    body {
-      background: transparent !important;
-      margin: 0;
-      padding: 1rem;
-      overflow: hidden;
-      font-family: var(--font-mono);
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    .hud-container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .hud-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .hud-item {
-      background: rgba(0, 0, 0, 0.5);
-      border-left: 4px solid var(--color-primary);
-      padding: 0.5rem;
-      margin-bottom: 0.5rem;
-      border-radius: 0 4px 4px 0;
-      animation: slideIn 0.3s ease-out;
-    }
-    .hud-meta {
-      font-size: 0.7rem;
-      color: var(--color-primary-light);
-      text-transform: uppercase;
-      margin-bottom: 0.2rem;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(-20px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-  </style>
-</head>
-<body>
-  <div class="hud-container">
-    <ul id="hudList" class="hud-list"></ul>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Byte HUD Overlay</title>
+    <link rel="stylesheet" href="/dashboard/styles/tokens.css" />
+    <script src="/dashboard/config.js"></script>
+    <style>
+      body {
+        background: transparent !important;
+        margin: 0;
+        padding: 1rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      }
+      .hud-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .hud-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .hud-item {
+        background: rgba(0, 0, 0, 0.5);
+        border-left: 4px solid var(--color-primary);
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0 4px 4px 0;
+        animation: slideIn 0.3s ease-out;
+      }
+      .hud-meta {
+        font-size: 0.7rem;
+        color: var(--color-primary-light);
+        text-transform: uppercase;
+        margin-bottom: 0.2rem;
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(-20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hud-container">
+      <ul id="hudList" class="hud-list"></ul>
+    </div>
 
-  <script>
-    let lastTs = 0;
-    async function pollHud() {
-      try {
-        const res = await fetch(`/api/hud/messages?since=${lastTs}`);
-        const data = await res.json();
-        if (data.ok && data.messages.length > 0) {
-          const list = document.getElementById("hudList");
-          data.messages.forEach(msg => {
-            const li = document.createElement("li");
-            li.className = "hud-item";
-            li.innerHTML = `
+    <script>
+      let lastTs = 0;
+
+      function getStoredToken() {
+        try {
+          return (
+            window.localStorage.getItem("byte_dashboard_admin_token") || ""
+          ).trim();
+        } catch (_error) {
+          return "";
+        }
+      }
+
+      function persistToken(token) {
+        if (!token) return;
+        try {
+          window.localStorage.setItem("byte_dashboard_admin_token", token);
+        } catch (_error) {
+          // localStorage pode estar indisponivel em alguns browsers source
+        }
+      }
+
+      function resolveAuthToken() {
+        const params = new URLSearchParams(window.location.search);
+        const queryToken = (params.get("auth") || "").trim();
+        if (queryToken) {
+          persistToken(queryToken);
+          return queryToken;
+        }
+        const storedToken = getStoredToken();
+        const serverToken = (window.BYTE_CONFIG?.adminToken || "").trim();
+        return storedToken || serverToken;
+      }
+
+      function buildHudApiUrl(since) {
+        const url = new URL("/api/hud/messages", window.location.origin);
+        url.searchParams.set("since", String(since));
+        const authToken = resolveAuthToken();
+        if (authToken) {
+          url.searchParams.set("auth", authToken);
+        }
+        return url.toString();
+      }
+
+      async function pollHud() {
+        try {
+          const res = await fetch(buildHudApiUrl(lastTs), {
+            cache: "no-store",
+          });
+          if (!res.ok) {
+            throw new Error(`HUD polling failed with HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          if (data.ok && data.messages.length > 0) {
+            const list = document.getElementById("hudList");
+            data.messages.forEach((msg) => {
+              const li = document.createElement("li");
+              li.className = "hud-item";
+              li.innerHTML = `
               <div class="hud-meta">${new Date(msg.ts * 1000).toLocaleTimeString()} | ${msg.source}</div>
               <div>${msg.text}</div>
             `;
-            list.prepend(li);
-            if (list.children.length > 10) list.removeChild(list.lastChild);
-            if (msg.ts > lastTs) lastTs = msg.ts;
-          });
+              list.prepend(li);
+              if (list.children.length > 10) list.removeChild(list.lastChild);
+              if (msg.ts > lastTs) lastTs = msg.ts;
+            });
+          }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) { console.error(e); }
-    }
-    setInterval(pollHud, 2000);
-    pollHud();
-  </script>
-</body>
+      }
+      setInterval(pollHud, 2000);
+      pollHud();
+    </script>
+  </body>
 </html>
