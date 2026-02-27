@@ -9,6 +9,32 @@ from supabase import Client, create_client
 logger = logging.getLogger("byte.persistence")
 
 
+def _normalize_channel_id(channel_id: str) -> str:
+    return str(channel_id or "").strip().lower()
+
+
+def _utc_iso_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _normalize_optional_float(
+    value: Any,
+    *,
+    minimum: float,
+    maximum: float,
+    field_name: str,
+) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{field_name} invalido.") from error
+    if parsed < minimum or parsed > maximum:
+        raise ValueError(f"{field_name} fora do intervalo permitido.")
+    return round(parsed, 4)
+
+
 class PersistenceLayer:
     """
     Camada unificada de persistência para o Byte Bot.
@@ -20,6 +46,7 @@ class PersistenceLayer:
         self._key = (os.environ.get("SUPABASE_KEY") or "").strip()
         self._client: Client | None = None
         self._enabled = False
+        self._channel_config_cache: dict[str, dict[str, Any]] = {}
 
         if self._url and self._key:
             try:
@@ -34,6 +61,20 @@ class PersistenceLayer:
     @property
     def is_enabled(self) -> bool:
         return self._enabled
+
+    def _default_channel_config(self, channel_id: str) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id) or "default"
+        cached = self._channel_config_cache.get(normalized, {})
+        temperature = cached.get("temperature")
+        top_p = cached.get("top_p")
+        return {
+            "channel_id": normalized,
+            "temperature": temperature,
+            "top_p": top_p,
+            "has_override": temperature is not None or top_p is not None,
+            "updated_at": cached.get("updated_at", ""),
+            "source": cached.get("source", "memory"),
+        }
 
     # --- Lógica de Boot e Canais ---
 
@@ -60,6 +101,104 @@ class PersistenceLayer:
         except Exception as e:
             logger.error("PersistenceLayer: Erro ao carregar channels_config: %s", e)
             return []
+
+    def load_channel_config_sync(self, channel_id: str) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id) or "default"
+        if not self._enabled or not self._client:
+            return self._default_channel_config(normalized)
+
+        try:
+            result = (
+                self._client.table("channels_config")
+                .select("channel_id, temperature, top_p, updated_at")
+                .eq("channel_id", normalized)
+                .maybe_single()
+                .execute()
+            )
+            row = result.data or {}
+            payload = {
+                "channel_id": normalized,
+                "temperature": row.get("temperature"),
+                "top_p": row.get("top_p"),
+                "has_override": row.get("temperature") is not None or row.get("top_p") is not None,
+                "updated_at": str(row.get("updated_at") or ""),
+                "source": "supabase",
+            }
+            self._channel_config_cache[normalized] = payload
+            return payload
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao carregar config de %s: %s", normalized, e)
+            return self._default_channel_config(normalized)
+
+    async def load_channel_config(self, channel_id: str) -> dict[str, Any]:
+        return self.load_channel_config_sync(channel_id)
+
+    def save_channel_config_sync(
+        self,
+        channel_id: str,
+        *,
+        temperature: Any = None,
+        top_p: Any = None,
+    ) -> dict[str, Any]:
+        normalized = _normalize_channel_id(channel_id)
+        if not normalized:
+            raise ValueError("channel_id obrigatorio.")
+
+        safe_temperature = _normalize_optional_float(
+            temperature,
+            minimum=0.0,
+            maximum=2.0,
+            field_name="temperature",
+        )
+        safe_top_p = _normalize_optional_float(
+            top_p,
+            minimum=0.0,
+            maximum=1.0,
+            field_name="top_p",
+        )
+
+        payload = {
+            "channel_id": normalized,
+            "temperature": safe_temperature,
+            "top_p": safe_top_p,
+            "has_override": safe_temperature is not None or safe_top_p is not None,
+            "updated_at": _utc_iso_now(),
+            "source": "memory",
+        }
+        self._channel_config_cache[normalized] = payload
+
+        if not self._enabled or not self._client:
+            return payload
+
+        try:
+            self._client.table("channels_config").upsert(
+                {
+                    "channel_id": normalized,
+                    "temperature": safe_temperature,
+                    "top_p": safe_top_p,
+                    "updated_at": "now()",
+                }
+            ).execute()
+            persisted = self.load_channel_config_sync(normalized)
+            persisted["source"] = "supabase"
+            self._channel_config_cache[normalized] = persisted
+            return persisted
+        except Exception as e:
+            logger.error("PersistenceLayer: Erro ao salvar config de %s: %s", normalized, e)
+            return payload
+
+    async def save_channel_config(
+        self,
+        channel_id: str,
+        *,
+        temperature: Any = None,
+        top_p: Any = None,
+    ) -> dict[str, Any]:
+        return self.save_channel_config_sync(
+            channel_id,
+            temperature=temperature,
+            top_p=top_p,
+        )
 
     # --- Persistência de Estado (Channel State) ---
 

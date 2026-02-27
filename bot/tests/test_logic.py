@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bot.logic import agent_inference, build_dynamic_prompt, context_manager, enforce_reply_limits
+from bot.logic_inference import _execute_inference, _resolve_generation_params
 
 
 class TestBotLogic(unittest.IsolatedAsyncioTestCase):
@@ -33,6 +34,57 @@ class TestBotLogic(unittest.IsolatedAsyncioTestCase):
         mock_client = MagicMock()
         res = await agent_inference("pergunta", "user", mock_client, ctx)
         self.assertEqual(res, "Resposta do bot")
+        self.assertEqual(mock_execute.await_args.kwargs["temperature"], 0.15)
+        self.assertIsNone(mock_execute.await_args.kwargs["top_p"])
+
+    @patch("bot.logic_inference._execute_inference_with_retry")
+    async def test_agent_inference_uses_channel_generation_overrides(self, mock_execute):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Resposta tunada"
+        mock_execute.return_value = mock_response
+
+        ctx = context_manager.get("override_channel")
+        ctx.inference_temperature = 0.42
+        ctx.inference_top_p = 0.88
+
+        mock_client = MagicMock()
+        res = await agent_inference("pergunta", "user", mock_client, ctx)
+
+        self.assertEqual(res, "Resposta tunada")
+        self.assertEqual(mock_execute.await_args.kwargs["temperature"], 0.42)
+        self.assertEqual(mock_execute.await_args.kwargs["top_p"], 0.88)
+
+    async def test_execute_inference_includes_optional_top_p(self):
+        mock_client = MagicMock()
+        mock_to_thread = AsyncMock(return_value={"ok": True})
+
+        with patch("bot.logic_inference.asyncio.to_thread", mock_to_thread):
+            result = await _execute_inference(
+                mock_client,
+                "test-model",
+                [{"role": "user", "content": "oi"}],
+                temperature=0.3,
+                top_p=0.9,
+            )
+
+        self.assertEqual(result, {"ok": True})
+        mock_to_thread.assert_awaited_once_with(
+            mock_client.chat.completions.create,
+            model="test-model",
+            messages=[{"role": "user", "content": "oi"}],
+            temperature=0.3,
+            max_tokens=2048,
+            top_p=0.9,
+        )
+
+    def test_resolve_generation_params_invalid_override_falls_back_to_default(self):
+        ctx = MagicMock(inference_temperature="bad", inference_top_p=1.5)
+
+        temperature, top_p = _resolve_generation_params(ctx)
+
+        self.assertEqual(temperature, 0.15)
+        self.assertIsNone(top_p)
 
 
 if __name__ == "__main__":

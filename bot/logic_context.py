@@ -38,6 +38,8 @@ class StreamContext:
         self.stream_vibe = "Conversa"
         self.last_event = "Bot Online"
         self.style_profile = DEFAULT_STYLE_PROFILE
+        self.inference_temperature: float | None = None
+        self.inference_top_p: float | None = None
         self.live_observability: dict[str, str] = {
             "game": "",
             "movie": "",
@@ -198,6 +200,10 @@ class ContextManager:
             if history:
                 ctx.recent_chat_entries = history
 
+            channel_config = await persistence.load_channel_config(channel_id)
+            ctx.inference_temperature = channel_config.get("temperature")
+            ctx.inference_top_p = channel_config.get("top_p")
+
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(_load_task())
@@ -208,6 +214,21 @@ class ContextManager:
     def get_sync(self, channel_id: str | None = None) -> StreamContext:
         """Alias para get() - mantém compatibilidade."""
         return self.get(channel_id)
+
+    def apply_channel_config(
+        self,
+        channel_id: str,
+        *,
+        temperature: float | None,
+        top_p: float | None,
+    ) -> None:
+        key = (channel_id or "default").strip().lower()
+        with self._lock:
+            ctx = self._contexts.get(key)
+        if ctx is None:
+            return
+        ctx.inference_temperature = temperature
+        ctx.inference_top_p = top_p
 
     async def cleanup(self, channel_id: str) -> None:
         """Remove contexto da RAM (Async para manter assinatura onde esperado)."""

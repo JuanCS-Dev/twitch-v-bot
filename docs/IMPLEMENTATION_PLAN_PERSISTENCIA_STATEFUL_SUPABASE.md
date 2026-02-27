@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.7
+**Versão:** 1.8
 **Data:** 27 de Fevereiro de 2026
-**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPA DE PANIC CONTROL ENTREGUE | FASE 8 PLANEJADA
+**Status:** FASES 1-4 CONCLUÍDAS ✅ | FASES 5-7 PARCIAIS COM ETAPAS DE PANIC CONTROL E CHANNEL TUNING ENTREGUES | FASE 8 PLANEJADA
 **Objetivo:** consolidar o Byte Bot como runtime stateful, com persistência operacional real, dashboard utilizável e controles de soberania por canal.
 
 ---
@@ -76,10 +76,12 @@
 - Bloqueio operacional de auto-chat e agenda automática quando o agente está suspenso.
 - Dashboard expõe o `panic suspend` / `resume agent` no mesmo padrão visual do control plane atual.
 - HUD streamer como trilha paralela de resposta tática.
+- Override por canal de `temperature` e `top_p` persistido em `channels_config`.
+- Inferência aplica override por canal restaurado do estado persistido.
+- Dashboard expõe `Channel Tuning` no painel operacional existente.
 
 **Ainda falta**
 
-- Override por canal de `temperature` e `top_p`.
 - Persistência de notas operacionais (`agent_notes`) para thought injection.
 - Pause/silence por canal, não apenas configuração global de runtime.
 
@@ -94,11 +96,10 @@
 ## 3. Backlog Prioritário Real
 
 1. **Dashboard multi-canal de verdade:** seletor de canal + leitura de estado/histórico persistido.
-2. **Overrides por canal:** mover parâmetros de inferência para configuração persistida em `channels_config`.
-3. **Observabilidade persistente:** armazenar agregados globais para não perder histórico em restart.
-4. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
-5. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
-6. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
+2. **Observabilidade persistente:** armazenar agregados globais para não perder histórico em restart.
+3. **Thought injection operacional:** tabela `agent_notes` com leitura segura antes de inferência.
+4. **Pause/silence por canal:** descer o controle de soberania do escopo global para escopo de canal.
+5. **Vector memory:** deixar explicitamente fora do caminho crítico do dashboard operacional.
 
 ---
 
@@ -111,7 +112,7 @@
 | **Manual Tick** | ✅ | `/api/autonomy/tick` |
 | **Streamer HUD** | ✅ | Embutida + overlay standalone |
 | **Panic Suspend/Resume** | ✅ | Backend + dashboard + bloqueio operacional implementados |
-| **Per-channel temperature/top_p** | ❌ | Ainda não implementado |
+| **Per-channel temperature/top_p** | ✅ | Persistido em `channels_config`, aplicado na inferência e exposto na dashboard |
 | **Thought Injection (`agent_notes`)** | ❌ | Ainda não implementado |
 | **Vector Memory** | ❌ | Ainda não implementado |
 
@@ -130,11 +131,11 @@ O plano anterior estava correto no direcionamento, mas subestimava o que já foi
 
 ### Fechamento da Etapa Atual
 
-- Etapa entregue: `panic suspend/resume` global.
-- Backend: novo estado `agent_suspended`, timestamps/razões de suspensão e retomada, snapshot de runtime e capabilities atualizados.
-- API: novas rotas `POST /api/agent/suspend` e `POST /api/agent/resume`.
-- Runtime: suspensão bloqueia `auto_chat` e `consume_due_goals()` quando o loop não está em modo forçado.
-- Dashboard: control plane ganhou faixa de `Operational Control` integrada ao layout existente, com destaque visual quando o agente está suspenso.
-- Testes da etapa: suíte focal verde (`71 passed`) e cobertura validada nos arquivos alterados do backend.
+- Etapa entregue: overrides por canal de `temperature` e `top_p`.
+- Backend: `PersistenceLayer` passou a salvar/carregar tuning por canal em `channels_config`, com fallback em memória e validação de intervalo.
+- Runtime: lazy restore injeta os parâmetros no `StreamContext`, e a inferência passa a respeitar `temperature/top_p` por canal.
+- API: novas rotas `GET /api/channel-config` e `PUT /api/channel-config`, com aplicação imediata no contexto carregado.
+- Dashboard: control plane ganhou a faixa `Channel Tuning`, mantendo o mesmo padrão visual do layout atual.
+- Testes da etapa: suíte focal verde (`94 passed`) e cobertura dos arquivos alterados validada; `bot/dashboard_server_routes.py` ficou em `100%`.
 
 *Plano validado contra o código, incrementado com a etapa implementada e reajustado para execução real.*

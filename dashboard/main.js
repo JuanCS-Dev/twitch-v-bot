@@ -65,6 +65,7 @@ async function bootstrapDashboard() {
 
     try {
         await controlPlaneController.loadControlPlaneState(false);
+        await controlPlaneController.loadChannelConfig(false);
         await channelControlController.handleChannelAction("list");
         await Promise.all([
             observabilityController.fetchAndRenderObservability(),

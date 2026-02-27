@@ -1,12 +1,16 @@
 import {
+    getChannelConfig,
     getControlPlaneState,
     resumeAgent,
     suspendAgent,
+    updateChannelConfig,
     updateControlPlaneConfig,
 } from "./api.js";
 import {
     appendGoalCard,
+    collectChannelConfigPayload,
     collectControlPlanePayload,
+    renderChannelConfig,
     renderControlPlaneState,
     setControlPlaneBusy,
     showControlPlaneFeedback,
@@ -45,6 +49,35 @@ export function createControlPlaneController({
         }
     }
 
+    async function loadChannelConfig(showFeedback = false) {
+        if (!cpEls) return;
+        const payload = collectChannelConfigPayload(cpEls);
+        if (!payload.channel_id) {
+            showControlPlaneFeedback(cpEls, "Informe um canal para carregar tuning.", "warn");
+            return;
+        }
+        setControlPlaneBusy(cpEls, true);
+        if (showFeedback) {
+            showControlPlaneFeedback(cpEls, "Carregando channel tuning...", "warn");
+        }
+        try {
+            const response = await getChannelConfig(payload.channel_id);
+            renderChannelConfig(response?.channel || {}, cpEls);
+            if (showFeedback) {
+                showControlPlaneFeedback(cpEls, "Channel tuning sincronizado.", "ok");
+            }
+        } catch (error) {
+            console.error("Channel config load error", error);
+            showControlPlaneFeedback(
+                cpEls,
+                `Erro: ${getErrorMessage(error, "Falha ao carregar channel tuning.")}`,
+                "error"
+            );
+        } finally {
+            setControlPlaneBusy(cpEls, false);
+        }
+    }
+
     async function saveControlPlaneState() {
         if (!cpEls) return;
         setControlPlaneBusy(cpEls, true);
@@ -61,6 +94,27 @@ export function createControlPlaneController({
             showControlPlaneFeedback(
                 cpEls,
                 `Erro: ${getErrorMessage(error, "Falha ao salvar configuracao.")}`,
+                "error"
+            );
+        } finally {
+            setControlPlaneBusy(cpEls, false);
+        }
+    }
+
+    async function saveChannelConfigState() {
+        if (!cpEls) return;
+        setControlPlaneBusy(cpEls, true);
+        showControlPlaneFeedback(cpEls, "Aplicando channel tuning...", "warn");
+        try {
+            const payload = collectChannelConfigPayload(cpEls);
+            const updated = await updateChannelConfig(payload);
+            renderChannelConfig(updated?.channel || {}, cpEls);
+            showControlPlaneFeedback(cpEls, "Channel tuning salvo com sucesso.", "ok");
+        } catch (error) {
+            console.error("Channel config save error", error);
+            showControlPlaneFeedback(
+                cpEls,
+                `Erro: ${getErrorMessage(error, "Falha ao salvar channel tuning.")}`,
                 "error"
             );
         } finally {
@@ -118,6 +172,16 @@ export function createControlPlaneController({
                 loadControlPlaneState(true);
             });
         }
+        if (cpEls.loadChannelConfigBtn) {
+            cpEls.loadChannelConfigBtn.addEventListener("click", () => {
+                loadChannelConfig(true);
+            });
+        }
+        if (cpEls.saveChannelConfigBtn) {
+            cpEls.saveChannelConfigBtn.addEventListener("click", () => {
+                saveChannelConfigState();
+            });
+        }
         if (cpEls.suspendBtn) {
             cpEls.suspendBtn.addEventListener("click", () => {
                 updateAgentSuspension(true);
@@ -133,5 +197,6 @@ export function createControlPlaneController({
     return {
         bindControlPlaneEvents,
         loadControlPlaneState,
+        loadChannelConfig,
     };
 }

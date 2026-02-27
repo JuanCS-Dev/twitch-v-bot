@@ -10,6 +10,19 @@ function readInt(input, fallbackValue, minValue, maxValue) {
     return Math.max(minValue, Math.min(maxValue, parsed));
 }
 
+function readOptionalFloat(input, minValue, maxValue) {
+    const rawValue = String(input?.value || "").trim();
+    if (!rawValue) {
+        return null;
+    }
+    const parsed = Number.parseFloat(rawValue);
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+    const safeValue = Math.max(minValue, Math.min(maxValue, parsed));
+    return Number(safeValue.toFixed(4));
+}
+
 function normalizeGoalId(rawValue, fallbackIndex) {
     const lowered = String(rawValue || "").trim().toLowerCase();
     const normalized = lowered.replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
@@ -194,6 +207,45 @@ function renderAgentSuspension(els, autonomy = {}, config = {}) {
     }
 }
 
+export function renderChannelConfig(channelPayload, els) {
+    const channel = channelPayload && typeof channelPayload === "object" ? channelPayload : {};
+    const channelId = String(channel.channel_id || "default").trim().toLowerCase() || "default";
+    const hasOverride = Boolean(channel.has_override);
+
+    if (els?.channelIdInput) {
+        els.channelIdInput.value = channelId;
+    }
+    if (els?.channelTemperatureInput) {
+        els.channelTemperatureInput.value =
+            channel.temperature === null || channel.temperature === undefined
+                ? ""
+                : String(channel.temperature);
+    }
+    if (els?.channelTopPInput) {
+        els.channelTopPInput.value =
+            channel.top_p === null || channel.top_p === undefined ? "" : String(channel.top_p);
+    }
+    if (els?.channelStatusChip) {
+        els.channelStatusChip.classList.remove("ok", "warn", "pending", "error");
+        setText(els.channelStatusChip, hasOverride ? "OVERRIDE ACTIVE" : "MODEL DEFAULT");
+        els.channelStatusChip.classList.add(hasOverride ? "ok" : "pending");
+    }
+    if (els?.channelHint) {
+        const temperatureLabel =
+            channel.temperature === null || channel.temperature === undefined
+                ? "auto"
+                : channel.temperature;
+        const topPLabel =
+            channel.top_p === null || channel.top_p === undefined ? "auto" : channel.top_p;
+        const updatedAt = String(channel.updated_at || "").trim();
+        const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
+        setText(
+            els.channelHint,
+            `Canal ${channelId} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`
+        );
+    }
+}
+
 export function getControlPlaneElements() {
     return {
         panel: document.getElementById("cpPanel"),
@@ -203,6 +255,13 @@ export function getControlPlaneElements() {
         capabilitiesLine: document.getElementById("cpCapabilitiesLine"),
         responseContract: document.getElementById("cpResponseContract"),
         feedback: document.getElementById("cpFeedbackMsg"),
+        channelStatusChip: document.getElementById("cpChannelConfigStatusChip"),
+        channelHint: document.getElementById("cpChannelConfigHint"),
+        channelIdInput: document.getElementById("cpChannelConfigId"),
+        channelTemperatureInput: document.getElementById("cpChannelTemperature"),
+        channelTopPInput: document.getElementById("cpChannelTopP"),
+        loadChannelConfigBtn: document.getElementById("cpLoadChannelConfigBtn"),
+        saveChannelConfigBtn: document.getElementById("cpSaveChannelConfigBtn"),
         autonomyEnabled: document.getElementById("cpAutonomyEnabled"),
         heartbeatInterval: document.getElementById("cpHeartbeatInterval"),
         minCooldown: document.getElementById("cpMinCooldown"),
@@ -239,6 +298,11 @@ export function setControlPlaneBusy(els, busy) {
         els?.addGoalBtn,
         els?.saveBtn,
         els?.reloadBtn,
+        els?.channelIdInput,
+        els?.channelTemperatureInput,
+        els?.channelTopPInput,
+        els?.loadChannelConfigBtn,
+        els?.saveChannelConfigBtn,
     ];
     inputElements.forEach((element) => {
         if (element) element.disabled = disabled;
@@ -340,5 +404,15 @@ export function collectControlPlanePayload(els) {
         budget_messages_daily: readInt(els?.budgetDaily, 30, 0, 5000),
         action_ignore_after_seconds: readInt(els?.actionIgnoreAfter, 900, 60, 86400),
         goals,
+    };
+}
+
+export function collectChannelConfigPayload(els) {
+    const safeChannelId =
+        String(els?.channelIdInput?.value || "").trim().toLowerCase() || "default";
+    return {
+        channel_id: safeChannelId,
+        temperature: readOptionalFloat(els?.channelTemperatureInput, 0, 2),
+        top_p: readOptionalFloat(els?.channelTopPInput, 0, 1),
     };
 }

@@ -8,6 +8,7 @@ from bot.control_plane import control_plane
 from bot.hud_runtime import hud_runtime
 from bot.logic import BOT_BRAND, context_manager
 from bot.observability import observability
+from bot.persistence_layer import persistence
 from bot.runtime_config import BYTE_VERSION, TWITCH_CHAT_MODE
 from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import build_status_line
@@ -24,6 +25,16 @@ def _is_api_route(route: str) -> bool:
 def _get_context_sync(channel_id: str | None = None) -> Any:
     """Helper para obter contexto de forma síncrona."""
     return context_manager.get(channel_id)
+
+
+def _resolve_channel_id(query: dict[str, list[str]], payload: dict[str, Any] | None = None) -> str:
+    from_query = str((query.get("channel") or [""])[0] or "").strip().lower()
+    if from_query:
+        return from_query
+    from_payload = str((payload or {}).get("channel_id", "") or "").strip().lower()
+    if from_payload:
+        return from_payload
+    raise ValueError("channel_id obrigatorio.")
 
 
 def build_observability_payload() -> dict[str, Any]:
@@ -98,6 +109,25 @@ def handle_get(handler: Any) -> None:
                 "config": control_plane.get_config(),
                 "autonomy": control_plane.runtime_snapshot(),
                 "capabilities": control_plane.build_capabilities(bot_mode=TWITCH_CHAT_MODE),
+            },
+            status_code=200,
+        )
+        return
+
+    if route == "/api/channel-config":
+        try:
+            channel_id = _resolve_channel_id(query)
+        except ValueError as error:
+            handler._send_json(
+                {"ok": False, "error": "invalid_request", "message": str(error)},
+                status_code=400,
+            )
+            return
+        handler._send_json(
+            {
+                "ok": True,
+                "mode": TWITCH_CHAT_MODE,
+                "channel": persistence.load_channel_config_sync(channel_id),
             },
             status_code=200,
         )
@@ -179,7 +209,8 @@ def handle_get_config_js(handler: Any) -> None:
 def handle_put(handler: Any) -> None:
     parsed_path = urlparse(handler.path or "/")
     route = parsed_path.path or "/"
-    if route != "/api/control-plane":
+    query = parse_qs(parsed_path.query or "")
+    if route not in {"/api/control-plane", "/api/channel-config"}:
         handler._send_text("Not Found", status_code=404)
         return
 
@@ -193,6 +224,36 @@ def handle_put(handler: Any) -> None:
         handler._send_json(
             {"ok": False, "error": "invalid_request", "message": str(error)},
             status_code=400,
+        )
+        return
+
+    if route == "/api/channel-config":
+        try:
+            channel_id = _resolve_channel_id(query, payload)
+            channel_config = persistence.save_channel_config_sync(
+                channel_id,
+                temperature=payload.get("temperature"),
+                top_p=payload.get("top_p"),
+            )
+            context_manager.apply_channel_config(
+                channel_id,
+                temperature=channel_config.get("temperature"),
+                top_p=channel_config.get("top_p"),
+            )
+        except ValueError as error:
+            handler._send_json(
+                {"ok": False, "error": "invalid_request", "message": str(error)},
+                status_code=400,
+            )
+            return
+
+        handler._send_json(
+            {
+                "ok": True,
+                "mode": TWITCH_CHAT_MODE,
+                "channel": channel_config,
+            },
+            status_code=200,
         )
         return
 

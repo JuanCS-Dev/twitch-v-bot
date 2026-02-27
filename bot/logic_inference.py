@@ -48,6 +48,23 @@ def _extract_usage(response: Any) -> tuple[int, int]:
     return getattr(usage, "prompt_tokens", 0), getattr(usage, "completion_tokens", 0)
 
 
+def _normalize_generation_override(
+    value: Any,
+    *,
+    minimum: float,
+    maximum: float,
+) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed < minimum or parsed > maximum:
+        return None
+    return parsed
+
+
 def _select_model(enable_grounding: bool, is_serious: bool) -> str:
     """Select the optimal Nebius model for the request type."""
     from bot.runtime_config import NEBIUS_MODEL_DEFAULT, NEBIUS_MODEL_REASONING, NEBIUS_MODEL_SEARCH
@@ -151,15 +168,23 @@ async def _execute_inference(
     client: Any,
     model: str,
     messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    top_p: float | None = None,
 ) -> Any:
     """Execute a single inference call to the LLM."""
+    request_kwargs: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": 2048,
+    }
+    if top_p is not None:
+        request_kwargs["top_p"] = top_p
     return await asyncio.wait_for(
         asyncio.to_thread(
             client.chat.completions.create,
-            model=model,
-            messages=messages,
-            temperature=MODEL_TEMPERATURE,
-            max_tokens=2048,
+            **request_kwargs,
         ),
         timeout=120.0,
     )
@@ -192,6 +217,9 @@ async def _execute_inference_with_retry(
     client: Any,
     model: str,
     messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    top_p: float | None = None,
 ) -> Any:
     """Execute inference with retry logic for rate limits and timeouts."""
 
@@ -211,10 +239,26 @@ async def _execute_inference_with_retry(
         client,
         model,
         messages,
+        temperature=temperature,
+        top_p=top_p,
         max_retries=MODEL_RATE_LIMIT_MAX_RETRIES,
         backoff_base=MODEL_RATE_LIMIT_BACKOFF_SECONDS,
         retryable_predicate=on_retry_check,
     )
+
+
+def _resolve_generation_params(context: Any) -> tuple[float, float | None]:
+    safe_temperature = _normalize_generation_override(
+        getattr(context, "inference_temperature", None),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    safe_top_p = _normalize_generation_override(
+        getattr(context, "inference_top_p", None),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    return safe_temperature if safe_temperature is not None else MODEL_TEMPERATURE, safe_top_p
 
 
 def _process_response(
@@ -289,9 +333,16 @@ async def agent_inference(
         context = context_manager.get()
 
     messages = _build_messages(user_msg, author_name, context, enable_live_context, search_results)
+    temperature, top_p = _resolve_generation_params(context)
 
     try:
-        response = await _execute_inference_with_retry(client, model, messages)
+        response = await _execute_inference_with_retry(
+            client,
+            model,
+            messages,
+            temperature=temperature,
+            top_p=top_p,
+        )
         reply = _process_response(response, max_lines, max_length)
 
         if reply:
