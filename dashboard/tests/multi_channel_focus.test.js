@@ -448,8 +448,24 @@ function createObservabilityElements(document) {
       "intSemanticMemoryStatusHint",
       new MockElement("p", document),
     ),
+    intSemanticMemoryEngineChip: document.registerElement(
+      "intSemanticMemoryEngineChip",
+      new MockElement("span", document),
+    ),
+    intSemanticMemoryEngineHint: document.registerElement(
+      "intSemanticMemoryEngineHint",
+      new MockElement("p", document),
+    ),
     intSemanticMemoryQueryInput: document.registerElement(
       "intSemanticMemoryQueryInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemoryMinSimilarityInput: document.registerElement(
+      "intSemanticMemoryMinSimilarityInput",
+      new MockElement("input", document),
+    ),
+    intSemanticMemoryForceFallbackToggle: document.registerElement(
+      "intSemanticMemoryForceFallbackToggle",
       new MockElement("input", document),
     ),
     intSemanticMemorySearchBtn: document.registerElement(
@@ -910,6 +926,20 @@ test("observability views render focused channel and persisted context state", (
           similarity: 0.934,
         },
       ],
+      search_diagnostics: {
+        engine: "pgvector",
+        candidate_count: 4,
+        result_count: 1,
+        min_similarity: 0.3,
+        force_fallback: false,
+        pgvector_enabled: true,
+        pgvector_ready: true,
+      },
+      search_settings: {
+        pgvector_enabled: true,
+        pgvector_ready: true,
+        default_min_similarity: -1,
+      },
     },
     els,
   );
@@ -996,6 +1026,10 @@ test("observability views render focused channel and persisted context state", (
     els.intSemanticMemoryStatusHint.textContent,
     /Semantic search active in #canal_a/i,
   );
+  assert.match(els.intSemanticMemoryEngineChip.textContent, /pgvector/i);
+  assert.match(els.intSemanticMemoryEngineHint.textContent, /threshold/i);
+  assert.equal(els.intSemanticMemoryMinSimilarityInput.value, "0.3");
+  assert.equal(els.intSemanticMemoryForceFallbackToggle.checked, false);
   assert.equal(els.intSemanticMemoryMatches.children.length, 1);
   assert.match(
     els.intSemanticMemoryMatches.children[0].textContent,
@@ -1303,6 +1337,20 @@ test("observability controller triggers semantic memory search and save in intel
                 similarity: 0.941,
               },
             ],
+            search_diagnostics: {
+              engine: "fallback",
+              candidate_count: 12,
+              result_count: 1,
+              min_similarity: 0.35,
+              force_fallback: true,
+              pgvector_enabled: true,
+              pgvector_ready: true,
+            },
+            search_settings: {
+              pgvector_enabled: true,
+              pgvector_ready: true,
+              default_min_similarity: -1,
+            },
           };
         },
       };
@@ -1327,6 +1375,8 @@ test("observability controller triggers semantic memory search and save in intel
   controller.bindObservabilityEvents();
 
   obsEls.intSemanticMemoryQueryInput.value = "lore";
+  obsEls.intSemanticMemoryMinSimilarityInput.value = "0.35";
+  obsEls.intSemanticMemoryForceFallbackToggle.checked = true;
   obsEls.intSemanticMemorySearchBtn.click();
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -1339,7 +1389,9 @@ test("observability controller triggers semantic memory search and save in intel
   const searchCall = calls.find(
     (call) =>
       call.method === "GET" &&
-      call.url.includes("/api/semantic-memory?channel=canal_mem&query=lore"),
+      call.url.includes(
+        "/api/semantic-memory?channel=canal_mem&query=lore&limit=8&search_limit=60&min_similarity=0.35&force_fallback=1",
+      ),
   );
   assert.ok(searchCall);
 
@@ -1357,6 +1409,11 @@ test("observability controller triggers semantic memory search and save in intel
     obsEls.intSemanticMemoryStatusHint.textContent,
     /semantic search/i,
   );
+  assert.match(
+    obsEls.intSemanticMemoryEngineChip.textContent,
+    /deterministic/i,
+  );
+  assert.match(obsEls.intSemanticMemoryEngineHint.textContent, /threshold/i);
 });
 
 test("control plane controller mirrors the focused channel into channel tuning", () => {

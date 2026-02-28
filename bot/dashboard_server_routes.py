@@ -388,26 +388,40 @@ def build_semantic_memory_payload(
     query: str = "",
     limit: int = 8,
     search_limit: int = 60,
+    min_similarity: Any = None,
+    force_fallback: bool = False,
 ) -> dict[str, Any]:
     safe_channel_id = str(channel_id or "default").strip().lower() or "default"
     safe_limit = max(1, min(int(limit or 8), 20))
     safe_search_limit = max(1, min(int(search_limit or 60), 360))
     safe_query = str(query or "").strip()
+    search_settings = persistence.get_semantic_memory_search_settings_sync()
 
     entries = persistence.load_semantic_memory_entries_sync(
         safe_channel_id,
         limit=safe_search_limit,
     )
-    matches = (
-        persistence.search_semantic_memory_entries_sync(
+    search_result = (
+        persistence.search_semantic_memory_entries_with_diagnostics_sync(
             safe_channel_id,
             query=safe_query,
             limit=safe_limit,
             search_limit=safe_search_limit,
+            min_similarity=min_similarity,
+            force_fallback=force_fallback,
         )
         if safe_query
-        else list(entries[:safe_limit])
+        else {
+            "matches": list(entries[:safe_limit]),
+            "engine": "none",
+            "candidate_count": len(entries),
+            "result_count": len(entries[:safe_limit]),
+            "min_similarity": search_settings.get("default_min_similarity", -1.0),
+            "force_fallback": bool(force_fallback),
+            **search_settings,
+        }
     )
+    matches = list(search_result.get("matches") or [])
     selected_entries = list(entries[:safe_limit])
 
     return {
@@ -422,6 +436,16 @@ def build_semantic_memory_payload(
         "limits": {
             "list": safe_limit,
             "search": safe_search_limit,
+        },
+        "search_settings": dict(search_settings or {}),
+        "search_diagnostics": {
+            "engine": str(search_result.get("engine") or "none"),
+            "candidate_count": int(search_result.get("candidate_count") or 0),
+            "result_count": int(search_result.get("result_count") or 0),
+            "min_similarity": float(search_result.get("min_similarity") or -1.0),
+            "force_fallback": bool(search_result.get("force_fallback")),
+            "pgvector_enabled": bool(search_result.get("pgvector_enabled")),
+            "pgvector_ready": bool(search_result.get("pgvector_ready")),
         },
     }
 
@@ -625,12 +649,16 @@ def _handle_get_semantic_memory(handler: Any, query: dict[str, list[str]]) -> No
         maximum=360,
     )
     memory_query = _resolve_text_query_param(query, "query", default="")
+    min_similarity = _resolve_text_query_param(query, "min_similarity", default="")
+    force_fallback = _resolve_bool_query_param(query, "force_fallback", default=False)
     handler._send_json(
         build_semantic_memory_payload(
             channel_id,
             query=memory_query,
             limit=limit,
             search_limit=search_limit,
+            min_similarity=min_similarity or None,
+            force_fallback=force_fallback,
         ),
         status_code=200,
     )

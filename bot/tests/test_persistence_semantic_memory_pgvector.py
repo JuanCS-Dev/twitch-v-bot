@@ -127,3 +127,84 @@ def test_semantic_memory_search_skips_rpc_when_pgvector_is_disabled():
     assert matches[0]["entry_id"] == "entry_plain_1"
     assert matches[0]["source"] == "supabase"
     mock_client.rpc.assert_not_called()
+
+
+def test_semantic_memory_search_applies_min_similarity_threshold_with_pgvector():
+    mock_client = MagicMock()
+    mock_client.rpc.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "entry_id": "entry_high",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Lore sem spoiler e foco narrativo.",
+                "tags": ["lore"],
+                "context": {"source": "runtime"},
+                "embedding": [0.0] * 48,
+                "created_at": "2026-02-28T13:00:00Z",
+                "updated_at": "2026-02-28T13:02:00Z",
+                "similarity": 0.88,
+            },
+            {
+                "entry_id": "entry_low",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Tema paralelo fora de contexto.",
+                "tags": ["offtopic"],
+                "context": {"source": "runtime"},
+                "embedding": [0.0] * 48,
+                "created_at": "2026-02-28T13:00:00Z",
+                "updated_at": "2026-02-28T13:02:00Z",
+                "similarity": 0.12,
+            },
+        ]
+    )
+    repository = SemanticMemoryRepository(enabled=True, client=mock_client, cache={})
+
+    matches = repository.search_entries_sync(
+        "canal_a",
+        query="lore",
+        limit=5,
+        search_limit=20,
+        min_similarity=0.5,
+    )
+
+    assert len(matches) == 1
+    assert matches[0]["entry_id"] == "entry_high"
+    assert matches[0]["similarity"] == 0.88
+    assert mock_client.rpc.call_count == 1
+
+
+def test_semantic_memory_search_diagnostics_force_fallback_skips_rpc():
+    mock_client = MagicMock()
+    _mock_supabase_memory_rows(
+        mock_client,
+        [
+            {
+                "entry_id": "entry_legacy_1",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Canal prioriza lore sem spoiler.",
+                "tags": ["lore"],
+                "context": {"source": "runtime"},
+                "embedding": [0.0] * 48,
+                "created_at": "2026-02-28T12:00:00Z",
+                "updated_at": "2026-02-28T12:03:00Z",
+            }
+        ],
+    )
+    repository = SemanticMemoryRepository(enabled=True, client=mock_client, cache={})
+
+    payload = repository.search_entries_with_diagnostics_sync(
+        "canal_a",
+        query="lore",
+        limit=2,
+        search_limit=10,
+        force_fallback=True,
+    )
+
+    assert payload["engine"] == "fallback"
+    assert payload["force_fallback"] is True
+    assert payload["result_count"] == 1
+    assert payload["matches"][0]["entry_id"] == "entry_legacy_1"
+    mock_client.rpc.assert_not_called()

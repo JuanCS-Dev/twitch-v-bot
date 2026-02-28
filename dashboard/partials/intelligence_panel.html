@@ -6,26 +6,13 @@
     </p>
 
     <div
-      class="form-row"
-      style="
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--spacing-2);
-        margin-bottom: var(--spacing-3);
-        flex-wrap: wrap;
-      "
+      class="form-row form-row-center form-row-between form-row-gap-2 form-row-mb-3 form-row-wrap"
     >
-      <div
-        class="form-row"
-        style="align-items: center; gap: var(--spacing-2); margin: 0"
-      >
+      <div class="form-row form-row-center form-row-gap-2 form-row-m0">
         <span class="chip pending"
           >Messages: <span id="hudMessageCount">0</span></span
         >
-        <label
-          class="toggle-switch"
-          style="font-size: 0.85rem; color: var(--text-muted)"
-        >
+        <label class="toggle-switch toggle-switch-muted">
           <input id="hudTtsToggle" type="checkbox" />
           <span class="toggle-slider"></span>
           TTS (Voice)
@@ -42,24 +29,12 @@
       </a>
     </div>
 
-    <p
-      class="panel-hint"
-      style="
-        margin-top: calc(var(--spacing-3) * -1);
-        margin-bottom: var(--spacing-3);
-      "
-    >
+    <p class="panel-hint panel-hint-overlap">
       Browser source: <code id="hudOverlayUrl">/dashboard/hud</code>
     </p>
 
-    <ul
-      id="hudMessagesList"
-      class="events-list"
-      style="max-height: 360px; overflow-y: auto"
-    >
-      <li style="font-style: italic; color: var(--text-muted)">
-        No agent suggestions yet.
-      </li>
+    <ul id="hudMessagesList" class="events-list events-scroll-360">
+      <li class="text-muted-italic">No agent suggestions yet.</li>
     </ul>
   </article>
 
@@ -81,75 +56,16 @@
         focused channel.
       </p>
 
-      <div
-        style="
-          margin: var(--spacing-4) 0;
-          padding: var(--spacing-4);
-          background: var(--bg-base);
-          border-radius: var(--radius-md);
-          border: 1px solid var(--border-default);
-        "
-      >
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-2);
-          "
-        >
-          <span
-            style="
-              font-size: 0.85rem;
-              color: var(--text-muted);
-              font-weight: 600;
-            "
-            >Sentiment Vibe</span
-          >
-          <span
-            id="intSentimentVibe"
-            style="
-              font-family: var(--font-family-mono);
-              font-weight: 700;
-              color: var(--text-primary);
-            "
-            >Chill</span
-          >
+      <div class="section-surface">
+        <div class="sentiment-header-row">
+          <span class="sentiment-label">Sentiment Vibe</span>
+          <span id="intSentimentVibe" class="mono-strong">Chill</span>
         </div>
         <!-- Vanilla CSS Progress Bar -->
-        <div
-          style="
-            width: 100%;
-            height: 8px;
-            background: color-mix(
-              in srgb,
-              var(--status-error) 20%,
-              var(--bg-elevated)
-            );
-            border-radius: var(--radius-pill);
-            overflow: hidden;
-            display: flex;
-          "
-        >
-          <div
-            id="sentimentProgressBar"
-            style="
-              height: 100%;
-              background: var(--status-ok);
-              width: 50%;
-              transition: width var(--transition-elastic);
-            "
-          ></div>
+        <div class="sentiment-track">
+          <div id="sentimentProgressBar" class="sentiment-progress"></div>
         </div>
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            margin-top: var(--spacing-2);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-family: var(--font-family-mono);
-          "
-        >
+        <div class="sentiment-scale-row">
           <span>Pos <span id="intSentimentPositive">0</span></span>
           <span>Neg <span id="intSentimentNegative">0</span></span>
         </div>
@@ -185,14 +101,7 @@
         </div>
       </dl>
 
-      <div
-        class="form-row"
-        style="
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--spacing-3);
-        "
-      >
+      <div class="form-row form-row-center form-row-between form-row-gap-3">
         <span id="intCoachingRiskChip" class="chip pending">CHURN LOW</span>
         <span id="intCoachingHudStatus" class="panel-hint">HUD idle</span>
       </div>
@@ -213,10 +122,8 @@
         without opening a parallel dashboard.
       </p>
 
-      <ul id="intCoachingAlerts" class="events-list" style="max-height: 180px">
-        <li style="font-style: italic; color: var(--text-muted)">
-          No tactical alerts right now.
-        </li>
+      <ul id="intCoachingAlerts" class="events-list events-scroll-180">
+        <li class="text-muted-italic">No tactical alerts right now.</li>
       </ul>
     </section>
 
@@ -233,14 +140,7 @@
             after a successful part.
           </p>
 
-          <div
-            class="form-row"
-            style="
-              align-items: center;
-              justify-content: space-between;
-              gap: var(--spacing-3);
-            "
-          >
+          <div class="form-row form-row-center form-row-between form-row-gap-3">
             <span id="intPostStreamStatusChip" class="chip pending"
               >NO REPORT</span
             >
@@ -269,17 +169,12 @@
             register the session summary.
           </p>
 
-          <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
-            Recommendations
-          </p>
+          <p class="panel-hint panel-hint-mb-2">Recommendations</p>
           <ul
             id="intPostStreamRecommendations"
-            class="events-list"
-            style="max-height: 200px"
+            class="events-list events-scroll-200"
           >
-            <li style="font-style: italic; color: var(--text-muted)">
-              No recommendations recorded.
-            </li>
+            <li class="text-muted-italic">No recommendations recorded.</li>
           </ul>
         </section>
 
@@ -294,20 +189,13 @@
           </p>
 
           <div
-            class="form-row"
-            style="
-              align-items: center;
-              justify-content: space-between;
-              gap: var(--spacing-2);
-              margin-bottom: var(--spacing-2);
-              flex-wrap: wrap;
-            "
+            class="form-row form-row-center form-row-between form-row-gap-2 form-row-mb-2 form-row-wrap"
           >
             <input
               id="intSemanticMemoryQueryInput"
               type="text"
               placeholder="Search semantic memory by phrase..."
-              style="flex: 1; min-width: 220px"
+              class="u-flex-1 form-group-min-220"
             />
             <button
               id="intSemanticMemorySearchBtn"
@@ -319,37 +207,59 @@
           </div>
 
           <div
-            class="form-row"
-            style="gap: var(--spacing-2); margin-bottom: var(--spacing-2)"
+            class="form-row form-row-center form-row-between form-row-gap-2 form-row-mb-2 form-row-wrap"
           >
+            <input
+              id="intSemanticMemoryMinSimilarityInput"
+              type="number"
+              step="0.01"
+              min="-1"
+              max="1"
+              placeholder="Min similarity (-1 to 1)"
+              class="u-maxw-220"
+            />
+            <label class="toggle-switch toggle-switch-muted">
+              <input
+                id="intSemanticMemoryForceFallbackToggle"
+                type="checkbox"
+              />
+              <span class="toggle-slider"></span>
+              Force deterministic fallback
+            </label>
+            <span id="intSemanticMemoryEngineChip" class="chip pending"
+              >ENGINE IDLE</span
+            >
+          </div>
+
+          <p
+            id="intSemanticMemoryEngineHint"
+            class="panel-hint panel-hint-mb-2"
+          >
+            Search mode is idle until query execution.
+          </p>
+
+          <div class="form-row form-row-gap-2 form-row-mb-2">
             <input
               id="intSemanticMemoryTypeInput"
               type="text"
               value="fact"
               placeholder="Type (fact/preference/event/instruction/context)"
-              style="max-width: 220px"
+              class="u-maxw-220"
             />
             <input
               id="intSemanticMemoryTagsInput"
               type="text"
               placeholder="Tags (e.g. game,lore,meta)"
-              style="flex: 1"
+              class="u-flex-1"
             />
           </div>
 
-          <div
-            class="form-row"
-            style="
-              align-items: center;
-              gap: var(--spacing-2);
-              margin-bottom: var(--spacing-2);
-            "
-          >
+          <div class="form-row form-row-center form-row-gap-2 form-row-mb-2">
             <input
               id="intSemanticMemoryContentInput"
               type="text"
               placeholder="New semantic memory entry for the focused channel..."
-              style="flex: 1"
+              class="u-flex-1"
             />
             <button
               id="intSemanticMemorySaveBtn"
@@ -360,34 +270,22 @@
             </button>
           </div>
 
-          <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
-            Search Matches
-          </p>
+          <p class="panel-hint panel-hint-mb-2">Search Matches</p>
           <ul
             id="intSemanticMemoryMatches"
-            class="events-list"
-            style="max-height: 180px"
+            class="events-list events-scroll-180"
           >
-            <li style="font-style: italic; color: var(--text-muted)">
-              No semantic matches.
-            </li>
+            <li class="text-muted-italic">No semantic matches.</li>
           </ul>
 
-          <p
-            class="panel-hint"
-            style="
-              margin-top: var(--spacing-3);
-              margin-bottom: var(--spacing-2);
-            "
-          >
+          <p class="panel-hint panel-hint-mt-3 panel-hint-mb-2">
             Latest Entries
           </p>
           <ul
             id="intSemanticMemoryEntries"
-            class="events-list"
-            style="max-height: 180px"
+            class="events-list events-scroll-180"
           >
-            <li style="font-style: italic; color: var(--text-muted)">
+            <li class="text-muted-italic">
               No persisted memory for this channel.
             </li>
           </ul>
@@ -402,11 +300,8 @@
             Simulate and inspect conversion traces linked to channel events.
           </p>
 
-          <div
-            class="form-row"
-            style="gap: var(--spacing-2); margin-bottom: var(--spacing-2)"
-          >
-            <select id="intRevenueEventType" style="flex: 1">
+          <div class="form-row form-row-gap-2 form-row-mb-2">
+            <select id="intRevenueEventType" class="u-flex-1">
               <option value="sub">Sub</option>
               <option value="follow">Follow</option>
               <option value="cheer">Cheer</option>
@@ -415,14 +310,14 @@
               id="intRevenueViewerLogin"
               type="text"
               placeholder="Viewer Login"
-              style="flex: 1"
+              class="u-flex-1"
             />
             <input
               id="intRevenueValue"
               type="number"
               step="0.01"
               placeholder="Value (e.g. 4.99)"
-              style="flex: 1"
+              class="u-flex-1"
             />
             <button
               id="intRevenueSimulateBtn"
@@ -433,12 +328,8 @@
             </button>
           </div>
 
-          <ul
-            id="intRevenueConversions"
-            class="events-list"
-            style="max-height: 180px"
-          >
-            <li style="font-style: italic; color: var(--text-muted)">
+          <ul id="intRevenueConversions" class="events-list events-scroll-180">
+            <li class="text-muted-italic">
               No recent conversions for this channel.
             </li>
           </ul>

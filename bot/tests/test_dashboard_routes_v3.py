@@ -564,6 +564,12 @@ class TestDashboardRoutesV3:
 
     @patch("bot.dashboard_server_routes.persistence")
     def test_build_semantic_memory_payload(self, mock_persistence):
+        mock_persistence.get_semantic_memory_search_settings_sync.return_value = {
+            "pgvector_enabled": True,
+            "pgvector_ready": True,
+            "rpc_functions": ["semantic_memory_search_pgvector"],
+            "default_min_similarity": -1.0,
+        }
         mock_persistence.load_semantic_memory_entries_sync.return_value = [
             {
                 "entry_id": "mem_1",
@@ -572,21 +578,32 @@ class TestDashboardRoutesV3:
                 "content": "Canal curte lore.",
             }
         ]
-        mock_persistence.search_semantic_memory_entries_sync.return_value = [
-            {
-                "entry_id": "mem_1",
-                "channel_id": "canal_a",
-                "memory_type": "fact",
-                "content": "Canal curte lore.",
-                "similarity": 0.92,
-            }
-        ]
+        mock_persistence.search_semantic_memory_entries_with_diagnostics_sync.return_value = {
+            "matches": [
+                {
+                    "entry_id": "mem_1",
+                    "channel_id": "canal_a",
+                    "memory_type": "fact",
+                    "content": "Canal curte lore.",
+                    "similarity": 0.92,
+                }
+            ],
+            "engine": "pgvector",
+            "candidate_count": 1,
+            "result_count": 1,
+            "min_similarity": 0.4,
+            "force_fallback": False,
+            "pgvector_enabled": True,
+            "pgvector_ready": True,
+        }
 
         payload = build_semantic_memory_payload(
             "canal_a",
             query="lore",
             limit=5,
             search_limit=30,
+            min_similarity="0.4",
+            force_fallback=False,
         )
 
         assert payload["ok"] is True
@@ -598,16 +615,54 @@ class TestDashboardRoutesV3:
         assert payload["limits"]["search"] == 30
         assert payload["entries"][0]["entry_id"] == "mem_1"
         assert payload["matches"][0]["similarity"] == 0.92
+        assert payload["search_diagnostics"]["engine"] == "pgvector"
+        assert payload["search_diagnostics"]["min_similarity"] == 0.4
+        assert payload["search_settings"]["pgvector_enabled"] is True
+        mock_persistence.get_semantic_memory_search_settings_sync.assert_called_once_with()
         mock_persistence.load_semantic_memory_entries_sync.assert_called_once_with(
             "canal_a",
             limit=30,
         )
-        mock_persistence.search_semantic_memory_entries_sync.assert_called_once_with(
+        mock_persistence.search_semantic_memory_entries_with_diagnostics_sync.assert_called_once_with(
             "canal_a",
             query="lore",
             limit=5,
             search_limit=30,
+            min_similarity="0.4",
+            force_fallback=False,
         )
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_build_semantic_memory_payload_without_query_uses_entries_as_matches(
+        self,
+        mock_persistence,
+    ):
+        mock_persistence.get_semantic_memory_search_settings_sync.return_value = {
+            "pgvector_enabled": True,
+            "pgvector_ready": True,
+            "rpc_functions": ["semantic_memory_search_pgvector"],
+            "default_min_similarity": -1.0,
+        }
+        mock_persistence.load_semantic_memory_entries_sync.return_value = [
+            {
+                "entry_id": "mem_1",
+                "channel_id": "canal_a",
+                "memory_type": "fact",
+                "content": "Canal curte lore.",
+            }
+        ]
+
+        payload = build_semantic_memory_payload(
+            "canal_a",
+            query="",
+            limit=5,
+            search_limit=30,
+        )
+
+        assert payload["has_matches"] is True
+        assert payload["search_diagnostics"]["engine"] == "none"
+        assert payload["search_diagnostics"]["result_count"] == 1
+        mock_persistence.search_semantic_memory_entries_with_diagnostics_sync.assert_not_called()
 
     @patch("bot.dashboard_server_routes.build_semantic_memory_payload")
     def test_handle_get_api_semantic_memory(self, mock_build_payload):
@@ -624,6 +679,8 @@ class TestDashboardRoutesV3:
             query="lore",
             limit=7,
             search_limit=40,
+            min_similarity=None,
+            force_fallback=False,
         )
         handler._send_json.assert_called_once_with(
             {"ok": True, "has_entries": True},

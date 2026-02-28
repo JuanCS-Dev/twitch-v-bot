@@ -120,6 +120,35 @@ function setStatusChip(chipEl, label, tone) {
   chipEl.classList.add(tone || "pending");
 }
 
+function normalizeSemanticEngine(engine) {
+  const normalized = String(engine || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "pgvector") return "pgvector";
+  if (normalized === "fallback") return "fallback";
+  return "none";
+}
+
+function formatSemanticEngineLabel(engine) {
+  const normalized = normalizeSemanticEngine(engine);
+  if (normalized === "pgvector") return "PGVECTOR";
+  if (normalized === "fallback") return "DETERMINISTIC";
+  return "IDLE";
+}
+
+function semanticEngineChipTone(engine) {
+  const normalized = normalizeSemanticEngine(engine);
+  if (normalized === "pgvector") return "ok";
+  if (normalized === "fallback") return "warn";
+  return "pending";
+}
+
+function formatSemanticThreshold(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "-1.00";
+  return parsed.toFixed(2);
+}
+
 function streamHealthSummaryChipTone(band) {
   const normalized = normalizeStreamHealthBand(band);
   if (normalized === "excellent" || normalized === "stable") return "ok";
@@ -303,8 +332,20 @@ export function getObservabilityElements() {
     intSemanticMemoryStatusHint: document.getElementById(
       "intSemanticMemoryStatusHint",
     ),
+    intSemanticMemoryEngineChip: document.getElementById(
+      "intSemanticMemoryEngineChip",
+    ),
+    intSemanticMemoryEngineHint: document.getElementById(
+      "intSemanticMemoryEngineHint",
+    ),
     intSemanticMemoryQueryInput: document.getElementById(
       "intSemanticMemoryQueryInput",
+    ),
+    intSemanticMemoryMinSimilarityInput: document.getElementById(
+      "intSemanticMemoryMinSimilarityInput",
+    ),
+    intSemanticMemoryForceFallbackToggle: document.getElementById(
+      "intSemanticMemoryForceFallbackToggle",
     ),
     intSemanticMemorySearchBtn: document.getElementById(
       "intSemanticMemorySearchBtn",
@@ -1186,6 +1227,16 @@ export function renderPostStreamReportSnapshot(payload, els) {
 export function renderSemanticMemorySnapshot(payload, els) {
   if (!els) return;
   const safePayload = payload && typeof payload === "object" ? payload : {};
+  const diagnostics =
+    safePayload.search_diagnostics &&
+    typeof safePayload.search_diagnostics === "object"
+      ? safePayload.search_diagnostics
+      : {};
+  const settings =
+    safePayload.search_settings &&
+    typeof safePayload.search_settings === "object"
+      ? safePayload.search_settings
+      : {};
   const selectedChannel =
     String(safePayload.selected_channel || "default")
       .trim()
@@ -1195,6 +1246,49 @@ export function renderSemanticMemorySnapshot(payload, els) {
   const hasMatches = Boolean(safePayload.has_matches);
   const entries = asArray(safePayload.entries);
   const matches = asArray(safePayload.matches);
+  const semanticEngine = normalizeSemanticEngine(diagnostics.engine);
+  const minSimilarity = formatSemanticThreshold(
+    diagnostics.min_similarity ?? settings.default_min_similarity,
+  );
+  const forceFallback = Boolean(diagnostics.force_fallback);
+  const candidateCount = Number(diagnostics.candidate_count || 0);
+  const resultCount = Number(diagnostics.result_count || 0);
+
+  if (els.intSemanticMemoryEngineChip) {
+    setStatusChip(
+      els.intSemanticMemoryEngineChip,
+      `ENGINE ${formatSemanticEngineLabel(semanticEngine)}`,
+      semanticEngineChipTone(semanticEngine),
+    );
+  }
+
+  if (els.intSemanticMemoryEngineHint) {
+    const modeLabel = forceFallback
+      ? "manual deterministic fallback"
+      : "auto engine";
+    setText(
+      els.intSemanticMemoryEngineHint,
+      `Search mode: ${modeLabel}. Threshold >= ${minSimilarity}. Candidates: ${candidateCount}, results: ${resultCount}.`,
+    );
+    els.intSemanticMemoryEngineHint.className =
+      semanticEngine === "pgvector"
+        ? "panel-hint event-level-info"
+        : "panel-hint";
+  }
+
+  if (
+    els.intSemanticMemoryMinSimilarityInput &&
+    (typeof document === "undefined" ||
+      document.activeElement !== els.intSemanticMemoryMinSimilarityInput)
+  ) {
+    const normalizedInputValue = String(
+      diagnostics.min_similarity ?? settings.default_min_similarity ?? "",
+    );
+    els.intSemanticMemoryMinSimilarityInput.value = normalizedInputValue;
+  }
+  if (els.intSemanticMemoryForceFallbackToggle) {
+    els.intSemanticMemoryForceFallbackToggle.checked = forceFallback;
+  }
 
   if (els.intSemanticMemoryStatusHint) {
     if (!hasEntries) {

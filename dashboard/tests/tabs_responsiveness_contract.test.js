@@ -11,9 +11,13 @@ test("tabs shell keeps sticky desktop behavior and touch-safe targets", () => {
 
   assert.match(
     layoutCss,
-    /\.dashboard-tabs-shell\s*\{[\s\S]*position:\s*sticky;[\s\S]*\}/,
+    /\.dashboard-tabs-shell\s*\{[\s\S]*position:\s*sticky;[\s\S]*top:\s*var\(--dashboard-tabs-sticky-top,\s*0px\);[\s\S]*\}/,
   );
   assert.match(layoutCss, /\.dashboard-tab-btn\s*\{[\s\S]*min-height:\s*44px;/);
+  assert.doesNotMatch(
+    layoutCss,
+    /\.dashboard-tabs-shell\s*\{[\s\S]*top:\s*86px;/,
+  );
 });
 
 test("tablet and mobile tab navigation support horizontal scrolling", () => {
@@ -29,6 +33,6 @@ test("tablet and mobile tab navigation support horizontal scrolling", () => {
   );
   assert.match(
     layoutCss,
-    /@media\s*\(max-width:\s*600px\)\s*\{[\s\S]*\.dashboard-tabs-shell\s*\{[\s\S]*top:\s*130px;[\s\S]*\}/,
+    /@media\s*\(max-width:\s*600px\)\s*\{[\s\S]*\.dashboard-tabs-shell\s*\{[\s\S]*top:\s*var\(--dashboard-tabs-sticky-top,\s*0px\);[\s\S]*\}/,
   );
 });

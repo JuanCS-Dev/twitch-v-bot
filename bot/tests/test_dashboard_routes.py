@@ -226,6 +226,31 @@ class TestDashboardRoutes(unittest.TestCase):
             query="lore",
             limit=7,
             search_limit=40,
+            min_similarity=None,
+            force_fallback=False,
+        )
+        self.handler._send_json.assert_called_with(
+            {"ok": True, "selected_channel": "canal_a"},
+            status_code=200,
+        )
+
+    @patch("bot.dashboard_server_routes.build_semantic_memory_payload")
+    def test_handle_get_semantic_memory_with_tuning_params(self, mock_build_payload):
+        self.handler.path = (
+            "/api/semantic-memory?channel=Canal_A&query=lore"
+            "&limit=7&search_limit=40&min_similarity=0.42&force_fallback=1"
+        )
+        mock_build_payload.return_value = {"ok": True, "selected_channel": "canal_a"}
+
+        routes.handle_get(self.handler)
+
+        mock_build_payload.assert_called_with(
+            "canal_a",
+            query="lore",
+            limit=7,
+            search_limit=40,
+            min_similarity="0.42",
+            force_fallback=True,
         )
         self.handler._send_json.assert_called_with(
             {"ok": True, "selected_channel": "canal_a"},

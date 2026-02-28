@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: em evolucao (fases 1-12 concluidas; fase 14 em progresso; fase 13 planejada)
+Status: concluido (fases 1-14 concluidas)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 Diretriz global: padronizacao da linguagem da UI em ingles (en-US), sem mistura PT-BR/EN em labels e fluxos visuais; conteudo de prompt pode permanecer em portugues para rollout nacional.
 
@@ -279,6 +279,7 @@ Novos testes planejados para fases 10-14:
 - `dashboard/tests/control_plane_information_density.test.js`: agrupamento, ordem e contratos de IDs no `Control Plane`.
 - `dashboard/tests/analytics_information_architecture.test.js`: prioridade visual e separacao de dominio em `Analytics`.
 - `dashboard/tests/dashboard_style_consolidation_contract.test.js`: reducao/control de `style=""` inline em shell/partials.
+- `dashboard/tests/dashboard_asset_import_integrity.test.js`: integridade de imports/assets (CSS/JS/partials) e rota dinamica `config.js`.
 - `dashboard/tests/dashboard_semantic_consistency.test.js`: consistencia de idioma (ingles), semantica e comportamento sticky responsivo.
 
 Validacao minima por fase:
@@ -300,6 +301,7 @@ DoD adicional do ciclo de refinamento UX (fases 10-14):
 - Fluxos de decisao primaria (live ops) aparecem antes de configuracoes secundarias em cada aba.
 - `Inteligencia` e `Configuracao` deixam de concentrar blocos longos sem sub-hierarquia.
 - Reducao mensuravel de estilos inline nos partials.
+- Integridade de imports de assets da dashboard garantida (sem CSS/JS/partials quebrados).
 - Sem regressao de contratos de API, IDs e pollers.
 - Interface final sem mistura de idiomas na camada visual: tabs e textos operacionais de UI em ingles (en-US), com prompts podendo permanecer em PT-BR.
 
@@ -528,6 +530,34 @@ DoD adicional do ciclo de refinamento UX (fases 10-14):
   - `node --test dashboard/tests/analytics_information_architecture.test.js dashboard/tests/multi_channel_focus.test.js`
   - `node --test dashboard/tests/*.test.js`
 
+### 2026-02-28 - Fase 13 concluida (consolidacao visual + integridade de imports/assets)
+
+- Consolidacao visual executada no shell e partials, com extracao de inline para classes reutilizaveis:
+  - `dashboard/styles/components.css` expandido com utilitarios semanticos da fase (`form-row-*`, `section-*`, `events-scroll-*`, `sentiment-*`, `autonomy-budget-*`, `fatal-error-screen`, etc.).
+  - `dashboard/index.html` atualizado para fallback de erro sem inline (`fatal-error-screen`).
+  - Partials migrados para classes sem `style=""`:
+    - `dashboard/partials/risk_queue.html`
+    - `dashboard/partials/operational_events.html`
+    - `dashboard/partials/hero_channel.html`
+    - `dashboard/partials/autonomy_runtime.html`
+    - `dashboard/partials/clips_section.html`
+    - `dashboard/partials/control_plane.html`
+    - `dashboard/partials/intelligence_panel.html`
+    - `dashboard/partials/analytics_logs.html`
+- Cobertura nova:
+  - `dashboard/tests/dashboard_style_consolidation_contract.test.js`
+    - contrato de links CSS no shell;
+    - ausencia de `style=""` no shell/partials;
+    - presenca de seletores obrigatorios em `components.css`.
+  - `dashboard/tests/dashboard_asset_import_integrity.test.js`
+    - valida referencias de assets no shell (`styles`, `scripts`, `partials`, `main.js`);
+    - valida grafo de imports locais em `dashboard/**/*.js` (fora de testes);
+    - valida imports CSS locais e contrato da rota dinamica `/dashboard/config.js` em `bot/dashboard_server_routes.py`.
+- Validacao executada:
+  - `node --test dashboard/tests/dashboard_style_consolidation_contract.test.js`
+  - `node --test dashboard/tests/dashboard_asset_import_integrity.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
 ### 2026-02-28 - Auditoria UX pos-fase 9 (baseline para fases 10-14)
 
 Classificacao operacional:
@@ -559,44 +589,49 @@ Validacao executada (baseline da auditoria):
 
 - `node --test dashboard/tests/*.test.js` -> `54/54` passando.
 
-### 2026-02-28 - Fase 14 em progresso (contrato de idioma da UI)
+### 2026-02-28 - Fase 14 concluida (coerencia semantica + resiliencia sticky responsiva)
 
-- Ajuste de copy operacional para ingles (en-US) em views/controllers da dashboard, sem alterar contratos de IDs/fluxo.
-- Correcao de residuos PT-BR na UI:
+- UI operacional finalizada em ingles (en-US), preservando fallback de prompt localizavel:
   - `dashboard/features/control-plane/controller.js` -> `"Control plane synced."`
   - `dashboard/features/control-plane/view.js` -> hint de suspensao com `since`.
-- Regra explicitada: UI/layout em ingles; conteudo de prompt pode permanecer em portugues.
-- Cobertura adicionada:
+  - `dashboard/features/action-queue/controller.js` -> `"Risk queue refreshed (... items)."`
+- Sticky de navegacao de abas removido de offsets hardcoded e tornado resiliente:
+  - novo modulo `dashboard/features/navigation/sticky-offset.js` mede altura real da topbar e sincroniza `--dashboard-tabs-sticky-top` (resize + orientationchange + ResizeObserver quando disponivel).
+  - `dashboard/main.js` passa a inicializar `initDashboardStickyOffset()` no bootstrap.
+  - `dashboard/styles/layout.css` troca `top: 86px/130px` por `top: var(--dashboard-tabs-sticky-top, 0px)` no desktop e mobile.
+- Cobertura nova e ampliada:
+  - `dashboard/tests/sticky_offset_runtime.test.js`
+    - valida calculo dinamico de offset em runtime;
+    - valida atualizacao por `resize` e por callback de `ResizeObserver`;
+    - valida cleanup de listeners.
+  - `dashboard/tests/tabs_responsiveness_contract.test.js`
+    - atualizado para exigir variavel CSS de sticky e bloquear `top` hardcoded.
   - `dashboard/tests/dashboard_semantic_consistency.test.js`
-    - verifica `lang="en"` + labels principais em ingles;
-    - verifica copy operacional em ingles e preservacao do fallback de prompt `Objetivo ...`.
-- Ajustes em regressao existente:
-  - `dashboard/tests/multi_channel_focus.test.js` atualizado para novo contrato textual de UI em ingles.
+    - ampliado para validar copy em ingles no action queue e manter fallback `Objetivo ...`.
 - Validacao executada:
-  - `npx prettier --check dashboard/tests/multi_channel_focus.test.js dashboard/tests/dashboard_semantic_consistency.test.js dashboard/features/control-plane/controller.js dashboard/features/control-plane/view.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
-  - `node --test dashboard/tests/dashboard_semantic_consistency.test.js dashboard/tests/multi_channel_focus.test.js`
-  - `node --test dashboard/tests/*.test.js`
+  - `npx prettier --check dashboard/main.js dashboard/styles/layout.css dashboard/features/action-queue/controller.js dashboard/features/navigation/sticky-offset.js dashboard/tests/sticky_offset_runtime.test.js dashboard/tests/tabs_responsiveness_contract.test.js dashboard/tests/dashboard_semantic_consistency.test.js`
+  - `node --test dashboard/tests/sticky_offset_runtime.test.js dashboard/tests/tabs_responsiveness_contract.test.js dashboard/tests/dashboard_semantic_consistency.test.js dashboard/tests/dashboard_asset_import_integrity.test.js`
+  - `node --test dashboard/tests/*.test.js` -> `70/70` passando.
 
 ## 10) Matriz consolidada de rastreabilidade (planejamento -> implementacao)
 
-| Fase | Objetivo sintetico                                         | Status       | Evidencia de implementacao principal                                                              | Evidencia de validacao principal                                                        |
-| ---- | ---------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 1    | Shell de abas                                              | Concluida    | `index.html`, `main.js`, `features/navigation/tabs.js`                                            | `dashboard/tests/tabs_navigation.test.js`                                               |
-| 2    | Re-housing por dominio                                     | Concluida    | novos partials + redistribuicao por painel                                                        | `dashboard/tests/layout_partial_mapping.test.js`                                        |
-| 3    | Hierarquia visual e densidade                              | Concluida    | summary strip + intro por aba + disclosure progressivo                                            | `dashboard/tests/layout_hierarchy_density.test.js`, `summary_strip_runtime`             |
-| 4    | Responsividade por abas                                    | Concluida    | tablist horizontal + alvo de toque + contrato de overflow                                         | `tabs_responsiveness_contract`, `tables_overflow_contract`                              |
-| 5    | Hardening e rollout                                        | Concluida    | init idempotente + sincronia `aria-hidden`                                                        | `tabs_a11y.test.js`, `tabs_visibility_contract.test.js`                                 |
-| 6    | Deep-link por URL (`?tab=`)                                | Concluida    | sync de URL com `history.replaceState` e preservacao de params                                    | cobertura nova em `tabs_navigation.test.js`                                             |
-| 7    | Historico do navegador (`popstate`)                        | Concluida    | sync visual por `popstate` sem loop de rewrite                                                    | cobertura nova em `tabs_navigation.test.js`                                             |
-| 8    | Regressao cientifica (invariantes)                         | Concluida    | robustez para URL invalida e matriz multi-passo                                                   | `tabs_regression_matrix.test.js`                                                        |
-| 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida    | `scrollIntoView` em bootstrap/click/popstate                                                      | cobertura nova em `tabs_navigation.test.js`                                             |
-| 10   | Sub-hierarquia interna em Inteligencia                     | Concluida    | `dashboard/partials/intelligence_panel.html` (blocos + disclosure progressivo)                    | `dashboard/tests/intelligence_hierarchy_contract.test.js`                               |
-| 11   | Densidade e governanca no Control Plane                    | Concluida    | `dashboard/partials/control_plane.html` (secoes de governanca + disclosure progressivo)           | `dashboard/tests/control_plane_information_density.test.js`                             |
-| 12   | Refino de Analytics orientado a decisao                    | Concluida    | `dashboard/partials/analytics_logs.html` (decision brief + separacao runtime/timeline/persisted)  | `dashboard/tests/analytics_information_architecture.test.js`, `multi_channel_focus`     |
-| 13   | Consolidacao visual (reduzir inline styles)                | Planejada    | alvo: `dashboard/styles/layout.css`, `dashboard/styles/components.css`                            | alvo: `dashboard/tests/dashboard_style_consolidation_contract.test.js`                  |
-| 14   | Coerencia semantica, UI em ingles e resiliencia responsiva | Em progresso | `index.html` (`lang=en`) + traducao de strings em views/controllers + regra de prompt localizavel | `dashboard/tests/dashboard_semantic_consistency.test.js`, `multi_channel_focus.test.js` |
+| Fase | Objetivo sintetico                                         | Status    | Evidencia de implementacao principal                                                             | Evidencia de validacao principal                                                                                                                                  |
+| ---- | ---------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Shell de abas                                              | Concluida | `index.html`, `main.js`, `features/navigation/tabs.js`                                           | `dashboard/tests/tabs_navigation.test.js`                                                                                                                         |
+| 2    | Re-housing por dominio                                     | Concluida | novos partials + redistribuicao por painel                                                       | `dashboard/tests/layout_partial_mapping.test.js`                                                                                                                  |
+| 3    | Hierarquia visual e densidade                              | Concluida | summary strip + intro por aba + disclosure progressivo                                           | `dashboard/tests/layout_hierarchy_density.test.js`, `summary_strip_runtime`                                                                                       |
+| 4    | Responsividade por abas                                    | Concluida | tablist horizontal + alvo de toque + contrato de overflow                                        | `tabs_responsiveness_contract`, `tables_overflow_contract`                                                                                                        |
+| 5    | Hardening e rollout                                        | Concluida | init idempotente + sincronia `aria-hidden`                                                       | `tabs_a11y.test.js`, `tabs_visibility_contract.test.js`                                                                                                           |
+| 6    | Deep-link por URL (`?tab=`)                                | Concluida | sync de URL com `history.replaceState` e preservacao de params                                   | cobertura nova em `tabs_navigation.test.js`                                                                                                                       |
+| 7    | Historico do navegador (`popstate`)                        | Concluida | sync visual por `popstate` sem loop de rewrite                                                   | cobertura nova em `tabs_navigation.test.js`                                                                                                                       |
+| 8    | Regressao cientifica (invariantes)                         | Concluida | robustez para URL invalida e matriz multi-passo                                                  | `tabs_regression_matrix.test.js`                                                                                                                                  |
+| 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida | `scrollIntoView` em bootstrap/click/popstate                                                     | cobertura nova em `tabs_navigation.test.js`                                                                                                                       |
+| 10   | Sub-hierarquia interna em Inteligencia                     | Concluida | `dashboard/partials/intelligence_panel.html` (blocos + disclosure progressivo)                   | `dashboard/tests/intelligence_hierarchy_contract.test.js`                                                                                                         |
+| 11   | Densidade e governanca no Control Plane                    | Concluida | `dashboard/partials/control_plane.html` (secoes de governanca + disclosure progressivo)          | `dashboard/tests/control_plane_information_density.test.js`                                                                                                       |
+| 12   | Refino de Analytics orientado a decisao                    | Concluida | `dashboard/partials/analytics_logs.html` (decision brief + separacao runtime/timeline/persisted) | `dashboard/tests/analytics_information_architecture.test.js`, `multi_channel_focus`                                                                               |
+| 13   | Consolidacao visual (reduzir inline styles)                | Concluida | `dashboard/styles/components.css`, `dashboard/index.html`, partials operacionais consolidados    | `dashboard/tests/dashboard_style_consolidation_contract.test.js`, `dashboard/tests/dashboard_asset_import_integrity.test.js`                                      |
+| 14   | Coerencia semantica, UI em ingles e resiliencia responsiva | Concluida | `features/navigation/sticky-offset.js`, `main.js`, `styles/layout.css`, ajuste final de copy UI  | `dashboard/tests/sticky_offset_runtime.test.js`, `dashboard/tests/dashboard_semantic_consistency.test.js`, `dashboard/tests/tabs_responsiveness_contract.test.js` |
 
 Sequencia recomendada de execucao a partir do baseline atual:
 
-1. Fase 13 (consolidacao visual e reducao de inline).
-2. Fase 14 (coerencia semantica final e resiliencia responsiva).
+1. Plano de UX em abas concluido (fases 1-14 finalizadas).

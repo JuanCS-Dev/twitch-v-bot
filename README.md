@@ -74,6 +74,7 @@ O bot utiliza o cofre de segredos do Hugging Face (**Settings -> Variables and S
 
 - [Report de Cura (Forense)](docs/BYTE_AGENT_HEALING_REPORT_2026-02-24.md)
 - [Guia Geral de Operações](docs/DOCUMENTATION.md)
+- [Runbook de Deploy HF Spaces](docs/HF_SPACES_DEPLOY_RUNBOOK.md)
 - [Índice de Documentos](docs/INDEX.md)
 
 ---

@@ -137,6 +137,25 @@ def test_semantic_memory_repository_memory_roundtrip_and_search():
     assert matches[0]["similarity"] >= 0
 
 
+def test_semantic_memory_repository_exposes_search_settings_from_env():
+    cache: dict[str, list[dict[str, object]]] = {}
+    with patch.dict(
+        os.environ,
+        {
+            "SEMANTIC_MEMORY_MIN_SIMILARITY": "0.35",
+            "SEMANTIC_MEMORY_PGVECTOR_ENABLED": "0",
+        },
+        clear=False,
+    ):
+        repository = SemanticMemoryRepository(enabled=False, client=None, cache=cache)
+
+    settings = repository.search_settings_sync()
+
+    assert settings["pgvector_enabled"] is False
+    assert settings["pgvector_ready"] is False
+    assert settings["default_min_similarity"] == 0.35
+
+
 def test_persistence_layer_facade_shares_repository_caches():
     with patch.dict(os.environ, {}, clear=True):
         layer = PersistenceLayer()

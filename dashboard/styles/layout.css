@@ -147,7 +147,7 @@
 /* Abas da dashboard */
 .dashboard-tabs-shell {
   position: sticky;
-  top: 86px;
+  top: var(--dashboard-tabs-sticky-top, 0px);
   z-index: calc(var(--z-header) - 1);
   margin-top: calc(var(--spacing-2) * -1);
 }
@@ -296,7 +296,7 @@
   }
 
   .dashboard-tabs-shell {
-    top: 130px;
+    top: var(--dashboard-tabs-sticky-top, 0px);
   }
 
   .dashboard-tabs {

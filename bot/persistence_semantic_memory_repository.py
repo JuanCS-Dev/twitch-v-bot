@@ -36,6 +36,14 @@ def _read_bool_env(var_name: str, *, default: bool) -> bool:
     return default
 
 
+def _coerce_similarity_threshold(value: Any, *, default: float = -1.0) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = float(default)
+    return round(max(-1.0, min(1.0, parsed)), 6)
+
+
 class SemanticMemoryRepository:
     def __init__(
         self,
@@ -52,6 +60,10 @@ class SemanticMemoryRepository:
             default=True,
         )
         self._pgvector_rpc_functions = self._resolve_pgvector_rpc_functions()
+        self._default_min_similarity = _coerce_similarity_threshold(
+            os.environ.get("SEMANTIC_MEMORY_MIN_SIMILARITY"),
+            default=-1.0,
+        )
         self._pgvector_warning_emitted = False
 
     def _normalize_memory_type(self, memory_type: Any) -> str:
@@ -151,6 +163,28 @@ class SemanticMemoryRepository:
             "source": "supabase_pgvector",
         }
 
+    def _resolve_min_similarity(self, min_similarity: Any) -> float:
+        return _coerce_similarity_threshold(
+            min_similarity,
+            default=self._default_min_similarity,
+        )
+
+    def _filter_matches_by_similarity(
+        self,
+        matches: list[dict[str, Any]],
+        *,
+        min_similarity: float,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        filtered: list[dict[str, Any]] = []
+        for row in list(matches or []):
+            similarity = row.get("similarity")
+            score = float(similarity) if isinstance(similarity, int | float) else 0.0
+            if score < min_similarity:
+                continue
+            filtered.append(row)
+        return filtered[:limit]
+
     def _search_entries_pgvector_sync(
         self,
         channel_id: str,
@@ -158,6 +192,7 @@ class SemanticMemoryRepository:
         query_text: str,
         limit: int,
         search_limit: int,
+        min_similarity: float,
     ) -> list[dict[str, Any]] | None:
         if not self._pgvector_enabled or not self._enabled or not self._client:
             return None
@@ -187,7 +222,11 @@ class SemanticMemoryRepository:
                     ]
                     if not normalized_matches:
                         return None
-                    return normalized_matches[:limit]
+                    return self._filter_matches_by_similarity(
+                        normalized_matches,
+                        min_similarity=min_similarity,
+                        limit=limit,
+                    )
                 except Exception as error:
                     last_error = error
                     continue
@@ -200,6 +239,16 @@ class SemanticMemoryRepository:
             )
             self._pgvector_warning_emitted = True
         return None
+
+    def search_settings_sync(self) -> dict[str, Any]:
+        return {
+            "pgvector_enabled": bool(self._pgvector_enabled),
+            "pgvector_ready": bool(
+                self._pgvector_enabled and self._enabled and self._client is not None
+            ),
+            "rpc_functions": list(self._pgvector_rpc_functions),
+            "default_min_similarity": float(self._default_min_similarity),
+        }
 
     def _normalize_tags(self, tags: Any) -> list[str]:
         if tags in (None, ""):
@@ -434,24 +483,68 @@ class SemanticMemoryRepository:
         query: Any,
         limit: int = 5,
         search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
     ) -> list[dict[str, Any]]:
+        payload = self.search_entries_with_diagnostics_sync(
+            channel_id,
+            query=query,
+            limit=limit,
+            search_limit=search_limit,
+            min_similarity=min_similarity,
+            force_fallback=force_fallback,
+        )
+        return list(payload.get("matches") or [])
+
+    def search_entries_with_diagnostics_sync(
+        self,
+        channel_id: str,
+        *,
+        query: Any,
+        limit: int = 5,
+        search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
+    ) -> dict[str, Any]:
         safe_query = normalize_optional_text(
             query,
             field_name="semantic_memory_query",
             max_length=220,
         )
         if not safe_query:
-            return []
+            return {
+                "matches": [],
+                "engine": "none",
+                "candidate_count": 0,
+                "result_count": 0,
+                "min_similarity": self._resolve_min_similarity(min_similarity),
+                "force_fallback": bool(force_fallback),
+                **self.search_settings_sync(),
+            }
         safe_limit = coerce_history_limit(limit, default=5, maximum=20)
         safe_search_limit = coerce_history_limit(search_limit, default=60, maximum=360)
-        pgvector_matches = self._search_entries_pgvector_sync(
-            normalize_channel_id(channel_id) or "default",
-            query_text=safe_query,
-            limit=safe_limit,
-            search_limit=safe_search_limit,
-        )
-        if pgvector_matches is not None:
-            return pgvector_matches
+        safe_min_similarity = self._resolve_min_similarity(min_similarity)
+        safe_force_fallback = bool(force_fallback)
+        normalized_channel = normalize_channel_id(channel_id) or "default"
+
+        if not safe_force_fallback:
+            pgvector_matches = self._search_entries_pgvector_sync(
+                normalized_channel,
+                query_text=safe_query,
+                limit=safe_limit,
+                search_limit=safe_search_limit,
+                min_similarity=safe_min_similarity,
+            )
+            if pgvector_matches is not None:
+                return {
+                    "matches": pgvector_matches,
+                    "engine": "pgvector",
+                    "candidate_count": len(pgvector_matches),
+                    "result_count": len(pgvector_matches),
+                    "min_similarity": safe_min_similarity,
+                    "force_fallback": safe_force_fallback,
+                    **self.search_settings_sync(),
+                }
         candidates = self.load_channel_entries_sync(channel_id, limit=safe_search_limit)
         ranked = rank_semantic_matches(
             query_text=safe_query,
@@ -459,4 +552,17 @@ class SemanticMemoryRepository:
             limit=safe_limit,
             dimensions=EMBEDDING_DIMENSIONS,
         )
-        return ranked
+        filtered = self._filter_matches_by_similarity(
+            ranked,
+            min_similarity=safe_min_similarity,
+            limit=safe_limit,
+        )
+        return {
+            "matches": filtered,
+            "engine": "fallback",
+            "candidate_count": len(candidates),
+            "result_count": len(filtered),
+            "min_similarity": safe_min_similarity,
+            "force_fallback": safe_force_fallback,
+            **self.search_settings_sync(),
+        }

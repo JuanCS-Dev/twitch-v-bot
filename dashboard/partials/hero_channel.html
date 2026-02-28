@@ -5,10 +5,7 @@
     <p class="panel-hint">
       Channels monitored in parallel. No hostile terminal.
     </p>
-    <div
-      class="form-row"
-      style="align-items: center; margin-bottom: var(--spacing-3)"
-    >
+    <div class="form-row form-row-center form-row-mb-3">
       <span id="channelControlModeChip" class="chip pending"
         >Mode: loading</span
       >
@@ -19,7 +16,7 @@
     </p>
 
     <div class="form-row">
-      <div class="form-group" style="flex: 1">
+      <div class="form-group u-flex-1">
         <label for="channelLoginInput">Twitch Channel (login without @)</label>
         <input
           id="channelLoginInput"
@@ -46,17 +43,14 @@
       </div>
     </div>
 
-    <div class="form-group" style="opacity: 0.6; align-items: flex-end">
-      <label
-        for="adminTokenInput"
-        style="font-weight: normal; font-size: 0.7rem"
+    <div class="form-group form-group-muted-end">
+      <label for="adminTokenInput" class="text-normal-xs"
         >Admin Override Token</label
       >
       <input
         id="adminTokenInput"
-        class="form-control"
+        class="form-control admin-token-input"
         type="password"
-        style="font-size: 0.75rem; padding: 0.3rem 0.5rem; max-width: 250px"
         autocomplete="off"
         placeholder="Optional Auth"
       />
@@ -64,8 +58,7 @@
 
     <p
       id="channelFeedbackMsg"
-      class="panel-hint event-level-info"
-      style="margin-top: var(--spacing-3); font-style: italic"
+      class="panel-hint event-level-info panel-hint-mt-3 panel-hint-italic"
     >
       Waiting for action...
     </p>
@@ -73,41 +66,14 @@
 
   <article class="card tone-purple">
     <h2>Active Connections</h2>
-    <ul
-      id="connectedChannelsList"
-      class="events-list"
-      style="
-        margin-top: var(--spacing-3);
-        display: flex;
-        flex-wrap: wrap;
-        flex-direction: row;
-        gap: var(--spacing-2);
-        border: 0;
-        background: transparent;
-      "
-      >
+    <ul id="connectedChannelsList" class="events-list events-list-chips">
       <!-- Dynamic rendering for chips and drop buttons -->
     </ul>
-    <div
-      style="
-        margin-top: var(--spacing-4);
-        padding-top: var(--spacing-4);
-        border-top: 1px solid var(--border-default);
-      "
-    >
+    <div class="section-divider-top">
       <div
-        class="form-row"
-        style="
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--spacing-3);
-          margin-bottom: var(--spacing-2);
-        "
+        class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2"
       >
-        <div
-          class="form-row"
-          style="align-items: center; gap: var(--spacing-2); margin: 0"
-        >
+        <div class="form-row form-row-center form-row-gap-2 form-row-m0">
           <span class="chip">Dashboard Focus</span>
           <span id="dashboardChannelChip" class="chip pending">default</span>
         </div>
@@ -119,7 +85,7 @@
           Set Focus
         </button>
       </div>
-      <div class="form-group" style="margin: 0">
+      <div class="form-group form-group-mb-0">
         <label for="dashboardChannelInput">Focused dashboard channel</label>
         <input
           id="dashboardChannelInput"
@@ -130,11 +96,7 @@
           placeholder="ex: oisakura"
         />
       </div>
-      <p
-        id="dashboardChannelHint"
-        class="panel-hint"
-        style="margin-top: var(--spacing-2)"
-      >
+      <p id="dashboardChannelHint" class="panel-hint panel-hint-mt-2">
         Observability and context below follow this channel.
       </p>
     </div>

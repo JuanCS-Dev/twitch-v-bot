@@ -6,21 +6,13 @@
     </p>
 
     <!-- Data Viz Vanilla SVG: Autonomy Budget Donut Chart -->
-    <div
-      style="
-        display: flex;
-        gap: var(--spacing-5);
-        align-items: center;
-        justify-content: center;
-        margin: var(--spacing-5) 0;
-      "
-    >
-      <div style="position: relative; width: 80px; height: 80px">
+    <div class="autonomy-budget-visual">
+      <div class="autonomy-budget-donut-wrap">
         <svg
           width="80"
           height="80"
           viewBox="0 0 100 100"
-          style="transform: rotate(-90deg)"
+          class="autonomy-budget-svg"
         >
           <circle
             cx="50"
@@ -40,58 +32,16 @@
             stroke-width="10"
             stroke-dasharray="283"
             stroke-dashoffset="0"
-            style="
-              transition:
-                stroke-dashoffset var(--transition-elastic),
-                stroke var(--transition-med);
-            "
+            class="autonomy-budget-ring"
           ></circle>
         </svg>
-        <div
-          style="
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-          "
-        >
-          <span
-            id="autBudgetPctText"
-            style="
-              font-family: var(--font-family-display);
-              font-weight: 700;
-              font-size: 1.1rem;
-              line-height: 1;
-            "
-            >0%</span
-          >
+        <div class="autonomy-budget-center">
+          <span id="autBudgetPctText" class="autonomy-budget-percent">0%</span>
         </div>
       </div>
       <div>
-        <p
-          style="
-            margin: 0;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            font-weight: 600;
-          "
-        >
-          Budget Usage (60m)
-        </p>
-        <p
-          id="autBudgetUsage60m"
-          style="
-            margin: 0;
-            font-family: var(--font-family-mono);
-            font-size: 1.1rem;
-            color: var(--text-primary);
-          "
-        >
-          0 / 0
-        </p>
+        <p class="autonomy-budget-title">Budget Usage (60m)</p>
+        <p id="autBudgetUsage60m" class="autonomy-budget-value">0 / 0</p>
       </div>
     </div>
 
@@ -166,8 +116,8 @@
       </div>
     </details>
 
-    <div class="form-row" style="margin-top: var(--spacing-4)">
-      <div class="form-group" style="flex: 1">
+    <div class="form-row form-row-mt-4">
+      <div class="form-group u-flex-1">
         <label for="autTickReasonInput">Manual Tick Reason</label>
         <input
           id="autTickReasonInput"

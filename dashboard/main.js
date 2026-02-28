@@ -7,6 +7,7 @@ import { getClipsElements } from "./features/clips/view.js";
 import { getHudElements } from "./features/hud/view.js";
 import { getErrorMessage } from "./features/shared/errors.js";
 import { initDashboardTabs } from "./features/navigation/tabs.js";
+import { initDashboardStickyOffset } from "./features/navigation/sticky-offset.js";
 import { createObservabilityController } from "./features/observability/controller.js";
 import { createChannelControlController } from "./features/channel-control/controller.js";
 import { createControlPlaneController } from "./features/control-plane/controller.js";
@@ -23,6 +24,7 @@ async function bootstrapDashboard() {
   const aqEls = getActionQueueElements();
   const clipsEls = getClipsElements();
   const hudEls = getHudElements();
+  initDashboardStickyOffset();
   initDashboardTabs();
 
   const observabilityController = createObservabilityController({
@@ -112,9 +114,7 @@ async function bootstrapDashboard() {
     ]);
   } catch (err) {
     if (err.status === 403) {
-      console.warn(
-        "Bootstrap: access denied. Waiting for admin token input.",
-      );
+      console.warn("Bootstrap: access denied. Waiting for admin token input.");
     } else {
       console.error("Error during initial load:", err);
     }

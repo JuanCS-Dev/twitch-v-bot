@@ -94,22 +94,23 @@ export async function getSemanticMemorySnapshot(
   query = "",
   limit = 8,
   searchLimit = 60,
+  minSimilarity = "",
+  forceFallback = false,
 ) {
   return await fetchWithTimeout(
     `${SEMANTIC_MEMORY_ENDPOINT}${buildChannelQuery(channelId, {
       query: query || undefined,
       limit,
       search_limit: searchLimit,
+      min_similarity: minSimilarity !== "" ? minSimilarity : undefined,
+      force_fallback: forceFallback ? 1 : undefined,
     })}`,
     { method: "GET" },
     timeoutMs,
   );
 }
 
-export async function upsertSemanticMemoryEntry(
-  payload,
-  timeoutMs = 10000,
-) {
+export async function upsertSemanticMemoryEntry(payload, timeoutMs = 10000) {
   return await fetchWithTimeout(
     SEMANTIC_MEMORY_ENDPOINT,
     {
@@ -132,10 +133,7 @@ export async function getRevenueConversionsSnapshot(
   );
 }
 
-export async function postRevenueConversion(
-  payload,
-  timeoutMs = 10000,
-) {
+export async function postRevenueConversion(payload, timeoutMs = 10000) {
   return await fetchWithTimeout(
     REVENUE_CONVERSION_POST_ENDPOINT,
     {

@@ -1,6 +1,6 @@
 <section class="grid-two" id="clipsSection">
   <article class="panel">
-    <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="panel-header panel-header-row">
       <h2>Clips Pipeline</h2>
       <span class="chip">Live Mode</span>
     </div>
@@ -11,46 +11,68 @@
       <div class="skeleton-card"></div>
     </div>
 
-    <div id="clipsList" class="clips-list" style="max-height: 500px; overflow-y: auto;">
+    <div id="clipsList" class="clips-list events-scroll-500">
       <!-- Rendered by JS -->
     </div>
   </article>
 
   <article class="panel">
-      <h2>Clips & Vision Metrics</h2>
-      <dl class="kv" style="margin-bottom: var(--spacing-4);">
-          <div><dt>Active Jobs</dt><dd>-</dd></div>
-          <div><dt>Success (24h)</dt><dd>-</dd></div>
-          <div><dt>Failures (24h)</dt><dd>-</dd></div>
-      </dl>
-
-      <hr style="border: none; border-top: 1px solid var(--border-default)" />
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: var(--spacing-3);">
-        <h3 style="margin: 0;">Autonomous Vision (Phase 19)</h3>
-        <span id="visionStatusChip" class="chip pending">Idle</span>
+    <h2>Clips & Vision Metrics</h2>
+    <dl class="kv kv-mb-4">
+      <div>
+        <dt>Active Jobs</dt>
+        <dd>-</dd>
       </div>
-      <p class="panel-hint" style="margin-bottom: var(--spacing-3);">
-        The agent analyzes frames and creates clips automatically when match peaks are detected.
-      </p>
-
-      <dl class="kv" style="margin-bottom: var(--spacing-4);">
-          <div><dt>Frames Analyzed</dt><dd id="visionFramesCount">0</dd></div>
-          <div><dt>Last Frame At</dt><dd id="visionLastIngest">-</dd></div>
-      </dl>
-
-      <p class="panel-hint" style="margin-bottom: var(--spacing-2);">Last Scene Analysis:</p>
-      <div class="code-block" style="margin-bottom: var(--spacing-4); max-height: 120px; overflow-y: auto; font-size: 0.85rem;" id="visionLastAnalysis">
-        No analysis available.
+      <div>
+        <dt>Success (24h)</dt>
+        <dd>-</dd>
       </div>
-
-      <div class="form-row" style="gap: var(--spacing-2); align-items: center;">
-        <input type="file" id="visionIngestInput" accept="image/jpeg, image/png, image/webp" class="form-control" style="flex: 1; padding: 4px;" />
-        <button id="visionIngestBtn" class="btn btn-secondary" type="button">
-          Upload Manual Frame
-        </button>
+      <div>
+        <dt>Failures (24h)</dt>
+        <dd>-</dd>
       </div>
-      <p id="visionFeedback" class="panel-hint" style="margin-top: var(--spacing-2);">Waiting for upload...</p>
+    </dl>
 
+    <hr class="panel-divider" />
+
+    <div class="panel-header-row form-row-mt-3">
+      <h3 class="heading-reset">Autonomous Vision (Phase 19)</h3>
+      <span id="visionStatusChip" class="chip pending">Idle</span>
+    </div>
+    <p class="panel-hint panel-hint-mb-3">
+      The agent analyzes frames and creates clips automatically when match peaks
+      are detected.
+    </p>
+
+    <dl class="kv kv-mb-4">
+      <div>
+        <dt>Frames Analyzed</dt>
+        <dd id="visionFramesCount">0</dd>
+      </div>
+      <div>
+        <dt>Last Frame At</dt>
+        <dd id="visionLastIngest">-</dd>
+      </div>
+    </dl>
+
+    <p class="panel-hint panel-hint-mb-2">Last Scene Analysis:</p>
+    <div class="code-block code-block-scroll-120" id="visionLastAnalysis">
+      No analysis available.
+    </div>
+
+    <div class="form-row form-row-gap-2 form-row-center">
+      <input
+        type="file"
+        id="visionIngestInput"
+        accept="image/jpeg, image/png, image/webp"
+        class="form-control upload-input-compact"
+      />
+      <button id="visionIngestBtn" class="btn btn-secondary" type="button">
+        Upload Manual Frame
+      </button>
+    </div>
+    <p id="visionFeedback" class="panel-hint panel-hint-mt-2">
+      Waiting for upload...
+    </p>
   </article>
 </section>

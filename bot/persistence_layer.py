@@ -433,13 +433,19 @@ class PersistenceLayer:
         query: Any,
         limit: int = 5,
         search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
     ) -> list[dict[str, Any]]:
-        return self._semantic_memory_repo.search_entries_sync(
-            channel_id,
-            query=query,
-            limit=limit,
-            search_limit=search_limit,
-        )
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "limit": limit,
+            "search_limit": search_limit,
+        }
+        if min_similarity not in (None, ""):
+            kwargs["min_similarity"] = min_similarity
+        if force_fallback:
+            kwargs["force_fallback"] = True
+        return self._semantic_memory_repo.search_entries_sync(channel_id, **kwargs)
 
     async def search_semantic_memory_entries(
         self,
@@ -448,13 +454,73 @@ class PersistenceLayer:
         query: Any,
         limit: int = 5,
         search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
     ) -> list[dict[str, Any]]:
-        return self.search_semantic_memory_entries_sync(
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "limit": limit,
+            "search_limit": search_limit,
+        }
+        if min_similarity not in (None, ""):
+            kwargs["min_similarity"] = min_similarity
+        if force_fallback:
+            kwargs["force_fallback"] = True
+        return self.search_semantic_memory_entries_sync(channel_id, **kwargs)
+
+    def search_semantic_memory_entries_with_diagnostics_sync(
+        self,
+        channel_id: str,
+        *,
+        query: Any,
+        limit: int = 5,
+        search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "limit": limit,
+            "search_limit": search_limit,
+        }
+        if min_similarity not in (None, ""):
+            kwargs["min_similarity"] = min_similarity
+        if force_fallback:
+            kwargs["force_fallback"] = True
+        return self._semantic_memory_repo.search_entries_with_diagnostics_sync(
             channel_id,
-            query=query,
-            limit=limit,
-            search_limit=search_limit,
+            **kwargs,
         )
+
+    async def search_semantic_memory_entries_with_diagnostics(
+        self,
+        channel_id: str,
+        *,
+        query: Any,
+        limit: int = 5,
+        search_limit: int = 60,
+        min_similarity: Any = None,
+        force_fallback: bool = False,
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "limit": limit,
+            "search_limit": search_limit,
+        }
+        if min_similarity not in (None, ""):
+            kwargs["min_similarity"] = min_similarity
+        if force_fallback:
+            kwargs["force_fallback"] = True
+        return self.search_semantic_memory_entries_with_diagnostics_sync(
+            channel_id,
+            **kwargs,
+        )
+
+    def get_semantic_memory_search_settings_sync(self) -> dict[str, Any]:
+        return self._semantic_memory_repo.search_settings_sync()
+
+    async def get_semantic_memory_search_settings(self) -> dict[str, Any]:
+        return self.get_semantic_memory_search_settings_sync()
 
     def load_observability_rollup_sync(self) -> dict[str, Any] | None:
         cached = self._observability_rollup_cache

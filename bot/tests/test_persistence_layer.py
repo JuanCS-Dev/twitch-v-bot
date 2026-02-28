@@ -968,6 +968,49 @@ class TestPersistenceLayer(unittest.IsolatedAsyncioTestCase):
             search_limit=20,
         )
 
+    def test_semantic_memory_search_with_diagnostics_delegates_with_tuning(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer._semantic_memory_repo,
+            "search_entries_with_diagnostics_sync",
+            return_value={"matches": [], "engine": "fallback"},
+        ) as mock_search:
+            payload = layer.search_semantic_memory_entries_with_diagnostics_sync(
+                "Canal_A",
+                query="lore",
+                limit=2,
+                search_limit=20,
+                min_similarity=0.5,
+                force_fallback=True,
+            )
+
+        self.assertEqual(payload["engine"], "fallback")
+        mock_search.assert_called_once_with(
+            "Canal_A",
+            query="lore",
+            limit=2,
+            search_limit=20,
+            min_similarity=0.5,
+            force_fallback=True,
+        )
+
+    async def test_semantic_memory_search_settings_async_delegates_to_sync(self):
+        with patch.dict(os.environ, {}, clear=True):
+            layer = PersistenceLayer()
+
+        with patch.object(
+            layer,
+            "get_semantic_memory_search_settings_sync",
+            return_value={"pgvector_enabled": True, "default_min_similarity": -1.0},
+        ) as mock_settings:
+            payload = await layer.get_semantic_memory_search_settings()
+
+        self.assertTrue(payload["pgvector_enabled"])
+        self.assertEqual(payload["default_min_similarity"], -1.0)
+        mock_settings.assert_called_once_with()
+
     def test_observability_rollup_memory_fallback_when_disabled(self):
         with patch.dict(os.environ, {}, clear=True):
             layer = PersistenceLayer()

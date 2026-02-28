@@ -22,7 +22,11 @@ import {
   triggerOpsPlaybook,
 } from "../features/action-queue/api.js";
 import { triggerAutonomyTick } from "../features/autonomy/api.js";
-import { fetchClipJobs, fetchVisionStatus, postVisionIngest } from "../features/clips/api.js";
+import {
+  fetchClipJobs,
+  fetchVisionStatus,
+  postVisionIngest,
+} from "../features/clips/api.js";
 import { fetchHudMessages } from "../features/hud/api.js";
 import {
   getChannelContextSnapshot,
@@ -114,7 +118,11 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   await suspendAgent({ reason: "panic_button" });
   await resumeAgent({ reason: "manual_dashboard" });
   await getWebhooks("Canal_A");
-  await updateWebhook({ channel_id: "canal_a", url: "http://test", is_active: true });
+  await updateWebhook({
+    channel_id: "canal_a",
+    url: "http://test",
+    is_active: true,
+  });
   await testWebhook({ channel_id: "canal_a" });
 
   assert.ok(findCall(calls, "/api/control-plane", "GET"));
@@ -150,7 +158,10 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   assert.ok(findCall(calls, "/api/webhooks?channel=canal_a", "GET"));
   const updateWebhookCall = findCall(calls, "/api/webhooks", "PUT");
   assert.ok(updateWebhookCall);
-  assert.equal(JSON.parse(String(updateWebhookCall.options.body)).url, "http://test");
+  assert.equal(
+    JSON.parse(String(updateWebhookCall.options.body)).url,
+    "http://test",
+  );
 
   assert.ok(findCall(calls, "/api/webhooks/test", "POST"));
 });
@@ -177,6 +188,7 @@ test("operational runtime APIs keep backend contract", async () => {
   await getSentimentScoresSnapshot("Canal_Z");
   await getPostStreamReportSnapshot("Canal_Z", 10000, true);
   await getSemanticMemorySnapshot("Canal_Z", 10000, "lore", 6, 50);
+  await getSemanticMemorySnapshot("Canal_Z", 10000, "lore", 6, 50, 0.35, true);
   await upsertSemanticMemoryEntry({
     channel_id: "canal_z",
     content: "Priorizar lore sem spoiler",
@@ -255,6 +267,13 @@ test("operational runtime APIs keep backend contract", async () => {
     findCall(
       calls,
       "/api/semantic-memory?channel=canal_z&query=lore&limit=6&search_limit=50",
+      "GET",
+    ),
+  );
+  assert.ok(
+    findCall(
+      calls,
+      "/api/semantic-memory?channel=canal_z&query=lore&limit=6&search_limit=50&min_similarity=0.35&force_fallback=1",
       "GET",
     ),
   );

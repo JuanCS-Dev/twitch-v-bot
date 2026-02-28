@@ -6,56 +6,33 @@
       low-frequency settings stay in progressive disclosure.
     </p>
 
-    <div
-      class="form-row"
-      style="align-items: center; margin-bottom: var(--spacing-3)"
-    >
+    <div class="form-row form-row-center form-row-mb-3">
       <span id="cpModeChip" class="chip pending">MODE</span>
       <span id="cpResponseContract" class="chip"
         >Active contract: 1 message / 4 lines.</span
       >
     </div>
-    <p
-      id="cpCapabilitiesLine"
-      class="panel-hint"
-      style="margin-bottom: var(--spacing-4)"
-    >
+    <p id="cpCapabilitiesLine" class="panel-hint panel-hint-mb-4">
       Loading capabilities...
     </p>
 
     <section
       id="cpOperationalControlSection"
       aria-labelledby="cpOperationalControlHeading"
-      style="
-        margin-bottom: var(--spacing-4);
-        padding: var(--spacing-4);
-        background: var(--bg-base);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-default);
-      "
+      class="section-surface"
     >
       <div
-        class="form-row"
-        style="
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--spacing-3);
-          margin-bottom: var(--spacing-2);
-        "
+        class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2"
       >
-        <h3 id="cpOperationalControlHeading" style="margin: 0">
+        <h3 id="cpOperationalControlHeading" class="heading-reset">
           Operational Control
         </h3>
         <span id="cpAgentStatusChip" class="chip pending">RUNNING</span>
       </div>
-      <p
-        id="cpAgentStatusHint"
-        class="panel-hint"
-        style="margin-bottom: var(--spacing-3)"
-      >
+      <p id="cpAgentStatusHint" class="panel-hint panel-hint-mb-3">
         Operational agent.
       </p>
-      <div class="form-row" style="gap: var(--spacing-2); margin: 0">
+      <div class="form-row form-row-gap-2 form-row-m0">
         <button id="cpSuspendBtn" class="btn btn-danger" type="button">
           Panic Suspend
         </button>
@@ -68,35 +45,20 @@
     <section
       id="cpChannelDirectivesSection"
       aria-labelledby="cpChannelDirectivesHeading"
-      style="
-        margin-bottom: var(--spacing-4);
-        padding: var(--spacing-4);
-        background: var(--bg-base);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-default);
-      "
+      class="section-surface"
     >
       <div
-        class="form-row"
-        style="
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--spacing-3);
-          margin-bottom: var(--spacing-2);
-        "
+        class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2"
       >
-        <div
-          class="form-row"
-          style="align-items: center; gap: var(--spacing-2); margin: 0"
-        >
-          <h3 id="cpChannelDirectivesHeading" style="margin: 0">
+        <div class="form-row form-row-center form-row-gap-2 form-row-m0">
+          <h3 id="cpChannelDirectivesHeading" class="heading-reset">
             Channel Directives
           </h3>
           <span id="cpChannelConfigStatusChip" class="chip pending"
             >MODEL DEFAULT</span
           >
         </div>
-        <div class="form-row" style="gap: var(--spacing-2); margin: 0">
+        <div class="form-row form-row-gap-2 form-row-m0">
           <button
             id="cpLoadChannelConfigBtn"
             class="btn btn-secondary"
@@ -114,19 +76,12 @@
         </div>
       </div>
 
-      <p
-        id="cpChannelConfigHint"
-        class="panel-hint"
-        style="margin: 0 0 var(--spacing-3) 0"
-      >
+      <p id="cpChannelConfigHint" class="panel-hint panel-hint-m0-mb-3">
         Overrides persisted in <code>channels_config</code>.
       </p>
 
-      <div
-        class="form-row"
-        style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
-      >
-        <div class="form-group" style="min-width: 170px">
+      <div class="form-row form-row-wrap form-row-mb-2">
+        <div class="form-group form-group-min-170">
           <label for="cpChannelConfigId">Channel</label>
           <input
             id="cpChannelConfigId"
@@ -135,7 +90,7 @@
             value="default"
           />
         </div>
-        <div class="form-group" style="min-width: 150px">
+        <div class="form-group form-group-min-150">
           <label for="cpChannelTemperature">Temperature</label>
           <input
             id="cpChannelTemperature"
@@ -147,7 +102,7 @@
             placeholder="0.15"
           />
         </div>
-        <div class="form-group" style="min-width: 150px">
+        <div class="form-group form-group-min-150">
           <label for="cpChannelTopP">Top P</label>
           <input
             id="cpChannelTopP"
@@ -159,8 +114,8 @@
             placeholder="auto"
           />
         </div>
-        <div class="form-group" style="min-width: 220px">
-          <label class="toggle-switch" style="margin-top: 1.4rem">
+        <div class="form-group form-group-min-220">
+          <label class="toggle-switch toggle-switch-mt-14">
             <input id="cpChannelAgentPaused" type="checkbox" />
             <span class="toggle-slider"></span>
             Pause/Silence on this channel
@@ -172,14 +127,7 @@
     <details class="advanced-settings">
       <summary>Identity + Agent Notes</summary>
       <div class="advanced-settings-content">
-        <div
-          class="form-row"
-          style="
-            align-items: center;
-            gap: var(--spacing-2);
-            margin-bottom: var(--spacing-2);
-          "
-        >
+        <div class="form-row form-row-center form-row-gap-2 form-row-mb-2">
           <span id="cpChannelIdentityStatusChip" class="chip pending"
             >IDENTITY CLEAR</span
           >
@@ -188,28 +136,17 @@
           >
         </div>
 
-        <p
-          id="cpChannelIdentityHint"
-          class="panel-hint"
-          style="margin: 0 0 var(--spacing-1) 0"
-        >
+        <p id="cpChannelIdentityHint" class="panel-hint panel-hint-m0-mb-1">
           Identity persisted in <code>channel_identity</code> and applied to the
           system prompt.
         </p>
-        <p
-          id="cpAgentNotesHint"
-          class="panel-hint"
-          style="margin: 0 0 var(--spacing-3) 0"
-        >
+        <p id="cpAgentNotesHint" class="panel-hint panel-hint-m0-mb-3">
           Notes persisted in <code>agent_notes</code> and injected into the
           prompt.
         </p>
 
-        <div
-          class="form-row"
-          style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
-        >
-          <div class="form-group" style="min-width: 220px">
+        <div class="form-row form-row-wrap form-row-mb-2">
+          <div class="form-group form-group-min-220">
             <label for="cpChannelPersonaName">Persona Name</label>
             <input
               id="cpChannelPersonaName"
@@ -219,7 +156,7 @@
               placeholder="e.g. Byte Coach"
             />
           </div>
-          <div class="form-group" style="min-width: 280px">
+          <div class="form-group form-group-min-280">
             <label for="cpChannelTone">Tone</label>
             <input
               id="cpChannelTone"
@@ -231,11 +168,8 @@
           </div>
         </div>
 
-        <div
-          class="form-row"
-          style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
-        >
-          <div class="form-group" style="min-width: 260px; flex: 1">
+        <div class="form-row form-row-wrap form-row-mb-2">
+          <div class="form-group form-group-min-260 u-flex-1">
             <label for="cpChannelEmoteVocab">Emote Vocab (csv)</label>
             <input
               id="cpChannelEmoteVocab"
@@ -247,7 +181,7 @@
           </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: var(--spacing-2)">
+        <div class="form-group form-group-mb-2">
           <label for="cpChannelLore">Lore / Continuity</label>
           <textarea
             id="cpChannelLore"
@@ -257,7 +191,7 @@
             placeholder="Recurring channel context to keep reply continuity."
           ></textarea>
         </div>
-        <div class="form-group" style="margin-bottom: 0">
+        <div class="form-group form-group-mb-0">
           <label for="cpAgentNotes">Operational Notes</label>
           <textarea
             id="cpAgentNotes"
@@ -272,17 +206,12 @@
     <section
       id="cpGoalsSchedulerSection"
       aria-labelledby="cpGoalsSchedulerHeading"
-      style="margin-top: var(--spacing-4)"
+      class="form-row-mt-4"
     >
-      <div
-        class="form-row"
-        style="
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: var(--spacing-2);
-        "
-      >
-        <h3 id="cpGoalsSchedulerHeading" style="margin: 0">Goals Scheduler</h3>
+      <div class="form-row form-row-between form-row-center form-row-mb-2">
+        <h3 id="cpGoalsSchedulerHeading" class="heading-reset">
+          Goals Scheduler
+        </h3>
         <button id="cpAddGoalBtn" class="btn btn-secondary" type="button">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -301,7 +230,7 @@
           Add Goal
         </button>
       </div>
-      <p class="panel-hint" style="margin-bottom: var(--spacing-2)">
+      <p class="panel-hint panel-hint-mb-2">
         Goal cards define intent, urgency and KPI contract before persistence.
       </p>
       <ul id="cpGoalsList" class="events-list"></ul>
@@ -310,11 +239,8 @@
     <details class="advanced-settings">
       <summary>Advanced Budget, Cooldowns and Webhooks</summary>
       <div class="advanced-settings-content">
-        <div
-          class="form-row"
-          style="flex-wrap: wrap; margin-bottom: var(--spacing-3)"
-        >
-          <div class="form-group" style="min-width: 170px">
+        <div class="form-row form-row-wrap form-row-mb-3">
+          <div class="form-group form-group-min-170">
             <label class="toggle-switch">
               <input id="cpAutonomyEnabled" type="checkbox" />
               <span class="toggle-slider"></span>
@@ -323,11 +249,8 @@
           </div>
         </div>
 
-        <div
-          class="form-row"
-          style="flex-wrap: wrap; margin-bottom: var(--spacing-4)"
-        >
-          <div class="form-group" style="min-width: 140px">
+        <div class="form-row form-row-wrap form-row-mb-4">
+          <div class="form-group form-group-min-140">
             <label for="cpHeartbeatInterval">Heartbeat (s)</label>
             <input
               id="cpHeartbeatInterval"
@@ -338,7 +261,7 @@
               step="1"
             />
           </div>
-          <div class="form-group" style="min-width: 140px">
+          <div class="form-group form-group-min-140">
             <label for="cpMinCooldown">Cooldown (s)</label>
             <input
               id="cpMinCooldown"
@@ -349,7 +272,7 @@
               step="1"
             />
           </div>
-          <div class="form-group" style="min-width: 140px">
+          <div class="form-group form-group-min-140">
             <label for="cpActionIgnoreAfter">Auto-ignore (s)</label>
             <input
               id="cpActionIgnoreAfter"
@@ -362,8 +285,8 @@
           </div>
         </div>
 
-        <div class="form-row" style="flex-wrap: wrap">
-          <div class="form-group" style="min-width: 140px">
+        <div class="form-row form-row-wrap">
+          <div class="form-group form-group-min-140">
             <label for="cpBudget10m">Budget 10m</label>
             <input
               id="cpBudget10m"
@@ -374,7 +297,7 @@
               step="1"
             />
           </div>
-          <div class="form-group" style="min-width: 140px">
+          <div class="form-group form-group-min-140">
             <label for="cpBudget60m">Budget 60m</label>
             <input
               id="cpBudget60m"
@@ -385,7 +308,7 @@
               step="1"
             />
           </div>
-          <div class="form-group" style="min-width: 140px">
+          <div class="form-group form-group-min-140">
             <label for="cpBudgetDaily">Daily Budget</label>
             <input
               id="cpBudgetDaily"
@@ -398,30 +321,13 @@
           </div>
         </div>
 
-        <div
-          style="
-            margin-top: var(--spacing-4);
-            border-top: 1px solid var(--border-default);
-            padding-top: var(--spacing-4);
-          "
-        >
-          <h4
-            style="
-              margin: 0 0 var(--spacing-2) 0;
-              font-size: 0.9rem;
-              color: var(--text-primary);
-            "
-          >
-            Outbound Webhooks
-          </h4>
-          <p class="panel-hint" style="margin-bottom: var(--spacing-3)">
+        <div class="section-divider-top">
+          <h4 class="heading-xs-strong">Outbound Webhooks</h4>
+          <p class="panel-hint panel-hint-mb-3">
             Configure an endpoint to receive agent events (Phase 18).
           </p>
-          <div
-            class="form-row"
-            style="flex-wrap: wrap; margin-bottom: var(--spacing-2)"
-          >
-            <div class="form-group" style="min-width: 220px; flex: 2">
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-220 u-flex-2">
               <label for="cpWebhookUrl">Webhook URL</label>
               <input
                 id="cpWebhookUrl"
@@ -430,7 +336,7 @@
                 placeholder="https://api.example.com/webhooks/byte"
               />
             </div>
-            <div class="form-group" style="min-width: 180px; flex: 1">
+            <div class="form-group form-group-min-180 u-flex-1">
               <label for="cpWebhookSecret">HMAC Secret (optional)</label>
               <input
                 id="cpWebhookSecret"
@@ -440,14 +346,7 @@
               />
             </div>
           </div>
-          <div
-            class="form-row"
-            style="
-              align-items: center;
-              justify-content: space-between;
-              gap: var(--spacing-3);
-            "
-          >
+          <div class="form-row form-row-center form-row-between form-row-gap-3">
             <label class="toggle-switch">
               <input id="cpWebhookActive" type="checkbox" checked />
               <span class="toggle-slider"></span>
@@ -465,7 +364,7 @@
       </div>
     </details>
 
-    <div class="form-row" style="margin-top: var(--spacing-5)">
+    <div class="form-row form-row-mt-5">
       <button id="cpSaveBtn" class="btn btn-primary" type="button">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -490,11 +389,7 @@
         Reload
       </button>
     </div>
-    <p
-      id="cpFeedbackMsg"
-      class="panel-hint event-level-info"
-      style="margin-top: var(--spacing-2)"
-    >
+    <p id="cpFeedbackMsg" class="panel-hint event-level-info panel-hint-mt-2">
       Waiting for configuration...
     </p>
   </article>

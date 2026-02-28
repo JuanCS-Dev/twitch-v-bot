@@ -19,8 +19,8 @@
         <p class="brand-kicker">BYTE // TWITCH OPERATIONS</p>
         <h1>Byte Live Observability</h1>
         <p>
-          Telemetry for operations runtime, AI health, and transactional
-          control across streaming channels.
+          Telemetry for operations runtime, AI health, and transactional control
+          across streaming channels.
         </p>
       </div>
       <div class="topbar-right">
@@ -303,7 +303,7 @@
           document.body.appendChild(script);
         } catch (err) {
           console.error("Critical error loading dashboard partials:", err);
-          document.body.innerHTML = `<div style="padding:2rem; color:red;"><h1>Fatal Error</h1><p>Failed to load dashboard components. Check console.</p></div>`;
+          document.body.innerHTML = `<div class="fatal-error-screen"><h1>Fatal Error</h1><p>Failed to load dashboard components. Check console.</p></div>`;
         }
       }
 

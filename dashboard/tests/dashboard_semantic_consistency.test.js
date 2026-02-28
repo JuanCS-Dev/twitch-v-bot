@@ -31,6 +31,9 @@ test("operational ui copy uses english while keeping prompt fallback in portugue
     "../features/control-plane/controller.js",
   );
   const controlPlaneView = readText("../features/control-plane/view.js");
+  const actionQueueController = readText(
+    "../features/action-queue/controller.js",
+  );
 
   assert.match(
     channelControlView,
@@ -46,6 +49,10 @@ test("operational ui copy uses english while keeping prompt fallback in portugue
 
   assert.match(controlPlaneView, /since \$\{autonomy\.suspended_at\}/);
   assert.doesNotMatch(controlPlaneView, / desde /);
+
+  assert.match(actionQueueController, /Risk queue refreshed \(\$\{/);
+  assert.doesNotMatch(actionQueueController, /Fila atualizada/i);
+  assert.doesNotMatch(actionQueueController, /itens/i);
 
   // Prompt text can remain localized for national streamer rollout.
   assert.ok(controlPlaneView.includes("`Objetivo ${index + 1}.`"));
