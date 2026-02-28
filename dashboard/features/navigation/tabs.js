@@ -178,12 +178,20 @@ export function initDashboardTabs({
   const eventTarget = getEventTargetFromRef(eventTargetRef);
   let activeTabId = "";
 
+  function isKnownTabId(candidateTabId) {
+    const normalizedCandidate = String(candidateTabId || "").trim();
+    if (!normalizedCandidate) {
+      return false;
+    }
+    const hasTab = tabs.some(
+      (tab) => String(tab.dataset.dashboardTab || "") === normalizedCandidate,
+    );
+    return hasTab && panelByTabId.has(normalizedCandidate);
+  }
+
   function resolveTargetTabId(candidateTabId) {
     const target = String(candidateTabId || "").trim();
-    const hasTab = tabs.some(
-      (tab) => String(tab.dataset.dashboardTab || "") === target,
-    );
-    if (target && hasTab && panelByTabId.has(target)) {
+    if (isKnownTabId(target)) {
       return target;
     }
     return String(tabs[0].dataset.dashboardTab || "").trim();
@@ -252,18 +260,23 @@ export function initDashboardTabs({
   );
   const tabFromLocation = readTabIdFromLocation(location);
   const storedTabId = readStoredTabId(storage);
+  const selectedTabId = String(
+    selectedInMarkup?.dataset?.dashboardTab || "",
+  ).trim();
   const initialCandidateTabId =
-    tabFromLocation || storedTabId || selectedInMarkup?.dataset?.dashboardTab;
+    (isKnownTabId(tabFromLocation) && tabFromLocation) ||
+    (isKnownTabId(storedTabId) && storedTabId) ||
+    (isKnownTabId(selectedTabId) && selectedTabId);
   const initialTabId = resolveTargetTabId(initialCandidateTabId);
   activateTab(initialTabId, { persist: false, syncUrl: true });
 
   if (eventTarget && typeof eventTarget.addEventListener === "function") {
     eventTarget.addEventListener("popstate", () => {
       const nextTabId = readTabIdFromLocation(location);
-      if (!nextTabId) {
+      if (!isKnownTabId(nextTabId)) {
         return;
       }
-      const resolvedTabId = resolveTargetTabId(nextTabId);
+      const resolvedTabId = String(nextTabId).trim();
       if (resolvedTabId === activeTabId) {
         return;
       }

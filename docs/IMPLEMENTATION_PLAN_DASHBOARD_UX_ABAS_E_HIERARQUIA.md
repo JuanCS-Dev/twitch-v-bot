@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: concluido (fases 1-7 entregues)
+Status: concluido (fases 1-8 entregues)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 
 ## 1) Diagnostico atual (baseado no codigo)
@@ -159,6 +159,19 @@ Entrega:
 Entrega:
 
 - Navegacao de abas consistente com historico do browser.
+
+### Fase 8 - Regressao cientifica (matriz de invariantes)
+
+- Adicionar suite deterministica de regressao com sequencias multi-passo de navegacao.
+- Validar invariantes a cada transicao:
+  - exatamente uma aba ativa (`aria-selected=true`, `tabIndex=0`);
+  - exatamente um painel visivel (`hidden=false`, `aria-hidden=false`);
+  - coerencia entre estado visual, `localStorage`, URL e historico.
+- Cobrir cenarios invalidos de `?tab=` (bootstrap e `popstate`) sem degradar estado valido existente.
+
+Entrega:
+
+- Protecao forte contra regressao comportamental da UX em abas.
 
 ## 6) Regras de nao regressao
 
@@ -323,4 +336,18 @@ Validacao minima por fase:
 - Validacao executada:
   - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
   - `node --test dashboard/tests/tabs_navigation.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Fase 8 concluida (regressao cientifica)
+
+- Robustez de inicializacao em `dashboard/features/navigation/tabs.js`:
+  - `?tab=` invalido nao sobrepoe estado valido de `localStorage`/markup;
+  - `popstate` com `?tab=` ausente/invalido e ignorado (sem troca espuria de aba).
+- Nova suite de regressao em `dashboard/tests/tabs_regression_matrix.test.js`:
+  - fallback de bootstrap com URL invalida + storage valido;
+  - protecao de estado em `popstate` invalido/ausente;
+  - matriz deterministica multi-passo com invariantes de `aria`, visibilidade, URL, historico e persistencia.
+- Validacao executada:
+  - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js dashboard/tests/tabs_regression_matrix.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
+  - `node --test dashboard/tests/tabs_navigation.test.js dashboard/tests/tabs_regression_matrix.test.js`
   - `node --test dashboard/tests/*.test.js`
