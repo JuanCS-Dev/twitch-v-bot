@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.31
+**Versão:** 1.32
 **Data:** 28 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) + Fases 14-21 concluídas ✅ | Backlog ativo: índices ANN avançados por escala (futuro)
+**Status:** Fases antigas (1-13) + Fases 14-21 concluídas ✅ | Backlog ativo: Fase 22 (Prompt/Persona + model routing) e índices ANN avançados por escala
 
 ---
 
@@ -43,6 +43,7 @@
 | **19**  | Autonomous Clip Suggestion Intelligence                  | Exposição de métricas e ingest manual em `dashboard/partials/clips_section.html`, engine visual acoplada ao Autonomy (`bot/vision_runtime.py`), endpoints `/api/vision/status` e `/api/vision/ingest` consolidados como `integrated`.                                                                                                                                                                                                                                                                                                                                                       | `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                                                                                                                                                                         | ✅     |
 | **20**  | Otimização ANN de Memória Semântica com `pgvector`       | `bot/persistence_semantic_memory_repository.py` com busca via RPC (`semantic_memory_search_pgvector`/`semantic_memory_search`) e fallback automático para ranking determinístico atual; flags `SEMANTIC_MEMORY_PGVECTOR_ENABLED` e `SEMANTIC_MEMORY_PGVECTOR_RPC`.                                                                                                                                                                                                                                                                                                                          | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_semantic_memory.py`, `bot/tests/test_dashboard_routes_v3.py -k semantic_memory`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`, `node --test dashboard/tests/api_contract_parity.test.js`                                                                  | ✅     |
 | **21**  | Tuning operacional ANN + diagnóstico de engine semântica | `bot/persistence_semantic_memory_repository.py` com `SEMANTIC_MEMORY_MIN_SIMILARITY`, busca com `min_similarity`/`force_fallback`, `search_settings_sync()` e `search_entries_with_diagnostics_sync()`; facade expandida em `bot/persistence_layer.py`; rota `/api/semantic-memory` com query params de tuning e payload com `search_settings`/`search_diagnostics`; UI integrada no painel atual em `dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/api.js`, `dashboard/features/observability/controller.js`, `dashboard/features/observability/view.js`. | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`                                                 | ✅     |
+| **22**  | Prompt & Persona Studio + model routing por atividade    | **Planejada** para implementação no layout atual: persistência por canal de prompt/persona e mapeamento de modelo por atividade, integração no runtime de inferência e APIs de configuração. Alvos principais: `bot/persistence_layer.py`, novo repositório dedicado de prompt profile, `bot/logic_inference.py`, `bot/dashboard_server_routes.py`, `dashboard/partials/control_plane.html`, `dashboard/features/control-plane/*`.                                                                                                                                                          | **Planejada**: novos testes de repositório/facade/runtime/rotas em `bot/tests/*`, cobertura de UI e contrato em `dashboard/tests/multi_channel_focus.test.js` e `dashboard/tests/api_contract_parity.test.js`, mais gates `python -m bot.dashboard_parity_gate` e `python -m bot.structural_health_gate`.                                                                                                                                                 | ⏳     |
 
 ---
 
@@ -68,7 +69,36 @@
 
 ## 4. Backlog Prioritário (Fases Futuras)
 
-1. **Evolução futura:** índices ANN avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
+1. **Fase 22 (prioridade alta): Prompt & Persona Studio + model routing por atividade.**
+2. **Evolução ANN:** índices avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
+
+### 4.1 Escopo planejado da Fase 22
+
+- Objetivo operacional: permitir configurar via dashboard os prompts-base, persona do agent e o modelo por atividade, sem ajuste manual em código/env.
+- Integração visual: manter no layout atual (aba `Configuration` / `Control Plane`), sem dashboard paralela e com UI em inglês.
+- Persistência por canal:
+  - `system_prompt` e variações por domínio.
+  - `persona_profile` estruturado (tone, style, constraints, banned patterns).
+  - `activity_model_routing` (`activity -> model`).
+- Runtime/inferência:
+  - resolução de modelo por atividade com fallback para defaults globais.
+  - injeção de prompt/persona por canal preservando isolamento multi-canal.
+  - compatibilidade com configuração atual quando não houver profile salvo.
+- API/Dashboard planejados:
+  - `GET/PUT /api/prompt-profile?channel=...`
+  - `GET /api/models/catalog`
+  - seção no `Control Plane` com editor de prompt-base, persona e matriz de roteamento de modelo por atividade.
+- Atividades iniciais para roteamento:
+  - `chat_reply`
+  - `sentiment_analysis`
+  - `coaching_generation`
+  - `post_stream_report`
+  - `clip_intelligence`
+  - `semantic_memory_enrichment`
+- Estratégia de validação da fase:
+  - testes backend (repositório/facade/runtime/rotas) para persistência e resolução correta de modelo.
+  - testes dashboard para fluxo real de load/edit/save e contrato de API.
+  - execução de gates de paridade e saúde estrutural no fechamento da etapa.
 
 ---
 
