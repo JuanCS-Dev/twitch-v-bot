@@ -486,6 +486,26 @@ DoD adicional do ciclo de refinamento UX (fases 10-14):
   - `node --test dashboard/tests/intelligence_hierarchy_contract.test.js`
   - `node --test dashboard/tests/*.test.js`
 
+### 2026-02-28 - Fase 11 concluida (densidade e governanca no Control Plane)
+
+- `dashboard/partials/control_plane.html` reorganizado por dominios de governanca:
+  - `Operational Control`;
+  - `Channel Directives`;
+  - `Identity + Agent Notes` (progressive disclosure);
+  - `Goals Scheduler`;
+  - `Advanced Budget, Cooldowns and Webhooks` (progressive disclosure).
+- Contratos de IDs preservados para controllers existentes em `dashboard/features/control-plane/view.js` e fluxos associados.
+- Cobertura nova:
+  - `dashboard/tests/control_plane_information_density.test.js`
+    - valida ordem/hierarquia dos blocos de governanca;
+    - valida exatamente dois blocos `details.advanced-settings`;
+    - valida mapeamento de IDs criticos para os blocos corretos;
+    - valida unicidade de IDs de acoes principais.
+- Validacao executada:
+  - `npx prettier --write dashboard/partials/control_plane.html dashboard/tests/control_plane_information_density.test.js`
+  - `node --test dashboard/tests/control_plane_information_density.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
 ### 2026-02-28 - Auditoria UX pos-fase 9 (baseline para fases 10-14)
 
 Classificacao operacional:
@@ -549,14 +569,13 @@ Validacao executada (baseline da auditoria):
 | 8    | Regressao cientifica (invariantes)                         | Concluida    | robustez para URL invalida e matriz multi-passo                                                   | `tabs_regression_matrix.test.js`                                                        |
 | 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida    | `scrollIntoView` em bootstrap/click/popstate                                                      | cobertura nova em `tabs_navigation.test.js`                                             |
 | 10   | Sub-hierarquia interna em Inteligencia                     | Concluida    | `dashboard/partials/intelligence_panel.html` (blocos + disclosure progressivo)                    | `dashboard/tests/intelligence_hierarchy_contract.test.js`                               |
-| 11   | Densidade e governanca no Control Plane                    | Planejada    | alvo: `dashboard/partials/control_plane.html`                                                     | alvo: `dashboard/tests/control_plane_information_density.test.js`                       |
+| 11   | Densidade e governanca no Control Plane                    | Concluida    | `dashboard/partials/control_plane.html` (secoes de governanca + disclosure progressivo)           | `dashboard/tests/control_plane_information_density.test.js`                             |
 | 12   | Refino de Analytics orientado a decisao                    | Planejada    | alvo: `dashboard/partials/analytics_logs.html`                                                    | alvo: `dashboard/tests/analytics_information_architecture.test.js`                      |
 | 13   | Consolidacao visual (reduzir inline styles)                | Planejada    | alvo: `dashboard/styles/layout.css`, `dashboard/styles/components.css`                            | alvo: `dashboard/tests/dashboard_style_consolidation_contract.test.js`                  |
 | 14   | Coerencia semantica, UI em ingles e resiliencia responsiva | Em progresso | `index.html` (`lang=en`) + traducao de strings em views/controllers + regra de prompt localizavel | `dashboard/tests/dashboard_semantic_consistency.test.js`, `multi_channel_focus.test.js` |
 
 Sequencia recomendada de execucao a partir do baseline atual:
 
-1. Fase 11 (impacto P0 na configuracao sob pressao operacional).
-2. Fase 12 (impacto P1 no diagnostico analitico).
-3. Fase 13 (consolidacao visual e reducao de inline).
-4. Fase 14 (coerencia semantica final e resiliencia responsiva).
+1. Fase 12 (impacto P1 no diagnostico analitico).
+2. Fase 13 (consolidacao visual e reducao de inline).
+3. Fase 14 (coerencia semantica final e resiliencia responsiva).
