@@ -1,0 +1,189 @@
+<section class="grid-two">
+  <article class="panel">
+    <h2>Autonomy Runtime</h2>
+    <p class="panel-hint">
+      Telemetria de operação da autonomia e estado da fila (Action-driven).
+    </p>
+
+    <!-- Data Viz Vanilla SVG: Autonomy Budget Donut Chart -->
+    <div
+      style="
+        display: flex;
+        gap: var(--spacing-5);
+        align-items: center;
+        justify-content: center;
+        margin: var(--spacing-5) 0;
+      "
+    >
+      <div style="position: relative; width: 80px; height: 80px">
+        <svg
+          width="80"
+          height="80"
+          viewBox="0 0 100 100"
+          style="transform: rotate(-90deg)"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="var(--bg-elevated)"
+            stroke-width="10"
+          ></circle>
+          <circle
+            id="budgetDonutRing"
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="var(--status-ok)"
+            stroke-width="10"
+            stroke-dasharray="283"
+            stroke-dashoffset="0"
+            style="
+              transition:
+                stroke-dashoffset var(--transition-elastic),
+                stroke var(--transition-med);
+            "
+          ></circle>
+        </svg>
+        <div
+          style="
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          "
+        >
+          <span
+            id="autBudgetPctText"
+            style="
+              font-family: var(--font-family-display);
+              font-weight: 700;
+              font-size: 1.1rem;
+              line-height: 1;
+            "
+            >0%</span
+          >
+        </div>
+      </div>
+      <div>
+        <p
+          style="
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+          "
+        >
+          Budget Usage (60m)
+        </p>
+        <p
+          id="autBudgetUsage60m"
+          style="
+            margin: 0;
+            font-family: var(--font-family-mono);
+            font-size: 1.1rem;
+            color: var(--text-primary);
+          "
+        >
+          0 / 0
+        </p>
+      </div>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>Autonomia</dt>
+        <dd id="autEnabledState">-</dd>
+      </div>
+      <div>
+        <dt>Loop</dt>
+        <dd id="autLoopState">-</dd>
+      </div>
+      <div>
+        <dt>Last Tick</dt>
+        <dd id="autLastTick">-</dd>
+      </div>
+      <div>
+        <dt>Last Goal</dt>
+        <dd id="autLastGoal">-</dd>
+      </div>
+      <div>
+        <dt>Goal Runs Total</dt>
+        <dd id="autGoalRunsTotal">0</dd>
+      </div>
+      <div>
+        <dt>Auto Chat Sent</dt>
+        <dd id="autAutoChatSentTotal">0</dd>
+      </div>
+    </dl>
+
+    <details class="advanced-settings">
+      <summary>Métricas Estendidas de Fila e Erros</summary>
+      <div class="advanced-settings-content">
+        <dl class="kv">
+          <div>
+            <dt>Budget Blocked</dt>
+            <dd id="autBudgetBlockedTotal">0</dd>
+          </div>
+          <div>
+            <dt>Dispatch Failures</dt>
+            <dd id="autDispatchFailuresTotal">0</dd>
+          </div>
+          <div>
+            <dt>Last Block Reason</dt>
+            <dd id="autLastBlockReason">-</dd>
+          </div>
+          <div>
+            <dt>Budget Usage 10m</dt>
+            <dd id="autBudgetUsage10m">0 / 0</dd>
+          </div>
+          <div>
+            <dt>Budget Usage Daily</dt>
+            <dd id="autBudgetUsageDaily">0 / 0</dd>
+          </div>
+          <div>
+            <dt>Queue Pending</dt>
+            <dd id="autQueuePending">0</dd>
+          </div>
+          <div>
+            <dt>Queue Approved</dt>
+            <dd id="autQueueApproved">0</dd>
+          </div>
+          <div>
+            <dt>Queue Rejected</dt>
+            <dd id="autQueueRejected">0</dd>
+          </div>
+          <div>
+            <dt>Queue Ignored</dt>
+            <dd id="autQueueIgnored">0</dd>
+          </div>
+        </dl>
+      </div>
+    </details>
+
+    <div class="form-row" style="margin-top: var(--spacing-4)">
+      <div class="form-group" style="flex: 1">
+        <label for="autTickReasonInput">Manual Tick Reason</label>
+        <input
+          id="autTickReasonInput"
+          class="form-control"
+          type="text"
+          value="manual_dashboard"
+        />
+      </div>
+      <div class="form-group">
+        <button id="autRunTickBtn" class="btn btn-primary" type="button">
+          Run 1 Tick
+        </button>
+      </div>
+    </div>
+    <p id="autTickFeedbackMsg" class="panel-hint event-level-info">
+      Aguardando acao manual...
+    </p>
+  </article>
+</section>

@@ -6,6 +6,7 @@ import { getActionQueueElements } from "./features/action-queue/view.js";
 import { getClipsElements } from "./features/clips/view.js";
 import { getHudElements } from "./features/hud/view.js";
 import { getErrorMessage } from "./features/shared/errors.js";
+import { initDashboardTabs } from "./features/navigation/tabs.js";
 import { createObservabilityController } from "./features/observability/controller.js";
 import { createChannelControlController } from "./features/channel-control/controller.js";
 import { createControlPlaneController } from "./features/control-plane/controller.js";
@@ -22,6 +23,7 @@ async function bootstrapDashboard() {
   const aqEls = getActionQueueElements();
   const clipsEls = getClipsElements();
   const hudEls = getHudElements();
+  initDashboardTabs();
 
   const observabilityController = createObservabilityController({
     obsEls,
@@ -51,7 +53,9 @@ async function bootstrapDashboard() {
       jobs.push(controlPlaneController.loadChannelConfig(false));
     }
     if (actionQueueController) {
-      jobs.push(actionQueueController.refreshActionQueue({ showFeedback: false }));
+      jobs.push(
+        actionQueueController.refreshActionQueue({ showFeedback: false }),
+      );
     }
     if (jobs.length) {
       await Promise.all(jobs);

@@ -32,12 +32,128 @@
 
     <main class="layout">
       <div id="heroChannelContainer"></div>
-      <div id="metricsHealthContainer"></div>
-      <div id="controlPlaneContainer"></div>
-      <div id="intelligencePanelContainer"></div>
-      <div id="clipsSectionContainer"></div>
-      <div id="riskQueueContainer"></div>
-      <div id="analyticsLogsContainer"></div>
+
+      <section class="dashboard-tabs-shell" aria-label="Dashboard navigation">
+        <div class="dashboard-tabs" role="tablist" aria-label="Dashboard areas">
+          <button
+            id="dashboardTabOperationBtn"
+            class="dashboard-tab-btn is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="dashboardTabOperationPanel"
+            data-dashboard-tab="operation"
+            tabindex="0"
+          >
+            Operacao
+          </button>
+          <button
+            id="dashboardTabIntelligenceBtn"
+            class="dashboard-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="dashboardTabIntelligencePanel"
+            data-dashboard-tab="intelligence"
+            tabindex="-1"
+          >
+            Inteligencia
+          </button>
+          <button
+            id="dashboardTabClipsBtn"
+            class="dashboard-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="dashboardTabClipsPanel"
+            data-dashboard-tab="clips"
+            tabindex="-1"
+          >
+            Clips & Vision
+          </button>
+          <button
+            id="dashboardTabAnalyticsBtn"
+            class="dashboard-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="dashboardTabAnalyticsPanel"
+            data-dashboard-tab="analytics"
+            tabindex="-1"
+          >
+            Analytics
+          </button>
+          <button
+            id="dashboardTabConfigBtn"
+            class="dashboard-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="dashboardTabConfigPanel"
+            data-dashboard-tab="config"
+            tabindex="-1"
+          >
+            Configuracao
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="dashboardTabOperationPanel"
+        class="dashboard-tab-panel is-active"
+        role="tabpanel"
+        aria-labelledby="dashboardTabOperationBtn"
+        data-dashboard-tab-panel="operation"
+      >
+        <div id="metricsHealthContainer"></div>
+        <div id="riskQueueContainer"></div>
+        <div id="autonomyRuntimeContainer"></div>
+        <div id="operationEventsContainer"></div>
+      </section>
+
+      <section
+        id="dashboardTabIntelligencePanel"
+        class="dashboard-tab-panel"
+        role="tabpanel"
+        aria-labelledby="dashboardTabIntelligenceBtn"
+        data-dashboard-tab-panel="intelligence"
+        hidden
+      >
+        <div id="intelligencePanelContainer"></div>
+      </section>
+
+      <section
+        id="dashboardTabClipsPanel"
+        class="dashboard-tab-panel"
+        role="tabpanel"
+        aria-labelledby="dashboardTabClipsBtn"
+        data-dashboard-tab-panel="clips"
+        hidden
+      >
+        <div id="clipsSectionContainer"></div>
+      </section>
+
+      <section
+        id="dashboardTabAnalyticsPanel"
+        class="dashboard-tab-panel"
+        role="tabpanel"
+        aria-labelledby="dashboardTabAnalyticsBtn"
+        data-dashboard-tab-panel="analytics"
+        hidden
+      >
+        <div id="analyticsLogsContainer"></div>
+      </section>
+
+      <section
+        id="dashboardTabConfigPanel"
+        class="dashboard-tab-panel"
+        role="tabpanel"
+        aria-labelledby="dashboardTabConfigBtn"
+        data-dashboard-tab-panel="config"
+        hidden
+      >
+        <div id="controlPlaneContainer"></div>
+      </section>
     </main>
 
     <footer class="footer">
@@ -62,6 +178,10 @@
             url: "/dashboard/partials/control_plane.html",
           },
           {
+            id: "autonomyRuntimeContainer",
+            url: "/dashboard/partials/autonomy_runtime.html",
+          },
+          {
             id: "intelligencePanelContainer",
             url: "/dashboard/partials/intelligence_panel.html",
           },
@@ -72,6 +192,10 @@
           {
             id: "riskQueueContainer",
             url: "/dashboard/partials/risk_queue.html",
+          },
+          {
+            id: "operationEventsContainer",
+            url: "/dashboard/partials/operational_events.html",
           },
           {
             id: "analyticsLogsContainer",

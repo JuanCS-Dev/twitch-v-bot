@@ -2,141 +2,220 @@
 
 /* Layout Principal */
 .layout {
-    width: min(1480px, 100%);
-    margin: 0 auto;
-    padding: var(--spacing-4) var(--spacing-5) var(--spacing-8);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-5); /* Espaçamento mais folgado entre sections */
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: var(--spacing-4) var(--spacing-5) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5); /* Espaçamento mais folgado entre sections */
 }
 
 /* Header Utilitário Glassmorphism */
 .topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--spacing-4);
-    padding: var(--spacing-4) var(--spacing-5);
-    background-color: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-default);
-    box-shadow: var(--shadow-sm);
-    position: sticky;
-    top: 0;
-    z-index: var(--z-header);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
+  background-color: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
 }
 
 .brand-head {
-    display: flex;
-    flex-direction: column;
-    max-width: 840px;
+  display: flex;
+  flex-direction: column;
+  max-width: 840px;
 }
 
 .brand-kicker {
-    color: var(--color-accent);
-    font-size: clamp(0.7rem, 1vw, 0.75rem);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-family: var(--font-family-mono);
-    margin-bottom: var(--spacing-1);
-    text-shadow: 0 0 8px var(--color-accent-a10);
+  color: var(--color-accent);
+  font-size: clamp(0.7rem, 1vw, 0.75rem);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-family: var(--font-family-mono);
+  margin-bottom: var(--spacing-1);
+  text-shadow: 0 0 8px var(--color-accent-a10);
 }
 
 .topbar h1 {
-    font-size: clamp(1.1rem, 2vw, 1.25rem);
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary);
+  font-size: clamp(1.1rem, 2vw, 1.25rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
 }
 
 .topbar p {
-    color: var(--text-muted);
-    font-size: clamp(0.8rem, 1.5vw, 0.85rem);
-    margin-top: var(--spacing-1);
-    margin-bottom: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.8rem, 1.5vw, 0.85rem);
+  margin-top: var(--spacing-1);
+  margin-bottom: 0;
 }
 
 .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
 }
 
 /* Grids Resilientes e Fluidos */
 .grid-cards {
-    display: grid;
-    /* Adaptação fluida sem media query estrita:
+  display: grid;
+  /* Adaptação fluida sem media query estrita:
        cria colunas de no mínimo 240px que expandem (1fr) */
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--spacing-4);
-    align-items: stretch; /* Cards ocupam todo espaço vertical */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--spacing-4);
+  align-items: stretch; /* Cards ocupam todo espaço vertical */
 }
 
 .grid-two {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(450px, 100%), 1fr));
-    gap: var(--spacing-5);
-    align-items: stretch; /* Cards vizinhos mantêm a mesma altura visualmente */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(450px, 100%), 1fr));
+  gap: var(--spacing-5);
+  align-items: stretch; /* Cards vizinhos mantêm a mesma altura visualmente */
 }
 
 @media (max-width: 1024px) {
-    .grid-two {
-        grid-template-columns: 1fr;
-    }
+  .grid-two {
+    grid-template-columns: 1fr;
+  }
 }
 
 .grid-hero {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-5);
-    align-items: stretch;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-5);
+  align-items: stretch;
 }
 
 @media (min-width: 1080px) {
-    .grid-hero {
-        /* Painel principal domina, widgets auxiliares contraídos */
-        grid-template-columns: 7fr 5fr;
-    }
+  .grid-hero {
+    /* Painel principal domina, widgets auxiliares contraídos */
+    grid-template-columns: 7fr 5fr;
+  }
+}
+
+/* Abas da dashboard */
+.dashboard-tabs-shell {
+  position: sticky;
+  top: 86px;
+  z-index: calc(var(--z-header) - 1);
+  margin-top: calc(var(--spacing-2) * -1);
+}
+
+.dashboard-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  padding: var(--spacing-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-tab-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-2) var(--spacing-4);
+  min-height: 40px;
+  font-family: var(--font-family-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all var(--transition-med);
+}
+
+.dashboard-tab-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
+  border-color: var(--border-default);
+}
+
+.dashboard-tab-btn.is-active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.dashboard-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.dashboard-tab-panel[hidden] {
+  display: none;
 }
 
 /* Fix para manter os gaps do layout nos containers div vazios onde os partials sao injetados */
 .layout > div {
-    display: contents;
+  display: contents;
+}
+
+.dashboard-tab-panel > div {
+  display: contents;
 }
 /* Footer Técnico */
 .footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-5) var(--spacing-6);
-    border-top: 1px solid var(--border-default);
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    font-family: var(--font-family-mono);
-    background-color: var(--bg-surface);
-    flex-wrap: wrap;
-    gap: var(--spacing-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-5) var(--spacing-6);
+  border-top: 1px solid var(--border-default);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: var(--font-family-mono);
+  background-color: var(--bg-surface);
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
 }
 
 /* Responsividade Adaptativa (Mobile) */
 @media (max-width: 600px) {
-    .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: var(--spacing-3) var(--spacing-4);
-    }
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--spacing-3) var(--spacing-4);
+  }
 
-    .topbar-right {
-        width: 100%;
-        justify-content: flex-start;
-        padding-top: var(--spacing-2);
-        border-top: 1px dashed var(--border-default);
-    }
+  .topbar-right {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: var(--spacing-2);
+    border-top: 1px dashed var(--border-default);
+  }
 
-    .layout {
-        padding: var(--spacing-3) var(--spacing-3) var(--spacing-6);
-    }
+  .layout {
+    padding: var(--spacing-3) var(--spacing-3) var(--spacing-6);
+  }
+
+  .dashboard-tabs-shell {
+    top: 130px;
+  }
+
+  .dashboard-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-tab-btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
 }
