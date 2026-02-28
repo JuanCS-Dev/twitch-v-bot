@@ -1,4 +1,5 @@
 const DASHBOARD_TAB_STORAGE_KEY = "byte_dashboard_active_tab";
+const DASHBOARD_TAB_QUERY_KEY = "tab";
 const initializedTabsByDocument = new WeakMap();
 
 function readStoredTabId(storage) {
@@ -46,6 +47,80 @@ function getStorageFromRef(storageRef) {
   return null;
 }
 
+function getLocationFromRef(locationRef) {
+  if (locationRef) {
+    return locationRef;
+  }
+  if (typeof window !== "undefined" && window.location) {
+    return window.location;
+  }
+  if (typeof location !== "undefined") {
+    return location;
+  }
+  return null;
+}
+
+function getHistoryFromRef(historyRef) {
+  if (historyRef) {
+    return historyRef;
+  }
+  if (typeof window !== "undefined" && window.history) {
+    return window.history;
+  }
+  if (typeof history !== "undefined") {
+    return history;
+  }
+  return null;
+}
+
+function readTabIdFromLocation(locationRef) {
+  if (!locationRef) {
+    return "";
+  }
+  try {
+    const search = String(locationRef.search || "").trim();
+    if (!search) {
+      return "";
+    }
+    const params = new URLSearchParams(
+      search.startsWith("?") ? search : `?${search}`,
+    );
+    return String(params.get(DASHBOARD_TAB_QUERY_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function persistTabIdInLocation(historyRef, locationRef, tabId) {
+  if (
+    !historyRef ||
+    typeof historyRef.replaceState !== "function" ||
+    !locationRef
+  ) {
+    return;
+  }
+  try {
+    const pathname = String(locationRef.pathname || "/");
+    const currentSearch = String(locationRef.search || "");
+    const hash = String(locationRef.hash || "");
+    const params = new URLSearchParams(
+      currentSearch.startsWith("?") ? currentSearch : `?${currentSearch}`,
+    );
+    if (params.get(DASHBOARD_TAB_QUERY_KEY) === tabId) {
+      return;
+    }
+    params.set(DASHBOARD_TAB_QUERY_KEY, tabId);
+    const nextSearch = params.toString();
+    historyRef.replaceState(
+      null,
+      "",
+      `${pathname}${nextSearch ? `?${nextSearch}` : ""}${hash}`,
+    );
+  } catch {
+    // no-op: ambientes sem suporte total ao History API.
+  }
+}
+
 function collectDashboardTabs(doc) {
   const tabs = Array.from(doc.querySelectorAll("[data-dashboard-tab]"));
   const panels = Array.from(doc.querySelectorAll("[data-dashboard-tab-panel]"));
@@ -65,7 +140,12 @@ function clampIndex(index, size) {
   return index;
 }
 
-export function initDashboardTabs({ documentRef, storageRef } = {}) {
+export function initDashboardTabs({
+  documentRef,
+  storageRef,
+  locationRef,
+  historyRef,
+} = {}) {
   const doc = getDocumentFromRef(documentRef);
   if (!doc || typeof doc.querySelectorAll !== "function") {
     return null;
@@ -82,6 +162,8 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
   }
 
   const storage = getStorageFromRef(storageRef);
+  const location = getLocationFromRef(locationRef);
+  const history = getHistoryFromRef(historyRef);
   let activeTabId = "";
 
   function resolveTargetTabId(candidateTabId) {
@@ -95,7 +177,10 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
     return String(tabs[0].dataset.dashboardTab || "").trim();
   }
 
-  function activateTab(tabId, { persist = true, focus = false } = {}) {
+  function activateTab(
+    tabId,
+    { persist = true, focus = false, syncUrl = true } = {},
+  ) {
     const resolvedTabId = resolveTargetTabId(tabId);
     activeTabId = resolvedTabId;
 
@@ -119,6 +204,9 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
 
     if (persist) {
       persistTabId(storage, resolvedTabId);
+    }
+    if (syncUrl) {
+      persistTabIdInLocation(history, location, resolvedTabId);
     }
     return resolvedTabId;
   }
@@ -150,11 +238,12 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
   const selectedInMarkup = tabs.find(
     (tab) => tab.getAttribute("aria-selected") === "true",
   );
+  const tabFromLocation = readTabIdFromLocation(location);
   const storedTabId = readStoredTabId(storage);
-  const initialTabId = storedTabId
-    ? resolveTargetTabId(storedTabId)
-    : resolveTargetTabId(selectedInMarkup?.dataset?.dashboardTab);
-  activateTab(initialTabId, { persist: false });
+  const initialCandidateTabId =
+    tabFromLocation || storedTabId || selectedInMarkup?.dataset?.dashboardTab;
+  const initialTabId = resolveTargetTabId(initialCandidateTabId);
+  activateTab(initialTabId, { persist: false, syncUrl: true });
 
   const api = {
     activateTab,

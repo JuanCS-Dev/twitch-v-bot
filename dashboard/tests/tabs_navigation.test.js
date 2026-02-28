@@ -112,6 +112,33 @@ class MockStorage {
   }
 }
 
+class MockLocation {
+  constructor({ pathname = "/dashboard", search = "", hash = "" } = {}) {
+    this.pathname = pathname;
+    this.search = search;
+    this.hash = hash;
+  }
+}
+
+class MockHistory {
+  constructor(locationRef) {
+    this.locationRef = locationRef;
+    this.calls = [];
+  }
+
+  replaceState(_state, _title, relativeUrl) {
+    this.calls.push(String(relativeUrl));
+    const nextUrl = String(relativeUrl || "");
+    const [pathWithQuery, hash = ""] = nextUrl.split("#", 2);
+    const queryIndex = pathWithQuery.indexOf("?");
+    this.locationRef.pathname =
+      queryIndex >= 0 ? pathWithQuery.slice(0, queryIndex) : pathWithQuery;
+    this.locationRef.search =
+      queryIndex >= 0 ? pathWithQuery.slice(queryIndex) : "";
+    this.locationRef.hash = hash ? `#${hash}` : "";
+  }
+}
+
 function createTab(id, selected = false) {
   const el = new MockElement({ tabId: id });
   if (selected) {
@@ -225,4 +252,60 @@ test("dashboard tabs keyboard navigation wraps and focuses target tab", () => {
   assert.equal(tabs.getActiveTab(), "config");
   assert.equal(configPanel.hidden, false);
   assert.equal(configTab.focused, true);
+});
+
+test("dashboard tabs prioritize URL tab query over localStorage", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const configTab = createTab("config");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+  const configPanel = createPanel("config", true);
+  const storage = new MockStorage({ [TAB_STORAGE_KEY]: "analytics" });
+  const location = new MockLocation({ search: "?tab=config" });
+  const history = new MockHistory(location);
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab, configTab],
+      [operationPanel, analyticsPanel, configPanel],
+    ),
+    storageRef: storage,
+    locationRef: location,
+    historyRef: history,
+  });
+
+  assert.ok(tabs);
+  assert.equal(tabs.getActiveTab(), "config");
+  assert.equal(configPanel.hidden, false);
+  assert.equal(analyticsPanel.hidden, true);
+  assert.equal(history.calls.length, 0);
+});
+
+test("dashboard tabs sync active tab into URL query without losing existing params", () => {
+  const operationTab = createTab("operation", true);
+  const intelligenceTab = createTab("intelligence");
+  const operationPanel = createPanel("operation", false);
+  const intelligencePanel = createPanel("intelligence", true);
+  const location = new MockLocation({ search: "?channel=canal_a" });
+  const history = new MockHistory(location);
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, intelligenceTab],
+      [operationPanel, intelligencePanel],
+    ),
+    storageRef: new MockStorage(),
+    locationRef: location,
+    historyRef: history,
+  });
+  intelligenceTab.dispatchEvent({ type: "click" });
+
+  assert.ok(tabs);
+  assert.equal(tabs.getActiveTab(), "intelligence");
+  assert.equal(history.calls.length, 2);
+  assert.match(history.calls[0], /\?channel=canal_a&tab=operation/);
+  assert.match(history.calls[1], /\?channel=canal_a&tab=intelligence/);
+  assert.match(location.search, /channel=canal_a/);
+  assert.match(location.search, /tab=intelligence/);
 });

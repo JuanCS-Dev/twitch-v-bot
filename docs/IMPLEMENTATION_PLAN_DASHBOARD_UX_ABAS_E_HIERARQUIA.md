@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: em execucao
+Status: concluido (fases 1-6 entregues)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 
 ## 1) Diagnostico atual (baseado no codigo)
@@ -139,6 +139,17 @@ Entrega:
 
 - Feature pronta para merge.
 
+### Fase 6 - Deep-link e restauracao de aba via URL
+
+- Sincronizar aba ativa com query param `?tab=` usando `history.replaceState`.
+- Priorizar `?tab=` sobre `localStorage` na definicao da aba inicial.
+- Preservar demais query params (ex.: `channel`) e `hash` ao trocar de aba.
+- Manter fallback atual: sem `?tab=`, restaurar por `localStorage`.
+
+Entrega:
+
+- Navegacao por abas compartilhavel por URL, sem regressao de comportamento existente.
+
 ## 6) Regras de nao regressao
 
 - Nao alterar contratos de API (`/api/observability`, `/api/channel-control`, etc.).
@@ -272,4 +283,20 @@ Validacao minima por fase:
 - Validacao executada:
   - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_a11y.test.js dashboard/tests/tabs_visibility_contract.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
   - `node --test dashboard/tests/tabs_a11y.test.js dashboard/tests/tabs_visibility_contract.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Fase 6 concluida (deep-link de abas via URL)
+
+- Modulo de navegacao de abas atualizado em `dashboard/features/navigation/tabs.js` para:
+  - ler aba inicial de `?tab=`;
+  - priorizar query param sobre estado persistido em `localStorage`;
+  - sincronizar troca de aba em URL com `history.replaceState`;
+  - preservar query params existentes e `hash`.
+- API de inicializacao ampliada com `locationRef` e `historyRef` para suporte testavel sem acoplamento ao `window`.
+- Testes novos em `dashboard/tests/tabs_navigation.test.js`:
+  - prioridade de `?tab=` sobre storage;
+  - sincronizacao de URL mantendo params existentes.
+- Validacao executada:
+  - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js`
+  - `node --test dashboard/tests/tabs_navigation.test.js`
   - `node --test dashboard/tests/*.test.js`
