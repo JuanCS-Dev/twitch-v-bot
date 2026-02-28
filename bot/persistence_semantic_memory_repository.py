@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Any
 
@@ -17,6 +18,22 @@ from bot.semantic_memory import EMBEDDING_DIMENSIONS, embed_text, rank_semantic_
 logger = logging.getLogger("byte.persistence")
 
 ALLOWED_MEMORY_TYPES = {"fact", "preference", "event", "instruction", "context"}
+DEFAULT_PGVECTOR_RPC_FUNCTIONS = (
+    "semantic_memory_search_pgvector",
+    "semantic_memory_search",
+)
+
+
+def _read_bool_env(var_name: str, *, default: bool) -> bool:
+    raw_value = os.environ.get(var_name)
+    if raw_value is None:
+        return default
+    normalized = str(raw_value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 class SemanticMemoryRepository:
@@ -30,12 +47,159 @@ class SemanticMemoryRepository:
         self._enabled = enabled
         self._client = client
         self._cache = cache
+        self._pgvector_enabled = _read_bool_env(
+            "SEMANTIC_MEMORY_PGVECTOR_ENABLED",
+            default=True,
+        )
+        self._pgvector_rpc_functions = self._resolve_pgvector_rpc_functions()
+        self._pgvector_warning_emitted = False
 
     def _normalize_memory_type(self, memory_type: Any) -> str:
         normalized = str(memory_type or "fact").strip().lower() or "fact"
         if normalized not in ALLOWED_MEMORY_TYPES:
             return "fact"
         return normalized
+
+    def _resolve_pgvector_rpc_functions(self) -> tuple[str, ...]:
+        configured = str(os.environ.get("SEMANTIC_MEMORY_PGVECTOR_RPC") or "").strip()
+        if not configured:
+            return DEFAULT_PGVECTOR_RPC_FUNCTIONS
+        ordered = [configured]
+        ordered.extend(
+            function_name
+            for function_name in DEFAULT_PGVECTOR_RPC_FUNCTIONS
+            if function_name != configured
+        )
+        return tuple(ordered)
+
+    def _normalize_similarity(self, payload: dict[str, Any]) -> float:
+        similarity = payload.get("similarity")
+        if isinstance(similarity, int | float):
+            return round(max(-1.0, min(1.0, float(similarity))), 6)
+        distance = payload.get("distance")
+        if isinstance(distance, int | float):
+            return round(max(-1.0, min(1.0, 1.0 - float(distance))), 6)
+        return 0.0
+
+    def _embedding_literal(self, embedding: list[float]) -> str:
+        values = ",".join(f"{float(value):.8f}" for value in embedding)
+        return f"[{values}]"
+
+    def _build_pgvector_rpc_payloads(
+        self,
+        *,
+        channel_id: str,
+        query_embedding: list[float],
+        limit: int,
+        search_limit: int,
+    ) -> list[dict[str, Any]]:
+        query_embedding_literal = self._embedding_literal(query_embedding)
+        payload_specs = (
+            ("p_channel_id", "p_query_embedding", "p_limit", "p_search_limit"),
+            ("channel_id", "query_embedding", "limit", "search_limit"),
+        )
+        payloads: list[dict[str, Any]] = []
+        for (
+            channel_key,
+            embedding_key,
+            limit_key,
+            search_limit_key,
+        ) in payload_specs:
+            payloads.append(
+                {
+                    channel_key: channel_id,
+                    embedding_key: query_embedding,
+                    limit_key: limit,
+                    search_limit_key: search_limit,
+                }
+            )
+            payloads.append(
+                {
+                    channel_key: channel_id,
+                    embedding_key: query_embedding_literal,
+                    limit_key: limit,
+                    search_limit_key: search_limit,
+                }
+            )
+        return payloads
+
+    def _normalize_pgvector_row(
+        self,
+        *,
+        channel_id: str,
+        row: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        try:
+            entry = self._normalize_entry(
+                channel_id,
+                {
+                    "entry_id": row.get("entry_id"),
+                    "memory_type": row.get("memory_type"),
+                    "content": row.get("content"),
+                    "tags": row.get("tags"),
+                    "context": row.get("context"),
+                    "embedding": row.get("embedding"),
+                    "created_at": row.get("created_at"),
+                    "updated_at": row.get("updated_at"),
+                },
+            )
+        except ValueError:
+            return None
+        return {
+            **entry,
+            "similarity": self._normalize_similarity(row),
+            "source": "supabase_pgvector",
+        }
+
+    def _search_entries_pgvector_sync(
+        self,
+        channel_id: str,
+        *,
+        query_text: str,
+        limit: int,
+        search_limit: int,
+    ) -> list[dict[str, Any]] | None:
+        if not self._pgvector_enabled or not self._enabled or not self._client:
+            return None
+
+        query_embedding = embed_text(query_text, dimensions=EMBEDDING_DIMENSIONS)
+        rpc_payloads = self._build_pgvector_rpc_payloads(
+            channel_id=channel_id,
+            query_embedding=query_embedding,
+            limit=limit,
+            search_limit=search_limit,
+        )
+        last_error: Exception | None = None
+        for function_name in self._pgvector_rpc_functions:
+            for payload in rpc_payloads:
+                try:
+                    result = self._client.rpc(function_name, payload).execute()
+                    rows = [dict(row or {}) for row in list(result.data or [])]
+                    if not rows:
+                        return None
+                    normalized_matches = [
+                        normalized
+                        for normalized in (
+                            self._normalize_pgvector_row(channel_id=channel_id, row=row)
+                            for row in rows
+                        )
+                        if normalized
+                    ]
+                    if not normalized_matches:
+                        return None
+                    return normalized_matches[:limit]
+                except Exception as error:
+                    last_error = error
+                    continue
+
+        if last_error and not self._pgvector_warning_emitted:
+            logger.info(
+                "PersistenceLayer: pgvector indisponivel para semantic_memory (%s). "
+                "Usando fallback deterministico.",
+                last_error,
+            )
+            self._pgvector_warning_emitted = True
+        return None
 
     def _normalize_tags(self, tags: Any) -> list[str]:
         if tags in (None, ""):
@@ -280,6 +444,14 @@ class SemanticMemoryRepository:
             return []
         safe_limit = coerce_history_limit(limit, default=5, maximum=20)
         safe_search_limit = coerce_history_limit(search_limit, default=60, maximum=360)
+        pgvector_matches = self._search_entries_pgvector_sync(
+            normalize_channel_id(channel_id) or "default",
+            query_text=safe_query,
+            limit=safe_limit,
+            search_limit=safe_search_limit,
+        )
+        if pgvector_matches is not None:
+            return pgvector_matches
         candidates = self.load_channel_entries_sync(channel_id, limit=safe_search_limit)
         ranked = rank_semantic_matches(
             query_text=safe_query,

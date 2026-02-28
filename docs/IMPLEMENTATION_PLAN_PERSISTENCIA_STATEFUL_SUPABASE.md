@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.29
-**Data:** 27 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) + Fases 14-19 concluídas ✅ | Backlog ativo: Otimização `pgvector` (futuro)
+**Versão:** 1.30
+**Data:** 28 de Fevereiro de 2026
+**Status:** Fases antigas (1-13) + Fases 14-20 concluídas ✅ | Backlog ativo: tuning ANN/índices (futuro)
 
 ---
 
@@ -13,9 +13,9 @@
 
 **Resultado:** **13 de 13 fases antigas concluídas** no escopo definido em cada fase.
 
-**Ressalva explícita de escopo (já prevista):**
-- Fase 8 (memória semântica) está concluída no escopo **operacional**.
-- Otimização ANN com `pgvector` permanece como evolução futura (não bloqueia conclusão operacional da fase).
+**Ressalva explícita de escopo (atualizada):**
+- Fase 8 (memória semântica) segue concluída no escopo **operacional**.
+- Otimização ANN com `pgvector` foi implementada como evolução na Fase 20, com fallback determinístico para preservar comportamento em ambientes sem função RPC disponível.
 
 ---
 
@@ -40,6 +40,7 @@
 | **17** | Revenue Attribution Trace | correlação temporal de follow/sub/cheer com ação via `bot/revenue_attribution_engine.py`, persistência via `bot/persistence_revenue_attribution_repository.py`, rotas `/api/observability/conversion(s)`, render em `dashboard/partials/intelligence_panel.html` | `bot/tests/test_revenue_attribution_engine.py`, `bot/tests/test_persistence_revenue_repository.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate` | ✅ |
 | **18** | Outbound Webhook API | `bot/outbound_webhooks.py` (engine hmac/retry), `bot/persistence_webhook_repository.py`, endpoints `/api/webhooks` e `/api/webhooks/test`, UI agregada no Control Plane. | `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate` | ✅ |
 | **19** | Autonomous Clip Suggestion Intelligence | Exposição de métricas e ingest manual em `dashboard/partials/clips_section.html`, engine visual acoplada ao Autonomy (`bot/vision_runtime.py`), endpoints `/api/vision/status` e `/api/vision/ingest` consolidados como `integrated`. | `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py` | ✅ |
+| **20** | Otimização ANN de Memória Semântica com `pgvector` | `bot/persistence_semantic_memory_repository.py` com busca via RPC (`semantic_memory_search_pgvector`/`semantic_memory_search`) e fallback automático para ranking determinístico atual; flags `SEMANTIC_MEMORY_PGVECTOR_ENABLED` e `SEMANTIC_MEMORY_PGVECTOR_RPC`. | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_semantic_memory.py`, `bot/tests/test_dashboard_routes_v3.py -k semantic_memory`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`, `node --test dashboard/tests/api_contract_parity.test.js` | ✅ |
 
 ---
 
@@ -48,7 +49,7 @@
 | Capability | Backend (endpoint/runtime) | Dashboard (layout atual) | Testes de rastreio |
 | :--- | :--- | :--- | :--- |
 | Contexto por canal focado | `/api/observability?channel=`, `/api/channel-context`, `/api/observability/history` | `Agent Context & Internals` | `dashboard/tests/multi_channel_focus.test.js`, `bot/tests/test_dashboard_routes_v3.py` |
-| Memória semântica | `/api/semantic-memory` (`GET/PUT`) | `Intelligence Overview` | `bot/tests/test_semantic_memory.py`, `bot/tests/test_dashboard_routes.py`, `dashboard/tests/multi_channel_focus.test.js` |
+| Memória semântica | `/api/semantic-memory` (`GET/PUT`) + busca ANN opcional via `pgvector` no `SemanticMemoryRepository` com fallback determinístico | `Intelligence Overview` | `bot/tests/test_semantic_memory.py`, `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_dashboard_routes.py`, `dashboard/tests/multi_channel_focus.test.js` |
 | Stream health score | `/api/sentiment/scores` | `metrics_health`, `intelligence_panel`, `agent_context_internals` | `bot/tests/test_stream_health_score.py`, `dashboard/tests/multi_channel_focus.test.js` |
 | Post-stream report | `/api/observability/post-stream-report` (`generate=1`) + auto em `part` | `Intelligence Overview` (mesmo painel) | `bot/tests/test_post_stream_report.py`, `bot/tests/test_dashboard_server_extra.py`, `bot/tests/test_dashboard_routes_v3.py` |
 | Coaching churn risk em tempo real | `/api/observability` com bloco `coaching` + emissão HUD via `coaching_runtime` (`source=coaching`) | `Intelligence Overview` + `Streamer HUD` (mesmo layout/painéis atuais) | `bot/tests/test_coaching_churn_risk.py`, `bot/tests/test_coaching_runtime.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js` |
@@ -64,12 +65,18 @@
 
 ## 4. Backlog Prioritário (Fases Futuras)
 
-1. **Evolução futura:** otimização ANN com `pgvector` para memória semântica (escala/performance).
+1. **Evolução futura:** tuning de threshold/índices ANN (`ivfflat`/RPC) por volume real e orçamento de latência.
 
 ---
 
 ## 5. Evidências de Validação (ciclo de auditoria atual)
 
+- `pytest -q --no-cov bot/tests/test_persistence_semantic_memory_pgvector.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_semantic_memory.py`
+  **Resultado:** `58 passed`.
+- `pytest -q --no-cov bot/tests/test_dashboard_routes_v3.py -k semantic_memory`
+  **Resultado:** `2 passed, 44 deselected`.
+- `node --test dashboard/tests/api_contract_parity.test.js`
+  **Resultado:** `2 passed`.
 - `pytest -q --no-cov bot/tests/`
   **Resultado:** `927 passed, 4 skipped, 0 warnings`.
 - `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
