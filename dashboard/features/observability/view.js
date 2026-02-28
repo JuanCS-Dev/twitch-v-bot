@@ -75,11 +75,44 @@ function formatCoachingRiskScore(value) {
   return String(Math.round(clamped));
 }
 
+function setStatusChip(chipEl, label, tone) {
+  if (!chipEl) return;
+  chipEl.classList.remove("ok", "warn", "error", "pending");
+  setText(chipEl, label);
+  chipEl.classList.add(tone || "pending");
+}
+
+function streamHealthSummaryChipTone(band) {
+  const normalized = normalizeStreamHealthBand(band);
+  if (normalized === "excellent" || normalized === "stable") return "ok";
+  if (normalized === "watch") return "warn";
+  return "error";
+}
+
 export function getObservabilityElements() {
   return {
     botIdentity: document.getElementById("botIdentity"),
     connectionState: document.getElementById("connectionState"),
     rollupStateChip: document.getElementById("rollupStateChip"),
+    summaryFocusedChannel: document.getElementById("summaryFocusedChannel"),
+    summaryRuntimeStatusChip: document.getElementById(
+      "summaryRuntimeStatusChip",
+    ),
+    summaryPersistenceStatusChip: document.getElementById(
+      "summaryPersistenceStatusChip",
+    ),
+    summaryStreamHealthScore: document.getElementById(
+      "summaryStreamHealthScore",
+    ),
+    summaryStreamHealthBandChip: document.getElementById(
+      "summaryStreamHealthBandChip",
+    ),
+    summaryQueuePendingCount: document.getElementById(
+      "summaryQueuePendingCount",
+    ),
+    summaryQueuePendingChip: document.getElementById("summaryQueuePendingChip"),
+    summaryAutonomyState: document.getElementById("summaryAutonomyState"),
+    summaryAutonomyBudget: document.getElementById("summaryAutonomyBudget"),
     lastUpdate: document.getElementById("lastUpdate"),
     mChatMessages: document.getElementById("mChatMessages"),
     mByteTriggers: document.getElementById("mByteTriggers"),
@@ -221,8 +254,12 @@ export function getObservabilityElements() {
     intSemanticMemorySaveBtn: document.getElementById(
       "intSemanticMemorySaveBtn",
     ),
-    intSemanticMemoryMatches: document.getElementById("intSemanticMemoryMatches"),
-    intSemanticMemoryEntries: document.getElementById("intSemanticMemoryEntries"),
+    intSemanticMemoryMatches: document.getElementById(
+      "intSemanticMemoryMatches",
+    ),
+    intSemanticMemoryEntries: document.getElementById(
+      "intSemanticMemoryEntries",
+    ),
 
     // Revenue Conversions
     intRevenueEventType: document.getElementById("intRevenueEventType"),
@@ -362,8 +399,13 @@ function renderCoachingAlerts(alerts, targetBody) {
       .trim()
       .toLowerCase();
     const severityLabel =
-      severity === "critical" ? "CRITICAL" : severity === "warn" ? "WARN" : "INFO";
-    const title = String(item?.title || "Sinal tatico").trim() || "Sinal tatico";
+      severity === "critical"
+        ? "CRITICAL"
+        : severity === "warn"
+          ? "WARN"
+          : "INFO";
+    const title =
+      String(item?.title || "Sinal tatico").trim() || "Sinal tatico";
     const message = String(item?.message || "").trim();
     const tactic = String(item?.tactic || "").trim();
     li.textContent = `[${severityLabel}] ${title}: ${message}${tactic ? ` | Acao: ${tactic}` : ""}`;
@@ -387,7 +429,12 @@ function formatSemanticMemoryTags(tags) {
   return safeTags.map((value) => `#${value}`).join(" ");
 }
 
-function renderSemanticMemoryRows(rows, targetBody, emptyMessage, withSimilarity = false) {
+function renderSemanticMemoryRows(
+  rows,
+  targetBody,
+  emptyMessage,
+  withSimilarity = false,
+) {
   if (!targetBody) return;
   targetBody.innerHTML = "";
   const safeRows = asArray(rows);
@@ -402,7 +449,10 @@ function renderSemanticMemoryRows(rows, targetBody, emptyMessage, withSimilarity
 
   safeRows.slice(0, 8).forEach((item) => {
     const li = document.createElement("li");
-    const type = String(item?.memory_type || "fact").trim().toLowerCase() || "fact";
+    const type =
+      String(item?.memory_type || "fact")
+        .trim()
+        .toLowerCase() || "fact";
     const content = String(item?.content || "-").trim() || "-";
     const tags = formatSemanticMemoryTags(item?.tags);
     const similarity = Number(item?.similarity || 0);
@@ -640,6 +690,11 @@ export function renderObservabilitySnapshot(
   setText(els.ctxUniqueChatters, formatNumber(chatters.unique_total || 0));
   setText(els.ctxLastPrompt, context.last_prompt || "-");
   setText(els.ctxLastReply, context.last_reply || "-");
+  const focusedChannel =
+    String(context.channel_id || safeData.selected_channel || "default")
+      .trim()
+      .toLowerCase() || "default";
+  setText(els.summaryFocusedChannel, focusedChannel);
   if (els.ctxSelectedChannelChip) {
     els.ctxSelectedChannelChip.classList.remove(
       "ok",
@@ -647,11 +702,29 @@ export function renderObservabilitySnapshot(
       "error",
       "pending",
     );
-    setText(
-      els.ctxSelectedChannelChip,
-      context.channel_id || safeData.selected_channel || "default",
-    );
+    setText(els.ctxSelectedChannelChip, focusedChannel);
     els.ctxSelectedChannelChip.classList.add("ok");
+  }
+  if (els.summaryPersistenceStatusChip) {
+    if (persistence.enabled && persistence.restored) {
+      setStatusChip(
+        els.summaryPersistenceStatusChip,
+        "PERSISTENCE READY",
+        "ok",
+      );
+    } else if (persistence.enabled) {
+      setStatusChip(
+        els.summaryPersistenceStatusChip,
+        "PERSISTENCE LIVE",
+        "warn",
+      );
+    } else {
+      setStatusChip(
+        els.summaryPersistenceStatusChip,
+        "PERSISTENCE OFF",
+        "pending",
+      );
+    }
   }
   if (els.rollupStateChip) {
     els.rollupStateChip.classList.remove("ok", "warn", "error", "pending");
@@ -697,12 +770,16 @@ export function renderObservabilitySnapshot(
     els.mStreamHealthBand,
     formatStreamHealthBandLabel(streamHealth.band),
   );
+  const streamHealthScoreLabel = `${formatStreamHealthScore(streamHealth.score)}/100`;
+  setText(els.summaryStreamHealthScore, streamHealthScoreLabel);
+  setStatusChip(
+    els.summaryStreamHealthBandChip,
+    formatStreamHealthBandLabel(streamHealth.band).toUpperCase(),
+    streamHealthSummaryChipTone(streamHealth.band),
+  );
   setText(els.ctxSentimentVibe, sentiment.vibe || "-");
   setText(els.ctxSentimentAvg, Number(sentiment.avg || 0).toFixed(2));
-  setText(
-    els.ctxStreamHealthScore,
-    `${formatStreamHealthScore(streamHealth.score)}/100`,
-  );
+  setText(els.ctxStreamHealthScore, streamHealthScoreLabel);
   setText(
     els.ctxStreamHealthBand,
     formatStreamHealthBandLabel(streamHealth.band),
@@ -740,10 +817,7 @@ export function renderObservabilitySnapshot(
     els.intCoachingRiskChip.classList.add(coachingRiskChipClass(coachingBand));
   }
   setText(els.intCoachingRiskScore, `${coachingRiskScore}/100`);
-  setText(
-    els.intCoachingLastEmission,
-    coachingHud.last_emitted_at || "-",
-  );
+  setText(els.intCoachingLastEmission, coachingHud.last_emitted_at || "-");
   if (els.intCoachingHudStatus) {
     if (coachingHud.emitted) {
       setText(els.intCoachingHudStatus, "HUD push emitido nesta atualizacao.");
@@ -853,44 +927,37 @@ export function renderChannelContextSnapshot(payload, els) {
   const runtimeLoaded = Boolean(channel.runtime_loaded);
   const hasPersistedState = Boolean(channel.has_persisted_state);
   const hasPersistedHistory = Boolean(channel.has_persisted_history);
+  const persistedReady = hasPersistedState || hasPersistedHistory;
+  const persistedLabel = persistedReady ? "PERSISTED READY" : "NO SNAPSHOT";
+  const runtimeLabel = runtimeLoaded ? "RUNTIME HOT" : "RUNTIME LAZY";
+
+  setText(els.summaryFocusedChannel, channelId);
 
   if (els.ctxSelectedChannelChip) {
-    els.ctxSelectedChannelChip.classList.remove(
-      "ok",
-      "warn",
-      "error",
-      "pending",
-    );
-    setText(els.ctxSelectedChannelChip, channelId);
-    els.ctxSelectedChannelChip.classList.add("ok");
+    setStatusChip(els.ctxSelectedChannelChip, channelId, "ok");
   }
 
-  if (els.ctxPersistedStatusChip) {
-    els.ctxPersistedStatusChip.classList.remove(
-      "ok",
-      "warn",
-      "error",
-      "pending",
-    );
-    setText(
-      els.ctxPersistedStatusChip,
-      hasPersistedState || hasPersistedHistory
-        ? "PERSISTED READY"
-        : "NO SNAPSHOT",
-    );
-    els.ctxPersistedStatusChip.classList.add(
-      hasPersistedState || hasPersistedHistory ? "ok" : "warn",
-    );
-  }
+  setStatusChip(
+    els.ctxPersistedStatusChip,
+    persistedLabel,
+    persistedReady ? "ok" : "warn",
+  );
+  setStatusChip(
+    els.summaryPersistenceStatusChip,
+    persistedLabel,
+    persistedReady ? "ok" : "warn",
+  );
 
-  if (els.ctxRuntimeStatusChip) {
-    els.ctxRuntimeStatusChip.classList.remove("ok", "warn", "error", "pending");
-    setText(
-      els.ctxRuntimeStatusChip,
-      runtimeLoaded ? "RUNTIME HOT" : "RUNTIME LAZY",
-    );
-    els.ctxRuntimeStatusChip.classList.add(runtimeLoaded ? "ok" : "pending");
-  }
+  setStatusChip(
+    els.ctxRuntimeStatusChip,
+    runtimeLabel,
+    runtimeLoaded ? "ok" : "pending",
+  );
+  setStatusChip(
+    els.summaryRuntimeStatusChip,
+    runtimeLabel,
+    runtimeLoaded ? "ok" : "pending",
+  );
 
   setText(els.ctxPersistedGame, persistedState.current_game || "-");
   setText(els.ctxPersistedVibe, persistedState.stream_vibe || "-");

@@ -33,6 +33,49 @@
     <main class="layout">
       <div id="heroChannelContainer"></div>
 
+      <section
+        id="globalSummaryStrip"
+        class="dashboard-summary-strip"
+        aria-label="Operational summary"
+      >
+        <article class="panel summary-card">
+          <p class="summary-label">Focused Channel</p>
+          <p id="summaryFocusedChannel" class="summary-value">default</p>
+          <div class="summary-chips-row">
+            <span id="summaryRuntimeStatusChip" class="chip pending"
+              >RUNTIME COLD</span
+            >
+            <span id="summaryPersistenceStatusChip" class="chip pending"
+              >PERSISTENCE IDLE</span
+            >
+          </div>
+        </article>
+
+        <article class="panel summary-card">
+          <p class="summary-label">Stream Health</p>
+          <p id="summaryStreamHealthScore" class="summary-value">0/100</p>
+          <div class="summary-chips-row">
+            <span id="summaryStreamHealthBandChip" class="chip pending"
+              >CRITICAL</span
+            >
+          </div>
+        </article>
+
+        <article class="panel summary-card">
+          <p class="summary-label">Risk Queue Pending</p>
+          <p id="summaryQueuePendingCount" class="summary-value">0</p>
+          <div class="summary-chips-row">
+            <span id="summaryQueuePendingChip" class="chip ok">CLEAR</span>
+          </div>
+        </article>
+
+        <article class="panel summary-card">
+          <p class="summary-label">Autonomy Runtime</p>
+          <p id="summaryAutonomyState" class="summary-value">OFF - idle</p>
+          <p id="summaryAutonomyBudget" class="summary-meta">Budget 60m: 0/0</p>
+        </article>
+      </section>
+
       <section class="dashboard-tabs-shell" aria-label="Dashboard navigation">
         <div class="dashboard-tabs" role="tablist" aria-label="Dashboard areas">
           <button
@@ -105,6 +148,14 @@
         aria-labelledby="dashboardTabOperationBtn"
         data-dashboard-tab-panel="operation"
       >
+        <header class="dashboard-tab-intro">
+          <p class="dashboard-tab-kicker">Operacao</p>
+          <h2>Runtime Operacional Ao Vivo</h2>
+          <p>
+            Execucao em tempo real: saude critica, risco pendente, autonomia e
+            eventos operacionais no mesmo contexto.
+          </p>
+        </header>
         <div id="metricsHealthContainer"></div>
         <div id="riskQueueContainer"></div>
         <div id="autonomyRuntimeContainer"></div>
@@ -119,6 +170,14 @@
         data-dashboard-tab-panel="intelligence"
         hidden
       >
+        <header class="dashboard-tab-intro">
+          <p class="dashboard-tab-kicker">Inteligencia</p>
+          <h2>Leitura Tatica Da IA</h2>
+          <p>
+            Painel de insight para decisao: coaching, memoria semantica,
+            relatorio pos-live e atribuicao de receita.
+          </p>
+        </header>
         <div id="intelligencePanelContainer"></div>
       </section>
 
@@ -130,6 +189,14 @@
         data-dashboard-tab-panel="clips"
         hidden
       >
+        <header class="dashboard-tab-intro">
+          <p class="dashboard-tab-kicker">Clips & Vision</p>
+          <h2>Pipeline De Midia E Cena</h2>
+          <p>
+            Controle do fluxo de clips e telemetria de vision sem desviar do
+            layout operacional principal.
+          </p>
+        </header>
         <div id="clipsSectionContainer"></div>
       </section>
 
@@ -141,6 +208,14 @@
         data-dashboard-tab-panel="analytics"
         hidden
       >
+        <header class="dashboard-tab-intro">
+          <p class="dashboard-tab-kicker">Analytics</p>
+          <h2>Historico, Tendencia E Comparativo</h2>
+          <p>
+            Timeline, comparativo multi-canal e analise densa para diagnostico
+            de desempenho e continuidade.
+          </p>
+        </header>
         <div id="analyticsLogsContainer"></div>
       </section>
 
@@ -152,6 +227,14 @@
         data-dashboard-tab-panel="config"
         hidden
       >
+        <header class="dashboard-tab-intro">
+          <p class="dashboard-tab-kicker">Configuracao</p>
+          <h2>Governanca E Diretrizes</h2>
+          <p>
+            Ajustes transacionais e politicas do agente para manter seguranca,
+            contrato de resposta e identidade do canal.
+          </p>
+        </header>
         <div id="controlPlaneContainer"></div>
       </section>
     </main>

@@ -102,6 +102,48 @@
   }
 }
 
+/* Summary strip global */
+.dashboard-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.summary-card {
+  min-height: 130px;
+  justify-content: center;
+}
+
+.summary-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-family-mono);
+}
+
+.summary-value {
+  margin: var(--spacing-2) 0;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-meta {
+  margin: var(--spacing-1) 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.summary-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
 /* Abas da dashboard */
 .dashboard-tabs-shell {
   position: sticky;
@@ -130,11 +172,12 @@
   color: var(--text-muted);
   border-radius: var(--radius-pill);
   padding: var(--spacing-2) var(--spacing-4);
-  min-height: 40px;
+  min-height: 44px;
   font-family: var(--font-family-display);
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
   transition: all var(--transition-med);
 }
@@ -158,8 +201,52 @@
   gap: var(--spacing-5);
 }
 
+.dashboard-tab-intro {
+  padding: var(--spacing-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+}
+
+.dashboard-tab-kicker {
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--color-accent);
+  font-family: var(--font-family-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dashboard-tab-intro h2 {
+  margin: 0;
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  color: var(--text-primary);
+}
+
+.dashboard-tab-intro p {
+  margin: var(--spacing-2) 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 .dashboard-tab-panel[hidden] {
   display: none;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .dashboard-tab-btn {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
 }
 
 /* Fix para manter os gaps do layout nos containers div vazios onde os partials sao injetados */
@@ -204,18 +291,19 @@
     padding: var(--spacing-3) var(--spacing-3) var(--spacing-6);
   }
 
+  .dashboard-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-tabs-shell {
     top: 130px;
   }
 
   .dashboard-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--spacing-1);
   }
 
   .dashboard-tab-btn {
-    flex: 0 0 auto;
-    min-height: 44px;
+    min-width: 120px;
   }
 }
