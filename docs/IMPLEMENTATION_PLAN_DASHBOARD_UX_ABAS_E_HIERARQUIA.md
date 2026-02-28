@@ -250,3 +250,26 @@ Validacao minima por fase:
   - `npx prettier --check dashboard/styles/layout.css dashboard/tests/tabs_responsiveness_contract.test.js dashboard/tests/tables_overflow_contract.test.js`
   - `node --test dashboard/tests/tabs_responsiveness_contract.test.js dashboard/tests/tables_overflow_contract.test.js`
   - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Fase 5 concluida (hardening e rollout)
+
+- Hardening no modulo de abas `dashboard/features/navigation/tabs.js`:
+  - inicializacao idempotente por `document` (evita listeners duplicados em reinit);
+  - atualizacao de `aria-hidden` nos `tabpanel` junto com `hidden`.
+- Testes novos de fase:
+  - `dashboard/tests/tabs_a11y.test.js`:
+    - contrato de markup (`role=tab`, `aria-controls`, `role=tabpanel`, `aria-labelledby`);
+    - comportamento teclado (`Arrow`, `Home`, `End`);
+    - sincronizacao de `aria-selected` e `aria-hidden`;
+    - garantia de init idempotente.
+  - `dashboard/tests/tabs_visibility_contract.test.js`:
+    - visibilidade por `hidden` sem remover containers do DOM;
+    - contrato de unicidade de IDs de containers por painel.
+- Checklist de regressao operacional validado:
+  - pollers continuam iniciados no bootstrap (`observability`, `action queue`, `clips`, `hud`);
+  - troca de aba nao interfere no ciclo de controllers (sem unmount/remount dinamico);
+  - contratos de API e fluxos criticos seguem verdes via suite de dashboard.
+- Validacao executada:
+  - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_a11y.test.js dashboard/tests/tabs_visibility_contract.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
+  - `node --test dashboard/tests/tabs_a11y.test.js dashboard/tests/tabs_visibility_contract.test.js`
+  - `node --test dashboard/tests/*.test.js`

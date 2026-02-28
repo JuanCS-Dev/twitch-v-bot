@@ -1,4 +1,5 @@
 const DASHBOARD_TAB_STORAGE_KEY = "byte_dashboard_active_tab";
+const initializedTabsByDocument = new WeakMap();
 
 function readStoredTabId(storage) {
   if (!storage || typeof storage.getItem !== "function") {
@@ -70,6 +71,11 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
     return null;
   }
 
+  const cached = initializedTabsByDocument.get(doc);
+  if (cached) {
+    return cached;
+  }
+
   const { tabs, panelByTabId } = collectDashboardTabs(doc);
   if (!tabs.length || !panelByTabId.size) {
     return null;
@@ -108,6 +114,7 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
       const isActive = panelTabId === resolvedTabId;
       panel.classList.toggle("is-active", isActive);
       panel.hidden = !isActive;
+      panel.setAttribute("aria-hidden", isActive ? "false" : "true");
     });
 
     if (persist) {
@@ -149,10 +156,12 @@ export function initDashboardTabs({ documentRef, storageRef } = {}) {
     : resolveTargetTabId(selectedInMarkup?.dataset?.dashboardTab);
   activateTab(initialTabId, { persist: false });
 
-  return {
+  const api = {
     activateTab,
     getActiveTab() {
       return activeTabId;
     },
   };
+  initializedTabsByDocument.set(doc, api);
+  return api;
 }
