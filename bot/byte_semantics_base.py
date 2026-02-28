@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 from bot.byte_semantics_constants import (
     BYTE_INTRO_TEMPLATES,
@@ -59,6 +60,51 @@ def parse_byte_prompt(message_text: str) -> str | None:
     if not match:
         return None
     return match.group(1).strip()
+
+
+def _normalize_ascii_prompt(prompt: str) -> str:
+    lowered = (prompt or "").strip().lower()
+    if not lowered:
+        return ""
+    folded = unicodedata.normalize("NFKD", lowered)
+    without_accents = "".join(char for char in folded if not unicodedata.combining(char))
+    return " ".join(without_accents.split())
+
+
+def is_ascii_art_prompt(prompt: str) -> bool:
+    normalized = _normalize_ascii_prompt(prompt)
+    if not normalized:
+        return False
+    if "arte ascii" in normalized or "ascii art" in normalized:
+        return True
+    # Detecta "ascii" como palavra isolada (ex: "me faz uma ascii de ...")
+    if " ascii " in normalized or normalized.startswith("ascii "):
+        return True
+    return False
+
+
+def extract_ascii_subject(prompt: str) -> str:
+    normalized = _normalize_ascii_prompt(prompt)
+    if not normalized or not is_ascii_art_prompt(normalized):
+        return ""
+
+    # Remove prefixo "byte" se presente
+    candidate = re.sub(r"^byte\s+", "", normalized, count=1)
+    # Remove verbos de pedido
+    candidate = re.sub(
+        r"^(?:me\s+)?(?:faz(?:er)?|faca|gera(?:r)?|manda|quero)\s+(?:uma\s+)?",
+        "",
+        candidate,
+        count=1,
+    )
+    # Remove marcadores de arte ASCII
+    candidate = re.sub(r"^(?:arte\s+ascii|ascii\s+art|ascii)\b", "", candidate, count=1).strip()
+    # Remove preposições
+    candidate = re.sub(r"^(?:de|do|da|dos|das|sobre)\b", "", candidate, count=1).strip()
+    candidate = candidate.strip(" ?!.,:;")
+    if candidate in {"", "pfv", "por favor"}:
+        return ""
+    return candidate
 
 
 def is_movie_fact_sheet_prompt(prompt: str) -> bool:

@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.32
+**Versão:** 1.33
 **Data:** 28 de Fevereiro de 2026
-**Status:** Fases antigas (1-13) + Fases 14-21 concluídas ✅ | Backlog ativo: Fase 22 (Prompt/Persona + model routing) e índices ANN avançados por escala
+**Status:** Fases antigas (1-13) + Fases 14-21 concluídas ✅ | Backlog ativo: Fases 22 (Prompt/Persona + model routing), 23 (ASCII Art no chat) e evolução ANN por escala
 
 ---
 
@@ -70,7 +70,8 @@
 ## 4. Backlog Prioritário (Fases Futuras)
 
 1. **Fase 22 (prioridade alta): Prompt & Persona Studio + model routing por atividade.**
-2. **Evolução ANN:** índices avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
+2. **Fase 23 (prioridade alta): geração de arte ASCII sob demanda no chat Twitch.**
+3. **Evolução ANN:** índices avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
 
 ### 4.1 Escopo planejado da Fase 22
 
@@ -99,6 +100,76 @@
   - testes backend (repositório/facade/runtime/rotas) para persistência e resolução correta de modelo.
   - testes dashboard para fluxo real de load/edit/save e contrato de API.
   - execução de gates de paridade e saúde estrutural no fechamento da etapa.
+
+### 4.2 Escopo planejado da Fase 23 (ASCII Art no Chat Twitch)
+
+- Objetivo operacional: permitir comandos naturais do tipo `byte arte ascii do goku` e retornar arte ASCII no chat do mesmo canal, sem quebrar o contrato multi-canal e sem dashboard paralela.
+- Escopo de trigger inicial:
+  - `byte arte ascii do <tema>`
+  - `byte ascii <tema>`
+  - `@byte ascii <tema>`
+- Token/scopes Twitch: sem novos escopos. A fase reutiliza os fluxos já ativos (`chat:edit/chat:read` no IRC e `user:write:chat/user:read:chat/user:bot` + `channel:bot` no EventSub), mantendo envio com `Client-Id` + `Authorization`.
+
+#### 4.2.1 Pesquisa técnica consolidada (biblioteca especializada)
+
+| Opção | Cobertura real para pedido "arte ASCII do goku" | Prós | Contras | Decisão |
+| :--- | :--- | :--- | :--- | :--- |
+| `ascii-magic` (`ascii_magic`) | **Alta** (imagem -> ASCII com controle de colunas) | Python puro, qualidade visual superior para silhueta/personagem, integração simples com Cloud Run | depende de imagem de entrada (pipeline de busca/download) | **Escolhida** |
+| `pyfiglet` | Baixa (texto estilizado, não personagem) | leve, estável | não resolve "desenho de personagem", só tipografia | Rejeitada |
+| `art` | Baixa/média (catálogo fixo + text2art) | simples para arte pronta | cobertura limitada e não escalável para temas livres | Rejeitada |
+| `chafa` (CLI) | Alta qualidade | render excelente | dependência binária de sistema, pior portabilidade no runtime atual | Rejeitada |
+
+- Biblioteca selecionada para implementação da fase:
+  - adicionar `ascii-magic>=2.3.0,<3.0.0` em `bot/requirements.txt`.
+  - usar `duckduckgo_search` já existente para buscar imagem (`DDGS().images`) e converter em ASCII (sem novo provedor externo).
+
+#### 4.2.2 Formato ideal para Twitch Chat (baseline 2026)
+
+- Premissas da plataforma:
+  - envio de chat é mensagem única por chamada (sem multiline nativo no payload).
+  - limite efetivo seguro no projeto permanece `<=460` chars por mensagem para paridade entre EventSub/Helix e IRC.
+  - risco operacional explícito: `msg_duplicate`/`msg_slowmode` quando houver burst ou repetição.
+- Contrato de entrega da ASCII Art (fase 23):
+  - render em **micro-bloco**: até `8` linhas por pedido.
+  - largura alvo: `28-36` colunas para preservar legibilidade em desktop e mobile.
+  - cada linha enviada como mensagem independente no canal de origem.
+  - cooldown por canal para esse recurso (recomendado: `45-90s`).
+  - throttling entre linhas (recomendado: `350-650ms`) para reduzir risco de drop.
+- Guardrail técnico obrigatório no código atual:
+  - não usar `format_chat_reply -> enforce_reply_limits -> flatten_chat_text` para ASCII, porque esse pipeline remove quebras/indentação e destrói a arte.
+  - criar caminho de envio raw por linha, preservando espaços à esquerda.
+
+#### 4.2.3 Caminho de implementação (incremental, sem reescrever base)
+
+- Parsing/semântica:
+  - `bot/byte_semantics_base.py`: adicionar detector `is_ascii_art_prompt` e extrator `extract_ascii_subject`.
+- Runtime de geração:
+  - novo módulo `bot/ascii_art_runtime.py` com pipeline:
+    - resolver tema solicitado.
+    - buscar imagem candidata (DuckDuckGo image search).
+    - converter para ASCII com `ascii_magic` (modo mono, colunas controladas).
+    - sanitizar para ASCII imprimível e limitar linhas/colunas.
+- Orquestração de prompt:
+  - `bot/prompt_flow.py`: criar rota explícita `ascii_art` antes do fluxo LLM padrão.
+  - `bot/prompt_runtime.py`: integrar handler novo sem impactar intents existentes (`help`, `status`, `movie_fact_sheet`, `recap`, LLM default).
+- Transporte de chat:
+  - `bot/irc_state.py`: adicionar envio raw por linha (sem `flatten_chat_text`) para blocos ASCII.
+  - `bot/eventsub_runtime.py`: enviar linhas sequenciais no canal correto, mantendo isolamento multi-canal.
+- Observabilidade:
+  - registrar rota dedicada (`ascii_art`) em `record_byte_interaction`.
+  - registrar falhas específicas (`ascii_not_found`, `ascii_rate_limited`, `ascii_cooldown`).
+
+#### 4.2.4 Estratégia de validação da Fase 23
+
+- Testes backend planejados:
+  - `bot/tests/test_ascii_art_runtime.py` (parser, busca mockada, render e sanitização).
+  - extensão de `bot/tests/test_prompt_flow_v2.py` para rota `ascii_art`.
+  - extensão de `bot/tests/test_irc_state_v3.py` e `bot/tests/test_eventsub_runtime_v5.py` para envio multi-linha raw no canal correto.
+- Gates de fechamento:
+  - `pytest -q --no-cov bot/tests/test_ascii_art_runtime.py bot/tests/test_prompt_flow_v2.py bot/tests/test_irc_state_v3.py bot/tests/test_eventsub_runtime_v5.py`
+  - `python -m bot.dashboard_parity_gate`
+  - `python -m bot.structural_health_gate`
+  - atualização desta seção com evidências (pass/fail e contagem).
 
 ---
 

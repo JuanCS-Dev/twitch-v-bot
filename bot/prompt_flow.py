@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 ReplyFn = Callable[[str], Awaitable[None]]
+ReplyRawFn = Callable[[str], Awaitable[None]]
 InferenceFn = Callable[..., Awaitable[Any]]
 
 
@@ -31,6 +32,8 @@ class BytePromptRuntime:
     is_movie_fact_sheet_prompt: Callable[[str], bool]
     extract_movie_title: Callable[[str], str]
     build_movie_fact_sheet_query: Callable[[str], str]
+    is_ascii_art_prompt: Callable[[str], bool]
+    extract_ascii_subject: Callable[[str], str]
     build_llm_enhanced_prompt: Callable[..., str]
     has_grounding_signal: Callable[[Mapping[str, Any] | None], bool]
     normalize_current_events_reply_contract: Callable[..., str]
@@ -150,6 +153,23 @@ async def handle_byte_prompt_text(
     if runtime.is_intro_prompt(normalized_prompt) or lowered_prompt.startswith("se apresente"):
         await tracked_reply(runtime.build_intro_reply())
         log_interaction("intro")
+        return
+
+    if runtime.is_ascii_art_prompt(normalized_prompt):
+        subject = runtime.extract_ascii_subject(normalized_prompt)
+        if not subject:
+            await tracked_reply("Qual arte ASCII você quer? Ex: byte arte ascii de gato")
+            log_interaction("ascii_art_no_subject")
+            return
+        # Importa runtime ASCII e envia linha por linha
+        from bot.ascii_art_runtime import handle_ascii_art_prompt
+
+        async def reply_raw(text: str) -> None:
+            # Envia sem formatação para preservar espaços da arte
+            await reply_fn(text)
+
+        success = await handle_ascii_art_prompt(subject, author_name, reply_raw, channel_id)
+        log_interaction("ascii_art_success" if success else "ascii_art_error")
         return
 
     if lowered_prompt.startswith("status"):

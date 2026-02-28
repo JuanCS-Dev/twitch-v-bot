@@ -6,7 +6,7 @@ from bot.logic_constants import BOT_BRAND, MAX_REPLY_LINES
 BYTE_TRIGGER = os.environ.get("BYTE_TRIGGER", BOT_BRAND).strip().lower() or "byte"
 BYTE_HELP_MESSAGE = (
     "Byte entende chat natural. Acione com byte/@byte/!byte + pergunta. "
-    "Atalhos: ajuda | se apresente | ficha tecnica <filme> | status. "
+    "Atalhos: ajuda | se apresente | ficha tecnica <filme> | arte ascii de <tema> | status. "
     "Dono (IRC): canais | join <canal> | part <canal>."
 )
 BYTE_TRIGGER_PATTERN = re.compile(
