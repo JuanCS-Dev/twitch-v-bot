@@ -1,6 +1,58 @@
-<section class="grid-two">
+<section id="analyticsQuickInsightsSection">
   <article class="panel">
-    <h2>Agent Context & Internals</h2>
+    <h2>Analytics Decision Brief</h2>
+    <p id="analyticsQuickInsightHint" class="panel-hint">
+      Loading analytics signals for decision support...
+    </p>
+    <div class="grid-cards">
+      <article class="card summary-card status-info">
+        <h2>Focused Channel</h2>
+        <p id="analyticsQuickFocusedChannel" class="metric">default</p>
+        <div class="summary-chips-row">
+          <span id="analyticsQuickRuntimeChip" class="chip pending"
+            >RUNTIME COLD</span
+          >
+          <span id="analyticsQuickPersistenceChip" class="chip pending"
+            >PERSISTENCE IDLE</span
+          >
+        </div>
+      </article>
+
+      <article class="card summary-card status-info">
+        <h2>Stream Health</h2>
+        <p id="analyticsQuickHealthScore" class="metric">0/100</p>
+        <div class="summary-chips-row">
+          <span id="analyticsQuickHealthBandChip" class="chip pending"
+            >CRITICAL</span
+          >
+          <span id="analyticsQuickIgnoredRate" class="chip pending"
+            >IGNORED 0.0%</span
+          >
+        </div>
+      </article>
+
+      <article class="card summary-card status-info">
+        <h2>Engagement Momentum</h2>
+        <p id="analyticsQuickMessagesPerMinute" class="summary-value">
+          0.00 / 0.00 mpm
+        </p>
+        <p id="analyticsQuickTriggerRate" class="summary-meta">
+          0.0% trigger rate (60m)
+        </p>
+      </article>
+
+      <article class="card summary-card status-info">
+        <h2>Cost and Errors</h2>
+        <p id="analyticsQuickCost60m" class="summary-value">$0.0000</p>
+        <p id="analyticsQuickErrors" class="summary-meta">0 errors</p>
+      </article>
+    </div>
+  </article>
+</section>
+
+<section class="grid-two" id="analyticsRuntimeSection">
+  <article class="panel">
+    <h2>Runtime Context</h2>
     <div
       class="form-row"
       style="
@@ -76,6 +128,148 @@
     </dl>
     <h3>Short/Temporary Memory</h3>
     <ul id="contextItems" class="context-list"></ul>
+  </article>
+
+  <article class="panel">
+    <h2>Timeline Logs Realtime (Last 30 min)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time UTC</th>
+            <th>IRC Chat</th>
+            <th>Ai Trigg</th>
+            <th>Ai Rply</th>
+            <th>LLM Req</th>
+            <th>Errors</th>
+          </tr>
+        </thead>
+        <tbody id="timelineBody"></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="grid-two" id="analyticsDiagnosticsSection">
+  <article class="panel">
+    <h2>Deep Analytics (60m)</h2>
+    <dl class="kv">
+      <div>
+        <dt>Traffic Velocity (10/60m)</dt>
+        <dd><span id="aMpm10m">0</span> / <span id="aMpm60m">0</span> mpm</dd>
+      </div>
+      <div>
+        <dt>Total Churn (10/60m)</dt>
+        <dd>
+          <span id="aMessages10m">0</span> /
+          <span id="aMessages60m">0</span> msgs
+        </dd>
+      </div>
+      <div>
+        <dt>Payload Avg Len (10/60m)</dt>
+        <dd>
+          <span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char
+        </dd>
+      </div>
+      <div>
+        <dt>Commands Triggered</dt>
+        <dd>
+          <span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span
+          >)
+        </dd>
+      </div>
+      <div>
+        <dt>Network Links Detected</dt>
+        <dd>
+          <span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)
+        </dd>
+      </div>
+      <div>
+        <dt>Route IRC</dt>
+        <dd id="aSourceIrc60m">0</dd>
+      </div>
+      <div>
+        <dt>Route EventSub</dt>
+        <dd id="aSourceEventsub60m">0</dd>
+      </div>
+      <div>
+        <dt>Route Anomalous</dt>
+        <dd id="aSourceUnknown60m">0</dd>
+      </div>
+      <div>
+        <dt>Byte Invokations (10/60m)</dt>
+        <dd>
+          <span id="aByteTriggers10m">0</span> /
+          <span id="aByteTriggers60m">0</span>
+        </dd>
+      </div>
+    </dl>
+
+    <h3 style="margin-top: 1.5rem">API Routes (Truncated)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Internal Route Name</th>
+            <th>Hits</th>
+          </tr>
+        </thead>
+        <tbody id="routesBody"></tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Leaderboard Signals</h2>
+
+    <h3 style="margin-top: 0">Top Chatters (60m)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody id="topChatters60mBody"></tbody>
+      </table>
+    </div>
+
+    <h3>Top Triggers (60m)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Actor</th>
+            <th>Procs</th>
+          </tr>
+        </thead>
+        <tbody id="topTriggers60mBody"></tbody>
+      </table>
+    </div>
+
+    <h3>Lifetime Chatters</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody id="topChattersTotalBody"></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section id="analyticsPersistedSection">
+  <article class="panel">
+    <h2>Persisted History and Comparison</h2>
+    <p class="panel-hint">
+      Historical snapshots stay separated from live runtime data to improve
+      decision clarity under pressure.
+    </p>
 
     <details class="advanced-settings">
       <summary>
@@ -158,139 +352,5 @@
         </div>
       </div>
     </details>
-  </article>
-
-  <article class="panel">
-    <h2>Timeline Logs Realtime (Last 30 min)</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Time UTC</th>
-            <th>IRC Chat</th>
-            <th>Ai Trigg</th>
-            <th>Ai Rply</th>
-            <th>LLM Req</th>
-            <th>Errors</th>
-          </tr>
-        </thead>
-        <tbody id="timelineBody"></tbody>
-      </table>
-    </div>
-  </article>
-</section>
-
-<section class="grid-two">
-  <article class="panel">
-    <h2>Deep Analytics (60m)</h2>
-    <dl class="kv">
-      <div>
-        <dt>Traffic Velocity (10/60m)</dt>
-        <dd><span id="aMpm10m">0</span> / <span id="aMpm60m">0</span> mpm</dd>
-      </div>
-      <div>
-        <dt>Total Churn (10/60m)</dt>
-        <dd>
-          <span id="aMessages10m">0</span> /
-          <span id="aMessages60m">0</span> msgs
-        </dd>
-      </div>
-      <div>
-        <dt>Payload Avg Len (10/60m)</dt>
-        <dd>
-          <span id="aAvgLen10m">0</span> / <span id="aAvgLen60m">0</span> char
-        </dd>
-      </div>
-      <div>
-        <dt>Commands Triggered</dt>
-        <dd>
-          <span id="aCommands60m">0</span> (<span id="aCommandRatio60m">0%</span
-          >)
-        </dd>
-      </div>
-      <div>
-        <dt>Network Links Detected</dt>
-        <dd>
-          <span id="aUrls60m">0</span> (<span id="aUrlRatio60m">0%</span>)
-        </dd>
-      </div>
-      <div>
-        <dt>Route IRC</dt>
-        <dd id="aSourceIrc60m">0</dd>
-      </div>
-      <div>
-        <dt>Route EventSub</dt>
-        <dd id="aSourceEventsub60m">0</dd>
-      </div>
-      <div>
-        <dt>Route Anomalous</dt>
-        <dd id="aSourceUnknown60m">0</dd>
-      </div>
-      <div>
-        <dt>Byte Invokations (10/60m)</dt>
-        <dd>
-          <span id="aByteTriggers10m">0</span> /
-          <span id="aByteTriggers60m">0</span>
-        </dd>
-      </div>
-    </dl>
-
-    <h3 style="margin-top: 1.5rem">API Routes (Truncated)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Internal Route Name</th>
-            <th>Hits</th>
-          </tr>
-        </thead>
-        <tbody id="routesBody"></tbody>
-      </table>
-    </div>
-  </article>
-</section>
-
-<section class="grid-cards">
-  <article class="panel">
-    <h3>Top Chatters (60m)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>UID</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody id="topChatters60mBody"></tbody>
-      </table>
-    </div>
-  </article>
-  <article class="panel">
-    <h3>Top Triggers (60m)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Actor</th>
-            <th>Procs</th>
-          </tr>
-        </thead>
-        <tbody id="topTriggers60mBody"></tbody>
-      </table>
-    </div>
-  </article>
-  <article class="panel">
-    <h3>Lifetime Chatters</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>UID</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody id="topChattersTotalBody"></tbody>
-      </table>
-    </div>
   </article>
 </section>

@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: em evolucao (fases 1-9 concluidas; fases 10-14 planejadas para refinamento UX)
+Status: em evolucao (fases 1-12 concluidas; fase 14 em progresso; fase 13 planejada)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 Diretriz global: padronizacao da linguagem da UI em ingles (en-US), sem mistura PT-BR/EN em labels e fluxos visuais; conteudo de prompt pode permanecer em portugues para rollout nacional.
 
@@ -506,6 +506,28 @@ DoD adicional do ciclo de refinamento UX (fases 10-14):
   - `node --test dashboard/tests/control_plane_information_density.test.js`
   - `node --test dashboard/tests/*.test.js`
 
+### 2026-02-28 - Fase 12 concluida (analytics orientado a decisao)
+
+- `dashboard/partials/analytics_logs.html` reorganizado com separacao clara por dominio:
+  - `Analytics Decision Brief` no topo (quick insights antes de tabelas densas);
+  - `Runtime Context` e `Timeline Logs Realtime` no mesmo bloco operacional;
+  - `Deep Analytics` e leaderboards em bloco intermediario;
+  - historico persistido/multi-canal isolado em `Persisted History and Comparison` com disclosure progressivo.
+- `dashboard/features/observability/view.js` atualizado para renderizar sinais reais de decisao no topo:
+  - foco de canal, runtime/persistencia, stream health, ignored rate, mpm, trigger rate, custo e erros;
+  - hint dinamico orientado a risco operacional.
+- Cobertura nova e ampliada:
+  - `dashboard/tests/analytics_information_architecture.test.js`
+    - valida hierarquia deterministica da aba `Analytics`;
+    - valida separacao por blocos (`quick`, `runtime`, `diagnostics`, `persisted`);
+    - valida contratos de IDs nos blocos corretos.
+  - `dashboard/tests/multi_channel_focus.test.js`
+    - estendido para validar render real dos novos `Quick Insights` (snapshot + contexto por canal).
+- Validacao executada:
+  - `npx prettier --check dashboard/partials/analytics_logs.html dashboard/features/observability/view.js dashboard/tests/analytics_information_architecture.test.js dashboard/tests/multi_channel_focus.test.js`
+  - `node --test dashboard/tests/analytics_information_architecture.test.js dashboard/tests/multi_channel_focus.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
 ### 2026-02-28 - Auditoria UX pos-fase 9 (baseline para fases 10-14)
 
 Classificacao operacional:
@@ -570,12 +592,11 @@ Validacao executada (baseline da auditoria):
 | 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida    | `scrollIntoView` em bootstrap/click/popstate                                                      | cobertura nova em `tabs_navigation.test.js`                                             |
 | 10   | Sub-hierarquia interna em Inteligencia                     | Concluida    | `dashboard/partials/intelligence_panel.html` (blocos + disclosure progressivo)                    | `dashboard/tests/intelligence_hierarchy_contract.test.js`                               |
 | 11   | Densidade e governanca no Control Plane                    | Concluida    | `dashboard/partials/control_plane.html` (secoes de governanca + disclosure progressivo)           | `dashboard/tests/control_plane_information_density.test.js`                             |
-| 12   | Refino de Analytics orientado a decisao                    | Planejada    | alvo: `dashboard/partials/analytics_logs.html`                                                    | alvo: `dashboard/tests/analytics_information_architecture.test.js`                      |
+| 12   | Refino de Analytics orientado a decisao                    | Concluida    | `dashboard/partials/analytics_logs.html` (decision brief + separacao runtime/timeline/persisted)  | `dashboard/tests/analytics_information_architecture.test.js`, `multi_channel_focus`     |
 | 13   | Consolidacao visual (reduzir inline styles)                | Planejada    | alvo: `dashboard/styles/layout.css`, `dashboard/styles/components.css`                            | alvo: `dashboard/tests/dashboard_style_consolidation_contract.test.js`                  |
 | 14   | Coerencia semantica, UI em ingles e resiliencia responsiva | Em progresso | `index.html` (`lang=en`) + traducao de strings em views/controllers + regra de prompt localizavel | `dashboard/tests/dashboard_semantic_consistency.test.js`, `multi_channel_focus.test.js` |
 
 Sequencia recomendada de execucao a partir do baseline atual:
 
-1. Fase 12 (impacto P1 no diagnostico analitico).
-2. Fase 13 (consolidacao visual e reducao de inline).
-3. Fase 14 (coerencia semantica final e resiliencia responsiva).
+1. Fase 13 (consolidacao visual e reducao de inline).
+2. Fase 14 (coerencia semantica final e resiliencia responsiva).

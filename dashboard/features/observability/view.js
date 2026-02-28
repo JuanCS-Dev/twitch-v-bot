@@ -37,6 +37,44 @@ function formatStreamHealthScore(value) {
   return String(Math.round(clamped));
 }
 
+function ignoredRateChipTone(value) {
+  const rate = Number(value);
+  if (!Number.isFinite(rate)) return "pending";
+  if (rate >= 30) return "error";
+  if (rate >= 15) return "warn";
+  return "ok";
+}
+
+function buildAnalyticsQuickInsightHint(
+  channelId,
+  streamHealthBand,
+  ignoredRate,
+  errorsTotal,
+) {
+  const normalizedBand = normalizeStreamHealthBand(streamHealthBand);
+  const rate = Number(ignoredRate || 0);
+  const errors = Number(errorsTotal || 0);
+
+  if (normalizedBand === "critical" || rate >= 30 || errors > 0) {
+    return {
+      text: `Attention required in #${channelId}: health pressure or operational errors detected.`,
+      className: "panel-hint event-level-warn",
+    };
+  }
+
+  if (normalizedBand === "watch" || rate >= 15) {
+    return {
+      text: `Monitor #${channelId}: engagement pressure is rising and may require tactical adjustment.`,
+      className: "panel-hint event-level-info",
+    };
+  }
+
+  return {
+    text: `#${channelId} is stable. Runtime context, realtime timeline and persisted history are ready for deeper analysis.`,
+    className: "panel-hint",
+  };
+}
+
 function formatStreamHealthCell(source) {
   const streamHealth = source?.stream_health || {};
   return `${formatStreamHealthScore(streamHealth.score)} (${formatStreamHealthBandLabel(streamHealth.band)})`;
@@ -186,6 +224,35 @@ export function getObservabilityElements() {
     ctxSelectedChannelChip: document.getElementById("ctxSelectedChannelChip"),
     ctxPersistedStatusChip: document.getElementById("ctxPersistedStatusChip"),
     ctxRuntimeStatusChip: document.getElementById("ctxRuntimeStatusChip"),
+    analyticsQuickInsightHint: document.getElementById(
+      "analyticsQuickInsightHint",
+    ),
+    analyticsQuickFocusedChannel: document.getElementById(
+      "analyticsQuickFocusedChannel",
+    ),
+    analyticsQuickRuntimeChip: document.getElementById(
+      "analyticsQuickRuntimeChip",
+    ),
+    analyticsQuickPersistenceChip: document.getElementById(
+      "analyticsQuickPersistenceChip",
+    ),
+    analyticsQuickHealthScore: document.getElementById(
+      "analyticsQuickHealthScore",
+    ),
+    analyticsQuickHealthBandChip: document.getElementById(
+      "analyticsQuickHealthBandChip",
+    ),
+    analyticsQuickIgnoredRate: document.getElementById(
+      "analyticsQuickIgnoredRate",
+    ),
+    analyticsQuickMessagesPerMinute: document.getElementById(
+      "analyticsQuickMessagesPerMinute",
+    ),
+    analyticsQuickTriggerRate: document.getElementById(
+      "analyticsQuickTriggerRate",
+    ),
+    analyticsQuickCost60m: document.getElementById("analyticsQuickCost60m"),
+    analyticsQuickErrors: document.getElementById("analyticsQuickErrors"),
     ctxPersistedGame: document.getElementById("ctxPersistedGame"),
     ctxPersistedVibe: document.getElementById("ctxPersistedVibe"),
     ctxPersistedLastEvent: document.getElementById("ctxPersistedLastEvent"),
@@ -694,7 +761,31 @@ export function renderObservabilitySnapshot(
     String(context.channel_id || safeData.selected_channel || "default")
       .trim()
       .toLowerCase() || "default";
+  const streamHealthScoreLabel = `${formatStreamHealthScore(streamHealth.score)}/100`;
+  const persistenceLabel =
+    persistence.enabled && persistence.restored
+      ? "PERSISTENCE READY"
+      : persistence.enabled
+        ? "PERSISTENCE LIVE"
+        : "PERSISTENCE OFF";
+  const persistenceTone =
+    persistence.enabled && persistence.restored
+      ? "ok"
+      : persistence.enabled
+        ? "warn"
+        : "pending";
+  const runtimeSnapshotLabel = String(bot.mode || "").trim()
+    ? "RUNTIME ACTIVE"
+    : "RUNTIME IDLE";
+  const runtimeSnapshotTone = String(bot.mode || "").trim() ? "ok" : "pending";
+  const messages60m = Number(analytics.messages_60m || 0);
+  const triggerRate60m =
+    messages60m > 0
+      ? (Number(analytics.byte_triggers_60m || 0) / messages60m) * 100
+      : 0;
+
   setText(els.summaryFocusedChannel, focusedChannel);
+  setText(els.analyticsQuickFocusedChannel, focusedChannel);
   if (els.ctxSelectedChannelChip) {
     els.ctxSelectedChannelChip.classList.remove(
       "ok",
@@ -705,26 +796,62 @@ export function renderObservabilitySnapshot(
     setText(els.ctxSelectedChannelChip, focusedChannel);
     els.ctxSelectedChannelChip.classList.add("ok");
   }
+
+  setStatusChip(
+    els.analyticsQuickRuntimeChip,
+    runtimeSnapshotLabel,
+    runtimeSnapshotTone,
+  );
+  setStatusChip(
+    els.analyticsQuickPersistenceChip,
+    persistenceLabel,
+    persistenceTone,
+  );
+  setText(els.analyticsQuickHealthScore, streamHealthScoreLabel);
+  setStatusChip(
+    els.analyticsQuickHealthBandChip,
+    formatStreamHealthBandLabel(streamHealth.band).toUpperCase(),
+    streamHealthSummaryChipTone(streamHealth.band),
+  );
+  setStatusChip(
+    els.analyticsQuickIgnoredRate,
+    `IGNORED ${formatPercent(outcomes.ignored_rate_60m)}`,
+    ignoredRateChipTone(outcomes.ignored_rate_60m),
+  );
+  setText(
+    els.analyticsQuickMessagesPerMinute,
+    `${Number(analytics.messages_per_minute_10m || 0).toFixed(2)} / ${Number(analytics.messages_per_minute_60m || 0).toFixed(2)} mpm`,
+  );
+  setText(
+    els.analyticsQuickTriggerRate,
+    `${formatPercent(triggerRate60m)} trigger rate (60m)`,
+  );
+  setText(
+    els.analyticsQuickCost60m,
+    formatUsd(outcomes.estimated_cost_usd_60m),
+  );
+  setText(
+    els.analyticsQuickErrors,
+    `${formatNumber(metrics.errors_total)} errors`,
+  );
+
+  if (els.analyticsQuickInsightHint) {
+    const quickHint = buildAnalyticsQuickInsightHint(
+      focusedChannel,
+      streamHealth.band,
+      outcomes.ignored_rate_60m,
+      metrics.errors_total,
+    );
+    setText(els.analyticsQuickInsightHint, quickHint.text);
+    els.analyticsQuickInsightHint.className = quickHint.className;
+  }
+
   if (els.summaryPersistenceStatusChip) {
-    if (persistence.enabled && persistence.restored) {
-      setStatusChip(
-        els.summaryPersistenceStatusChip,
-        "PERSISTENCE READY",
-        "ok",
-      );
-    } else if (persistence.enabled) {
-      setStatusChip(
-        els.summaryPersistenceStatusChip,
-        "PERSISTENCE LIVE",
-        "warn",
-      );
-    } else {
-      setStatusChip(
-        els.summaryPersistenceStatusChip,
-        "PERSISTENCE OFF",
-        "pending",
-      );
-    }
+    setStatusChip(
+      els.summaryPersistenceStatusChip,
+      persistenceLabel,
+      persistenceTone,
+    );
   }
   if (els.rollupStateChip) {
     els.rollupStateChip.classList.remove("ok", "warn", "error", "pending");
@@ -770,7 +897,6 @@ export function renderObservabilitySnapshot(
     els.mStreamHealthBand,
     formatStreamHealthBandLabel(streamHealth.band),
   );
-  const streamHealthScoreLabel = `${formatStreamHealthScore(streamHealth.score)}/100`;
   setText(els.summaryStreamHealthScore, streamHealthScoreLabel);
   setStatusChip(
     els.summaryStreamHealthBandChip,
@@ -871,10 +997,7 @@ export function renderObservabilitySnapshot(
       ? new Date(safeData.timestamp)
       : null;
   if (snapshotTime && !Number.isNaN(snapshotTime.getTime())) {
-    setText(
-      els.lastUpdate,
-      `Updated at: ${snapshotTime.toLocaleTimeString()}`,
-    );
+    setText(els.lastUpdate, `Updated at: ${snapshotTime.toLocaleTimeString()}`);
     return;
   }
   setText(els.lastUpdate, `Updated at: ${new Date().toLocaleTimeString()}`);
@@ -932,6 +1055,7 @@ export function renderChannelContextSnapshot(payload, els) {
   const runtimeLabel = runtimeLoaded ? "RUNTIME HOT" : "RUNTIME LAZY";
 
   setText(els.summaryFocusedChannel, channelId);
+  setText(els.analyticsQuickFocusedChannel, channelId);
 
   if (els.ctxSelectedChannelChip) {
     setStatusChip(els.ctxSelectedChannelChip, channelId, "ok");
@@ -947,6 +1071,11 @@ export function renderChannelContextSnapshot(payload, els) {
     persistedLabel,
     persistedReady ? "ok" : "warn",
   );
+  setStatusChip(
+    els.analyticsQuickPersistenceChip,
+    persistedLabel,
+    persistedReady ? "ok" : "warn",
+  );
 
   setStatusChip(
     els.ctxRuntimeStatusChip,
@@ -955,6 +1084,11 @@ export function renderChannelContextSnapshot(payload, els) {
   );
   setStatusChip(
     els.summaryRuntimeStatusChip,
+    runtimeLabel,
+    runtimeLoaded ? "ok" : "pending",
+  );
+  setStatusChip(
+    els.analyticsQuickRuntimeChip,
     runtimeLabel,
     runtimeLoaded ? "ok" : "pending",
   );
@@ -981,6 +1115,14 @@ export function renderChannelContextSnapshot(payload, els) {
       );
       els.ctxPersistedHint.className = "panel-hint event-level-warn";
     }
+  }
+
+  if (els.analyticsQuickInsightHint && (!runtimeLoaded || !persistedReady)) {
+    setText(
+      els.analyticsQuickInsightHint,
+      `#${channelId} is running with partial persisted context. Validate runtime/timeline before tactical actions.`,
+    );
+    els.analyticsQuickInsightHint.className = "panel-hint event-level-warn";
   }
 
   renderStringList(

@@ -256,6 +256,50 @@ function createObservabilityElements(document) {
       "lastUpdate",
       new MockElement("p", document),
     ),
+    analyticsQuickInsightHint: document.registerElement(
+      "analyticsQuickInsightHint",
+      new MockElement("p", document),
+    ),
+    analyticsQuickFocusedChannel: document.registerElement(
+      "analyticsQuickFocusedChannel",
+      new MockElement("span", document),
+    ),
+    analyticsQuickRuntimeChip: document.registerElement(
+      "analyticsQuickRuntimeChip",
+      new MockElement("span", document),
+    ),
+    analyticsQuickPersistenceChip: document.registerElement(
+      "analyticsQuickPersistenceChip",
+      new MockElement("span", document),
+    ),
+    analyticsQuickHealthScore: document.registerElement(
+      "analyticsQuickHealthScore",
+      new MockElement("span", document),
+    ),
+    analyticsQuickHealthBandChip: document.registerElement(
+      "analyticsQuickHealthBandChip",
+      new MockElement("span", document),
+    ),
+    analyticsQuickIgnoredRate: document.registerElement(
+      "analyticsQuickIgnoredRate",
+      new MockElement("span", document),
+    ),
+    analyticsQuickMessagesPerMinute: document.registerElement(
+      "analyticsQuickMessagesPerMinute",
+      new MockElement("span", document),
+    ),
+    analyticsQuickTriggerRate: document.registerElement(
+      "analyticsQuickTriggerRate",
+      new MockElement("span", document),
+    ),
+    analyticsQuickCost60m: document.registerElement(
+      "analyticsQuickCost60m",
+      new MockElement("span", document),
+    ),
+    analyticsQuickErrors: document.registerElement(
+      "analyticsQuickErrors",
+      new MockElement("span", document),
+    ),
     ctxSelectedChannelChip: document.registerElement(
       "ctxSelectedChannelChip",
       new MockElement("span", document),
@@ -874,6 +918,26 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.rollupStateChip.textContent, "Rollup Restored");
   assert.equal(els.ctxPersistedStatusChip.textContent, "PERSISTED READY");
   assert.equal(els.ctxRuntimeStatusChip.textContent, "RUNTIME HOT");
+  assert.equal(els.analyticsQuickFocusedChannel.textContent, "canal_a");
+  assert.equal(els.analyticsQuickRuntimeChip.textContent, "RUNTIME HOT");
+  assert.equal(
+    els.analyticsQuickPersistenceChip.textContent,
+    "PERSISTED READY",
+  );
+  assert.equal(els.analyticsQuickHealthScore.textContent, "91/100");
+  assert.equal(els.analyticsQuickHealthBandChip.textContent, "EXCELLENT");
+  assert.equal(els.analyticsQuickIgnoredRate.textContent, "IGNORED 0.0%");
+  assert.equal(
+    els.analyticsQuickMessagesPerMinute.textContent,
+    "0.00 / 0.00 mpm",
+  );
+  assert.equal(
+    els.analyticsQuickTriggerRate.textContent,
+    "0.0% trigger rate (60m)",
+  );
+  assert.equal(els.analyticsQuickCost60m.textContent, "$0.0000");
+  assert.equal(els.analyticsQuickErrors.textContent, "0 errors");
+  assert.match(els.analyticsQuickInsightHint.textContent, /#canal_a/i);
   assert.equal(els.mStreamHealthScore.textContent, "91");
   assert.equal(els.mStreamHealthBand.textContent, "Excellent");
   assert.equal(els.ctxStreamHealthScore.textContent, "91/100");
@@ -1102,6 +1166,13 @@ test("observability controller fetches observability, context and history for th
   assert.equal(obsEls.connectionState.textContent, "Synced");
   assert.equal(obsEls.ctxSelectedChannelChip.textContent, "canal_z");
   assert.equal(obsEls.ctxRuntimeStatusChip.textContent, "RUNTIME LAZY");
+  assert.equal(obsEls.analyticsQuickFocusedChannel.textContent, "canal_z");
+  assert.equal(obsEls.analyticsQuickRuntimeChip.textContent, "RUNTIME LAZY");
+  assert.equal(obsEls.analyticsQuickPersistenceChip.textContent, "NO SNAPSHOT");
+  assert.match(
+    obsEls.analyticsQuickInsightHint.textContent,
+    /partial persisted/i,
+  );
   assert.equal(obsEls.mStreamHealthScore.textContent, "84");
   assert.equal(obsEls.intStreamHealthBand.textContent, "Stable");
   assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
