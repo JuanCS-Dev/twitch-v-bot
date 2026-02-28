@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: concluido (fases 1-6 entregues)
+Status: concluido (fases 1-7 entregues)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 
 ## 1) Diagnostico atual (baseado no codigo)
@@ -149,6 +149,16 @@ Entrega:
 Entrega:
 
 - Navegacao por abas compartilhavel por URL, sem regressao de comportamento existente.
+
+### Fase 7 - Integracao com historico do navegador (back/forward)
+
+- Sincronizar aba ativa quando o usuario navegar com `back/forward` (`popstate`).
+- Atualizar somente estado visual + persistencia local nesse fluxo (sem reescrever URL).
+- Manter comportamento estavel quando o `?tab=` recebido no `popstate` ja for a aba ativa.
+
+Entrega:
+
+- Navegacao de abas consistente com historico do browser.
 
 ## 6) Regras de nao regressao
 
@@ -298,5 +308,19 @@ Validacao minima por fase:
   - sincronizacao de URL mantendo params existentes.
 - Validacao executada:
   - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js`
+  - `node --test dashboard/tests/tabs_navigation.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Fase 7 concluida (historico back/forward)
+
+- Modulo de abas `dashboard/features/navigation/tabs.js` atualizado com listener de `popstate`:
+  - leitura de `?tab=` na URL ao navegar no historico;
+  - troca de aba sem `history.replaceState` (evita loop/rewrite de URL);
+  - persistencia da aba restaurada no `localStorage`.
+- API de inicializacao ampliada com `eventTargetRef` para teste deterministico do fluxo de historico.
+- Teste novo em `dashboard/tests/tabs_navigation.test.js`:
+  - back/forward (`popstate`) atualiza aba ativa e paineis sem side-effect de rewrite na URL.
+- Validacao executada:
+  - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
   - `node --test dashboard/tests/tabs_navigation.test.js`
   - `node --test dashboard/tests/*.test.js`

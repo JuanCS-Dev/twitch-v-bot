@@ -73,6 +73,16 @@ function getHistoryFromRef(historyRef) {
   return null;
 }
 
+function getEventTargetFromRef(eventTargetRef) {
+  if (eventTargetRef) {
+    return eventTargetRef;
+  }
+  if (typeof window !== "undefined" && window.addEventListener) {
+    return window;
+  }
+  return null;
+}
+
 function readTabIdFromLocation(locationRef) {
   if (!locationRef) {
     return "";
@@ -145,6 +155,7 @@ export function initDashboardTabs({
   storageRef,
   locationRef,
   historyRef,
+  eventTargetRef,
 } = {}) {
   const doc = getDocumentFromRef(documentRef);
   if (!doc || typeof doc.querySelectorAll !== "function") {
@@ -164,6 +175,7 @@ export function initDashboardTabs({
   const storage = getStorageFromRef(storageRef);
   const location = getLocationFromRef(locationRef);
   const history = getHistoryFromRef(historyRef);
+  const eventTarget = getEventTargetFromRef(eventTargetRef);
   let activeTabId = "";
 
   function resolveTargetTabId(candidateTabId) {
@@ -244,6 +256,20 @@ export function initDashboardTabs({
     tabFromLocation || storedTabId || selectedInMarkup?.dataset?.dashboardTab;
   const initialTabId = resolveTargetTabId(initialCandidateTabId);
   activateTab(initialTabId, { persist: false, syncUrl: true });
+
+  if (eventTarget && typeof eventTarget.addEventListener === "function") {
+    eventTarget.addEventListener("popstate", () => {
+      const nextTabId = readTabIdFromLocation(location);
+      if (!nextTabId) {
+        return;
+      }
+      const resolvedTabId = resolveTargetTabId(nextTabId);
+      if (resolvedTabId === activeTabId) {
+        return;
+      }
+      activateTab(resolvedTabId, { persist: true, syncUrl: false });
+    });
+  }
 
   const api = {
     activateTab,

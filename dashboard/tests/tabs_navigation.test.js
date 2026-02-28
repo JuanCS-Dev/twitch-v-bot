@@ -139,6 +139,23 @@ class MockHistory {
   }
 }
 
+class MockEventTarget {
+  constructor() {
+    this.listeners = new Map();
+  }
+
+  addEventListener(type, handler) {
+    const handlers = this.listeners.get(type) || [];
+    handlers.push(handler);
+    this.listeners.set(type, handlers);
+  }
+
+  dispatchEvent(event) {
+    const handlers = this.listeners.get(String(event?.type || "")) || [];
+    handlers.forEach((handler) => handler(event));
+  }
+}
+
 function createTab(id, selected = false) {
   const el = new MockElement({ tabId: id });
   if (selected) {
@@ -308,4 +325,38 @@ test("dashboard tabs sync active tab into URL query without losing existing para
   assert.match(history.calls[1], /\?channel=canal_a&tab=intelligence/);
   assert.match(location.search, /channel=canal_a/);
   assert.match(location.search, /tab=intelligence/);
+});
+
+test("dashboard tabs react to browser popstate using tab query", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+  const storage = new MockStorage();
+  const location = new MockLocation({
+    search: "?tab=operation&channel=canal_a",
+  });
+  const history = new MockHistory(location);
+  const eventTarget = new MockEventTarget();
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab],
+      [operationPanel, analyticsPanel],
+    ),
+    storageRef: storage,
+    locationRef: location,
+    historyRef: history,
+    eventTargetRef: eventTarget,
+  });
+
+  location.search = "?tab=analytics&channel=canal_a";
+  eventTarget.dispatchEvent({ type: "popstate" });
+
+  assert.ok(tabs);
+  assert.equal(tabs.getActiveTab(), "analytics");
+  assert.equal(operationPanel.hidden, true);
+  assert.equal(analyticsPanel.hidden, false);
+  assert.equal(storage.getItem(TAB_STORAGE_KEY), "analytics");
+  assert.equal(history.calls.length, 0);
 });
