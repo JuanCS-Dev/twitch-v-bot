@@ -55,6 +55,7 @@ class MockElement {
     this.tabIndex = -1;
     this.hidden = false;
     this.focused = false;
+    this.scrollIntoViewCalls = [];
   }
 
   setAttribute(name, value) {
@@ -78,6 +79,10 @@ class MockElement {
 
   focus() {
     this.focused = true;
+  }
+
+  scrollIntoView(options) {
+    this.scrollIntoViewCalls.push(options || null);
   }
 }
 
@@ -359,4 +364,118 @@ test("dashboard tabs react to browser popstate using tab query", () => {
   assert.equal(analyticsPanel.hidden, false);
   assert.equal(storage.getItem(TAB_STORAGE_KEY), "analytics");
   assert.equal(history.calls.length, 0);
+});
+
+test("dashboard tabs reveal active tab button on bootstrap from URL", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const configTab = createTab("config");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+  const configPanel = createPanel("config", true);
+  const location = new MockLocation({ search: "?tab=config" });
+  const history = new MockHistory(location);
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab, configTab],
+      [operationPanel, analyticsPanel, configPanel],
+    ),
+    storageRef: new MockStorage(),
+    locationRef: location,
+    historyRef: history,
+  });
+
+  assert.ok(tabs);
+  assert.equal(tabs.getActiveTab(), "config");
+  assert.equal(configTab.scrollIntoViewCalls.length, 1);
+  assert.deepEqual(configTab.scrollIntoViewCalls[0], {
+    block: "nearest",
+    inline: "nearest",
+  });
+  assert.equal(operationTab.scrollIntoViewCalls.length, 0);
+  assert.equal(analyticsTab.scrollIntoViewCalls.length, 0);
+});
+
+test("dashboard tabs reveal active tab button on click and popstate", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+  const storage = new MockStorage();
+  const location = new MockLocation({
+    search: "?tab=operation&channel=canal_a",
+  });
+  const history = new MockHistory(location);
+  const eventTarget = new MockEventTarget();
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab],
+      [operationPanel, analyticsPanel],
+    ),
+    storageRef: storage,
+    locationRef: location,
+    historyRef: history,
+    eventTargetRef: eventTarget,
+  });
+
+  assert.ok(tabs);
+  assert.equal(operationTab.scrollIntoViewCalls.length, 1);
+  analyticsTab.dispatchEvent({ type: "click" });
+  assert.equal(analyticsTab.scrollIntoViewCalls.length, 1);
+
+  location.search = "?tab=operation&channel=canal_a";
+  eventTarget.dispatchEvent({ type: "popstate" });
+  assert.equal(operationTab.scrollIntoViewCalls.length, 2);
+});
+
+test("dashboard tabs reveal active tab button on keyboard navigation", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab],
+      [operationPanel, analyticsPanel],
+    ),
+    storageRef: new MockStorage(),
+  });
+
+  let prevented = false;
+  operationTab.dispatchEvent({
+    type: "keydown",
+    key: "ArrowRight",
+    preventDefault() {
+      prevented = true;
+    },
+  });
+
+  assert.ok(tabs);
+  assert.equal(prevented, true);
+  assert.equal(tabs.getActiveTab(), "analytics");
+  assert.equal(analyticsTab.scrollIntoViewCalls.length, 1);
+});
+
+test("dashboard tabs allow disabling reveal in imperative activation", () => {
+  const operationTab = createTab("operation", true);
+  const analyticsTab = createTab("analytics");
+  const operationPanel = createPanel("operation", false);
+  const analyticsPanel = createPanel("analytics", true);
+
+  const tabs = initDashboardTabs({
+    documentRef: new MockDocument(
+      [operationTab, analyticsTab],
+      [operationPanel, analyticsPanel],
+    ),
+    storageRef: new MockStorage(),
+  });
+
+  assert.ok(tabs);
+  assert.equal(operationTab.scrollIntoViewCalls.length, 1);
+  tabs.activateTab("analytics", { reveal: false });
+  assert.equal(tabs.getActiveTab(), "analytics");
+  assert.equal(analyticsTab.scrollIntoViewCalls.length, 0);
 });

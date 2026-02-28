@@ -199,10 +199,11 @@ export function initDashboardTabs({
 
   function activateTab(
     tabId,
-    { persist = true, focus = false, syncUrl = true } = {},
+    { persist = true, focus = false, syncUrl = true, reveal = true } = {},
   ) {
     const resolvedTabId = resolveTargetTabId(tabId);
     activeTabId = resolvedTabId;
+    let activeTabElement = null;
 
     tabs.forEach((tab) => {
       const currentTabId = String(tab.dataset.dashboardTab || "");
@@ -210,6 +211,9 @@ export function initDashboardTabs({
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", isActive ? "true" : "false");
       tab.tabIndex = isActive ? 0 : -1;
+      if (isActive) {
+        activeTabElement = tab;
+      }
       if (isActive && focus && typeof tab.focus === "function") {
         tab.focus();
       }
@@ -224,6 +228,20 @@ export function initDashboardTabs({
 
     if (persist) {
       persistTabId(storage, resolvedTabId);
+    }
+    if (
+      reveal &&
+      activeTabElement &&
+      typeof activeTabElement.scrollIntoView === "function"
+    ) {
+      try {
+        activeTabElement.scrollIntoView({
+          block: "nearest",
+          inline: "nearest",
+        });
+      } catch {
+        // no-op: fallback para ambientes sem scrollIntoView completo.
+      }
     }
     if (syncUrl) {
       persistTabIdInLocation(history, location, resolvedTabId);

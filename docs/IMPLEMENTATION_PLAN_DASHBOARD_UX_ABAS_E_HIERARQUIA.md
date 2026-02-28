@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: concluido (fases 1-8 entregues)
+Status: concluido (fases 1-9 entregues)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
 
 ## 1) Diagnostico atual (baseado no codigo)
@@ -172,6 +172,16 @@ Entrega:
 Entrega:
 
 - Protecao forte contra regressao comportamental da UX em abas.
+
+### Fase 9 - Ergonomia de navegacao horizontal (auto-reveal da aba ativa)
+
+- Garantir que a aba ativa seja trazida para visibilidade no tablist horizontal (mobile/tablet) com `scrollIntoView`.
+- Cobrir ativacoes por bootstrap (`?tab=`), clique/teclado e `popstate`.
+- Manter opcao de desligar reveal em ativacao imperativa para cenarios controlados de teste/integração.
+
+Entrega:
+
+- Descoberta da aba ativa consistente em navegacao horizontal, sem regressao do fluxo atual.
 
 ## 6) Regras de nao regressao
 
@@ -350,4 +360,19 @@ Validacao minima por fase:
 - Validacao executada:
   - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js dashboard/tests/tabs_regression_matrix.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
   - `node --test dashboard/tests/tabs_navigation.test.js dashboard/tests/tabs_regression_matrix.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Fase 9 concluida (ergonomia de navegacao horizontal)
+
+- Modulo de abas `dashboard/features/navigation/tabs.js` atualizado para revelar a aba ativa via `scrollIntoView`:
+  - aplicado na ativacao normal, bootstrap por URL e fluxo de `popstate`;
+  - fallback seguro para ambientes sem suporte completo;
+  - opcao `reveal: false` mantida para controle imperativo quando necessario.
+- Cobertura nova em `dashboard/tests/tabs_navigation.test.js`:
+  - reveal no bootstrap com `?tab=`;
+  - reveal em troca por clique e restauracao via `popstate`;
+  - desativacao explicita de reveal na API imperativa.
+- Validacao executada:
+  - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
+  - `node --test dashboard/tests/tabs_navigation.test.js`
   - `node --test dashboard/tests/*.test.js`
