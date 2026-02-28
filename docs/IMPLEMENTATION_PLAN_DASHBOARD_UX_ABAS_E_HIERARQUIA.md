@@ -462,6 +462,30 @@ DoD adicional do ciclo de refinamento UX (fases 10-14):
   - `node --test dashboard/tests/tabs_navigation.test.js`
   - `node --test dashboard/tests/*.test.js`
 
+### 2026-02-28 - Fase 10 concluida (sub-hierarquia em Inteligencia)
+
+- `dashboard/partials/intelligence_panel.html` reorganizado com blocos operacionais explicitos:
+  - `Tactical Coaching` (fluxo primario de live visivel);
+  - `Post-Stream Report`;
+  - `Semantic Memory`;
+  - `Revenue Attribution`.
+- Blocos secundarios movidos para disclosure progressivo com `details.advanced-settings`:
+  - summary `Post-Live Intelligence Tools`;
+  - mantendo contratos de IDs usados por `dashboard/features/observability/*`.
+- Reducao de ruido visual:
+  - separadores `hr` removidos da aba `Intelligence`;
+  - estrutura por secoes com headings consistentes por bloco.
+- Cobertura nova:
+  - `dashboard/tests/intelligence_hierarchy_contract.test.js`
+    - garante ordem dos blocos operacionais;
+    - garante ausencia de `hr` repetitivo;
+    - garante unicidade e preservacao de IDs criticos;
+    - garante que fluxos secundarios fiquem dentro de disclosure.
+- Validacao executada:
+  - `npx prettier --check dashboard/partials/intelligence_panel.html dashboard/tests/intelligence_hierarchy_contract.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
+  - `node --test dashboard/tests/intelligence_hierarchy_contract.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
 ### 2026-02-28 - Auditoria UX pos-fase 9 (baseline para fases 10-14)
 
 Classificacao operacional:
@@ -524,7 +548,7 @@ Validacao executada (baseline da auditoria):
 | 7    | Historico do navegador (`popstate`)                        | Concluida    | sync visual por `popstate` sem loop de rewrite                                                    | cobertura nova em `tabs_navigation.test.js`                                             |
 | 8    | Regressao cientifica (invariantes)                         | Concluida    | robustez para URL invalida e matriz multi-passo                                                   | `tabs_regression_matrix.test.js`                                                        |
 | 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida    | `scrollIntoView` em bootstrap/click/popstate                                                      | cobertura nova em `tabs_navigation.test.js`                                             |
-| 10   | Sub-hierarquia interna em Inteligencia                     | Planejada    | alvo: `dashboard/partials/intelligence_panel.html`                                                | alvo: `dashboard/tests/intelligence_hierarchy_contract.test.js`                         |
+| 10   | Sub-hierarquia interna em Inteligencia                     | Concluida    | `dashboard/partials/intelligence_panel.html` (blocos + disclosure progressivo)                    | `dashboard/tests/intelligence_hierarchy_contract.test.js`                               |
 | 11   | Densidade e governanca no Control Plane                    | Planejada    | alvo: `dashboard/partials/control_plane.html`                                                     | alvo: `dashboard/tests/control_plane_information_density.test.js`                       |
 | 12   | Refino de Analytics orientado a decisao                    | Planejada    | alvo: `dashboard/partials/analytics_logs.html`                                                    | alvo: `dashboard/tests/analytics_information_architecture.test.js`                      |
 | 13   | Consolidacao visual (reduzir inline styles)                | Planejada    | alvo: `dashboard/styles/layout.css`, `dashboard/styles/components.css`                            | alvo: `dashboard/tests/dashboard_style_consolidation_contract.test.js`                  |
@@ -532,7 +556,7 @@ Validacao executada (baseline da auditoria):
 
 Sequencia recomendada de execucao a partir do baseline atual:
 
-1. Fase 10 (impacto P0 na legibilidade de decisao em live).
-2. Fase 11 (impacto P0 na configuracao sob pressao operacional).
-3. Fase 12 (impacto P1 no diagnostico analitico).
-4. Fases 13 e 14 em seguida, para consolidacao visual e semantica.
+1. Fase 11 (impacto P0 na configuracao sob pressao operacional).
+2. Fase 12 (impacto P1 no diagnostico analitico).
+3. Fase 13 (consolidacao visual e reducao de inline).
+4. Fase 14 (coerencia semantica final e resiliencia responsiva).
