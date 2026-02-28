@@ -113,10 +113,10 @@ async function bootstrapDashboard() {
   } catch (err) {
     if (err.status === 403) {
       console.warn(
-        "Bootstrap: Acesso negado. Aguardando input do Admin Token.",
+        "Bootstrap: access denied. Waiting for admin token input.",
       );
     } else {
-      console.error("Erro durante o carregamento inicial:", err);
+      console.error("Error during initial load:", err);
     }
   }
 

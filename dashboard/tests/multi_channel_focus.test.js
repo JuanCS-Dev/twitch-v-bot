@@ -575,7 +575,7 @@ test("channel focus input normalizes and persists dashboard selection", () => {
   assert.equal(els.dashboardChannelChip.textContent, "canal_a");
   assert.equal(
     els.dashboardChannelHint.textContent,
-    "Observability, contexto e histórico persistido seguem #canal_a.",
+    "Observability, context and persisted history now follow #canal_a.",
   );
   assert.equal(localStorage.getItem("byte_dashboard_focus_channel"), "canal_a");
   assert.equal(getDashboardChannelSelection(els), "canal_a");
@@ -884,7 +884,7 @@ test("observability views render focused channel and persisted context state", (
   assert.match(els.intCoachingRiskChip.className, /warn/);
   assert.equal(els.intCoachingRiskScore.textContent, "72/100");
   assert.equal(els.intCoachingLastEmission.textContent, "2026-02-27T14:00:10Z");
-  assert.match(els.intCoachingHudStatus.textContent, /emitido/i);
+  assert.match(els.intCoachingHudStatus.textContent, /emitted/i);
   assert.equal(els.intCoachingHint.className, "panel-hint event-level-warn");
   assert.equal(els.intCoachingAlerts.children.length, 1);
   assert.match(els.intCoachingAlerts.children[0].textContent, /\[CRITICAL\]/);
@@ -930,7 +930,7 @@ test("observability views render focused channel and persisted context state", (
   assert.equal(els.intPostStreamRecommendations.children.length, 2);
   assert.match(
     els.intSemanticMemoryStatusHint.textContent,
-    /Busca semantica ativa em #canal_a/i,
+    /Semantic search active in #canal_a/i,
   );
   assert.equal(els.intSemanticMemoryMatches.children.length, 1);
   assert.match(
@@ -1107,7 +1107,7 @@ test("observability controller fetches observability, context and history for th
   assert.equal(obsEls.persistedChannelTimelineBody.children.length, 1);
   assert.equal(obsEls.intPostStreamStatusChip.textContent, "REPORT READY");
   assert.match(obsEls.intPostStreamSummary.textContent, /canal_z/i);
-  assert.match(obsEls.intSemanticMemoryStatusHint.textContent, /carregada/i);
+  assert.match(obsEls.intSemanticMemoryStatusHint.textContent, /loaded/i);
   assert.equal(obsEls.intSemanticMemoryEntries.children.length, 1);
 });
 
@@ -1284,7 +1284,7 @@ test("observability controller triggers semantic memory search and save in intel
   assert.equal(obsEls.intSemanticMemoryContentInput.value, "");
   assert.match(
     obsEls.intSemanticMemoryStatusHint.textContent,
-    /busca semantica/i,
+    /semantic search/i,
   );
 });
 
@@ -1327,7 +1327,7 @@ test("control plane controller warns when loading directives without a channel",
 
   await controller.loadChannelConfig(true);
 
-  assert.match(cpEls.feedback.textContent, /carregar directives/i);
+  assert.match(cpEls.feedback.textContent, /load directives/i);
 });
 
 test("control plane controller loads channel directives including agent notes", async () => {
@@ -1393,7 +1393,7 @@ test("control plane controller loads channel directives including agent notes", 
   assert.equal(cpEls.channelStatusChip.textContent, "CHANNEL PAUSED");
   assert.equal(cpEls.agentNotesInput.value, "Priorize o host.");
   assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
-  assert.match(cpEls.feedback.textContent, /sincronizados/i);
+  assert.match(cpEls.feedback.textContent, /synced/i);
 });
 
 test("control plane controller surfaces directive load errors", async () => {
@@ -1500,7 +1500,7 @@ test("control plane controller saves channel directives including agent notes", 
     true,
   );
   assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES ACTIVE");
-  assert.match(cpEls.feedback.textContent, /salvos com sucesso/i);
+  assert.match(cpEls.feedback.textContent, /saved successfully/i);
 });
 
 test("control plane controller surfaces directive save errors", async () => {
@@ -1629,7 +1629,7 @@ test("control plane view renders cleared agent notes state", () => {
   assert.equal(cpEls.agentNotesStatusChip.textContent, "NOTES CLEAR");
   assert.match(
     cpEls.agentNotesHint.textContent,
-    /sem notes operacionais persistidas/i,
+    /no persisted operational notes/i,
   );
 });
 
@@ -1852,7 +1852,13 @@ test("hud view renders coaching source with warn chip", () => {
   const hudEls = createHudElements(document);
 
   renderHudMessages(
-    [{ ts: 1_770_000_000, source: "coaching", text: "Ative CTA no proximo bloco." }],
+    [
+      {
+        ts: 1_770_000_000,
+        source: "coaching",
+        text: "Ative CTA no proximo bloco.",
+      },
+    ],
     hudEls,
   );
 

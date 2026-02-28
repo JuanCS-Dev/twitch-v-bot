@@ -15,7 +15,7 @@ export function createAutonomyController({
         setAutonomyBusy(autEls, true);
         const reasonInput = String(autEls.tickReasonInput?.value || "").trim();
         const reason = reasonInput || "manual_dashboard";
-        showAutonomyFeedback(autEls, "Executando 1 tick...", "warn");
+        showAutonomyFeedback(autEls, "Running 1 tick...", "warn");
         try {
             const payload = await triggerAutonomyTick({ force: true, reason });
             renderAutonomyRuntime(payload?.runtime || {}, autEls);
@@ -24,7 +24,7 @@ export function createAutonomyController({
                 : Number(payload?.due_goals || 0);
             showAutonomyFeedback(
                 autEls,
-                `Tick concluido. Goals processadas: ${processedCount}.`,
+                `Tick completed. Goals processed: ${processedCount}.`,
                 "ok"
             );
             await refreshActionQueue({ showFeedback: false });
@@ -32,7 +32,7 @@ export function createAutonomyController({
             console.error("Autonomy manual tick error", error);
             showAutonomyFeedback(
                 autEls,
-                `Erro: ${getErrorMessage(error, "Falha ao rodar tick.")}`,
+                `Error: ${getErrorMessage(error, "Failed to run tick.")}`,
                 "error"
             );
         } finally {

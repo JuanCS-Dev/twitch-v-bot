@@ -348,7 +348,7 @@ function renderContextItems(items, targetBody) {
     const li = document.createElement("li");
     li.style.fontStyle = "italic";
     li.style.color = "var(--text-muted)";
-    li.textContent = "Nenhum contexto temporario estipulado hoje.";
+    li.textContent = "No temporary context defined today.";
     targetBody.appendChild(li);
     return;
   }
@@ -388,7 +388,7 @@ function renderCoachingAlerts(alerts, targetBody) {
     const li = document.createElement("li");
     li.style.fontStyle = "italic";
     li.style.color = "var(--text-muted)";
-    li.textContent = "Sem alertas taticos agora.";
+    li.textContent = "No tactical alerts right now.";
     targetBody.appendChild(li);
     return;
   }
@@ -405,10 +405,10 @@ function renderCoachingAlerts(alerts, targetBody) {
           ? "WARN"
           : "INFO";
     const title =
-      String(item?.title || "Sinal tatico").trim() || "Sinal tatico";
+      String(item?.title || "Tactical signal").trim() || "Tactical signal";
     const message = String(item?.message || "").trim();
     const tactic = String(item?.tactic || "").trim();
-    li.textContent = `[${severityLabel}] ${title}: ${message}${tactic ? ` | Acao: ${tactic}` : ""}`;
+    li.textContent = `[${severityLabel}] ${title}: ${message}${tactic ? ` | Action: ${tactic}` : ""}`;
     targetBody.appendChild(li);
   });
 }
@@ -820,12 +820,12 @@ export function renderObservabilitySnapshot(
   setText(els.intCoachingLastEmission, coachingHud.last_emitted_at || "-");
   if (els.intCoachingHudStatus) {
     if (coachingHud.emitted) {
-      setText(els.intCoachingHudStatus, "HUD push emitido nesta atualizacao.");
+      setText(els.intCoachingHudStatus, "HUD push emitted in this update.");
       els.intCoachingHudStatus.className = "panel-hint event-level-info";
     } else if (coachingHud.suppressed) {
       setText(
         els.intCoachingHudStatus,
-        "HUD em cooldown antirruido para evitar spam.",
+        "HUD in anti-noise cooldown to prevent spam.",
       );
       els.intCoachingHudStatus.className = "panel-hint event-level-warn";
     } else {
@@ -837,19 +837,19 @@ export function renderObservabilitySnapshot(
     if (coachingBand === "critical" || coachingBand === "high") {
       setText(
         els.intCoachingHint,
-        "Risco elevado de churn detectado. Priorize acao tatico-operacional imediata.",
+        "High churn risk detected. Prioritize immediate tactical action.",
       );
       els.intCoachingHint.className = "panel-hint event-level-warn";
     } else if (coachingBand === "watch") {
       setText(
         els.intCoachingHint,
-        "Sinais de oscilacao no engajamento. Ajuste ritmo e valide resposta do chat.",
+        "Engagement fluctuation detected. Adjust pace and validate chat response.",
       );
       els.intCoachingHint.className = "panel-hint event-level-info";
     } else {
       setText(
         els.intCoachingHint,
-        "Sem sinais de churn no momento. O coach tatico segue monitorando em tempo real.",
+        "No churn signals at the moment. Tactical coach remains live.",
       );
       els.intCoachingHint.className = "panel-hint";
     }
@@ -873,11 +873,11 @@ export function renderObservabilitySnapshot(
   if (snapshotTime && !Number.isNaN(snapshotTime.getTime())) {
     setText(
       els.lastUpdate,
-      `Atualizado as: ${snapshotTime.toLocaleTimeString()}`,
+      `Updated at: ${snapshotTime.toLocaleTimeString()}`,
     );
     return;
   }
-  setText(els.lastUpdate, `Atualizado as: ${new Date().toLocaleTimeString()}`);
+  setText(els.lastUpdate, `Updated at: ${new Date().toLocaleTimeString()}`);
 }
 
 export function renderObservabilityHistorySnapshot(payload, els) {
@@ -901,13 +901,13 @@ export function renderObservabilityHistorySnapshot(payload, els) {
     if (timeline.length > 0) {
       setText(
         els.persistedTimelineHint,
-        `Timeline persistida de #${selectedChannel} carregada com comparação multi-canal no mesmo layout operacional.`,
+        `Persisted timeline for #${selectedChannel} loaded with multi-channel comparison in the same operational layout.`,
       );
       els.persistedTimelineHint.className = "panel-hint event-level-info";
     } else {
       setText(
         els.persistedTimelineHint,
-        `Sem timeline persistida para #${selectedChannel} ainda. Assim que houver atividade, os snapshots históricos serão exibidos aqui.`,
+        `No persisted timeline for #${selectedChannel} yet. Historical snapshots will appear here when activity is available.`,
       );
       els.persistedTimelineHint.className = "panel-hint event-level-warn";
     }
@@ -971,13 +971,13 @@ export function renderChannelContextSnapshot(payload, els) {
     if (hasPersistedState || hasPersistedHistory) {
       setText(
         els.ctxPersistedHint,
-        `Estado persistido de #${channelId} carregado do Supabase para inspeção operacional.`,
+        `Persisted state for #${channelId} loaded from Supabase for operational inspection.`,
       );
       els.ctxPersistedHint.className = "panel-hint event-level-info";
     } else {
       setText(
         els.ctxPersistedHint,
-        `Sem snapshot persistido para #${channelId}. O runtime pode estar operando apenas em memória.`,
+        `No persisted snapshot for #${channelId}. Runtime may be operating in memory only.`,
       );
       els.ctxPersistedHint.className = "panel-hint event-level-warn";
     }
@@ -986,7 +986,7 @@ export function renderChannelContextSnapshot(payload, els) {
   renderStringList(
     channel.persisted_recent_history || [],
     els.persistedHistoryItems,
-    "Nenhum histórico persistido disponível para este canal.",
+    "No persisted history available for this channel.",
   );
 }
 
@@ -1031,13 +1031,13 @@ export function renderPostStreamReportSnapshot(payload, els) {
   setText(
     els.intPostStreamSummary,
     hasReport
-      ? String(report.narrative || "Resumo indisponivel para esta sessao.")
-      : "Sem relatorio pos-live para este canal. Gere manualmente para registrar o resumo da sessao.",
+      ? String(report.narrative || "Summary unavailable for this session.")
+      : "No post-stream report for this channel. Generate manually to register the session summary.",
   );
   renderStringList(
     hasReport ? report.recommendations || [] : [],
     els.intPostStreamRecommendations,
-    "Sem recomendacoes registradas.",
+    "No recommendations recorded.",
   );
 }
 
@@ -1058,25 +1058,25 @@ export function renderSemanticMemorySnapshot(payload, els) {
     if (!hasEntries) {
       setText(
         els.intSemanticMemoryStatusHint,
-        `Sem memoria semantica registrada para #${selectedChannel} ainda.`,
+        `No semantic memory registered for #${selectedChannel} yet.`,
       );
       els.intSemanticMemoryStatusHint.className = "panel-hint event-level-warn";
     } else if (query && hasMatches) {
       setText(
         els.intSemanticMemoryStatusHint,
-        `Busca semantica ativa em #${selectedChannel} para "${query}".`,
+        `Semantic search active in #${selectedChannel} for "${query}".`,
       );
       els.intSemanticMemoryStatusHint.className = "panel-hint event-level-info";
     } else if (query && !hasMatches) {
       setText(
         els.intSemanticMemoryStatusHint,
-        `Sem correspondencias para "${query}" em #${selectedChannel}.`,
+        `No matches for "${query}" in #${selectedChannel}.`,
       );
       els.intSemanticMemoryStatusHint.className = "panel-hint event-level-warn";
     } else {
       setText(
         els.intSemanticMemoryStatusHint,
-        `Memoria semantica de #${selectedChannel} carregada no painel atual.`,
+        `Semantic memory for #${selectedChannel} loaded in the current panel.`,
       );
       els.intSemanticMemoryStatusHint.className = "panel-hint event-level-info";
     }
@@ -1085,13 +1085,13 @@ export function renderSemanticMemorySnapshot(payload, els) {
   renderSemanticMemoryRows(
     matches,
     els.intSemanticMemoryMatches,
-    "Sem correspondencias semanticas.",
+    "No semantic matches.",
     true,
   );
   renderSemanticMemoryRows(
     entries,
     els.intSemanticMemoryEntries,
-    "Nenhuma memoria persistida para este canal.",
+    "No persisted memory for this channel.",
     false,
   );
 }
@@ -1107,7 +1107,7 @@ export function renderRevenueConversionsSnapshot(payload, els) {
     const li = document.createElement("li");
     li.style.fontStyle = "italic";
     li.style.color = "var(--text-muted)";
-    li.textContent = "Nenhuma conversao recente para este canal.";
+    li.textContent = "No recent conversions for this channel.";
     targetBody.appendChild(li);
     return;
   }

@@ -146,7 +146,7 @@ function formatGoalSessionResult(sessionResult = {}) {
     sessionResult && typeof sessionResult === "object" ? sessionResult : {};
   const evaluatedAt = String(result.evaluated_at || "").trim();
   if (!evaluatedAt) {
-    return "Ultima avaliacao: sem execucao registrada.";
+    return "Last evaluation: no run recorded.";
   }
   const comparison = normalizeGoalComparison(result.comparison);
   const comparisonLabel =
@@ -154,7 +154,7 @@ function formatGoalSessionResult(sessionResult = {}) {
   const met = Boolean(result.met);
   const outcome = String(result.outcome || "n/a").trim() || "n/a";
   return (
-    `Ultima avaliacao: ${met ? "MET" : "MISS"} | ` +
+    `Last evaluation: ${met ? "MET" : "MISS"} | ` +
     `${formatGoalMetricValue(result.observed_value)} ` +
     `${comparisonLabel} ${formatGoalMetricValue(result.target_value)} | ` +
     `outcome: ${outcome} | ${evaluatedAt}`
@@ -189,7 +189,7 @@ function createGoalCard(goal = {}, index = 0) {
   removeBtn.className = "btn btn-danger";
   removeBtn.style.padding = "0.2rem 0.6rem";
   removeBtn.style.fontSize = "0.75rem";
-  removeBtn.textContent = "Remover";
+  removeBtn.textContent = "Remove";
   removeBtn.dataset.goalRemove = "1";
   headerRow.appendChild(removeBtn);
   card.appendChild(headerRow);
@@ -205,7 +205,7 @@ function createGoalCard(goal = {}, index = 0) {
   enabledInput.style.width = "18px";
   enabledInput.style.height = "18px";
   firstRow.appendChild(
-    createGoalField("Ativo", enabledInput, { minWidth: "80px" }),
+    createGoalField("Enabled", enabledInput, { minWidth: "80px" }),
   );
 
   const idInput = document.createElement("input");
@@ -217,7 +217,7 @@ function createGoalCard(goal = {}, index = 0) {
 
   const riskSelect = buildRiskSelect(safeRisk);
   firstRow.appendChild(
-    createGoalField("Risco", riskSelect, { minWidth: "190px" }),
+    createGoalField("Risk", riskSelect, { minWidth: "190px" }),
   );
 
   const intervalInput = document.createElement("input");
@@ -229,7 +229,7 @@ function createGoalCard(goal = {}, index = 0) {
   intervalInput.value = String(goal.interval_seconds || 600);
   intervalInput.dataset.goalField = "interval_seconds";
   firstRow.appendChild(
-    createGoalField("Intervalo (s)", intervalInput, { minWidth: "140px" }),
+    createGoalField("Interval (s)", intervalInput, { minWidth: "140px" }),
   );
   card.appendChild(firstRow);
 
@@ -265,7 +265,7 @@ function createGoalCard(goal = {}, index = 0) {
     normalizeGoalComparison(goal.comparison),
   );
   secondRow.appendChild(
-    createGoalField("Comparacao", comparisonSelect, { minWidth: "120px" }),
+    createGoalField("Comparison", comparisonSelect, { minWidth: "120px" }),
   );
 
   const windowInput = document.createElement("input");
@@ -277,7 +277,7 @@ function createGoalCard(goal = {}, index = 0) {
   windowInput.value = String(goal.window_minutes ?? 60);
   windowInput.dataset.goalField = "window_minutes";
   secondRow.appendChild(
-    createGoalField("Janela (min)", windowInput, { minWidth: "140px" }),
+    createGoalField("Window (min)", windowInput, { minWidth: "140px" }),
   );
   card.appendChild(secondRow);
 
@@ -286,7 +286,7 @@ function createGoalCard(goal = {}, index = 0) {
   nameInput.className = "form-control";
   nameInput.value = String(goal.name || "");
   nameInput.dataset.goalField = "name";
-  card.appendChild(createGoalField("Nome", nameInput));
+  card.appendChild(createGoalField("Name", nameInput));
 
   const promptInput = document.createElement("textarea");
   promptInput.className = "form-control";
@@ -378,11 +378,11 @@ function renderAgentSuspension(els, autonomy = {}, config = {}) {
   if (els?.agentStatusHint) {
     if (suspended) {
       const since = autonomy.suspended_at
-        ? ` desde ${autonomy.suspended_at}`
+        ? ` since ${autonomy.suspended_at}`
         : "";
       setText(
         els.agentStatusHint,
-        `Motivo: ${reason || "manual_dashboard"}${since}.`,
+        `Reason: ${reason || "manual_dashboard"}${since}.`,
       );
     } else {
       const resumedAt = String(autonomy.last_resumed_at || "").trim();
@@ -390,10 +390,10 @@ function renderAgentSuspension(els, autonomy = {}, config = {}) {
       if (resumedAt) {
         setText(
           els.agentStatusHint,
-          `Ultima retomada: ${resumeReason || "manual_dashboard"} em ${resumedAt}.`,
+          `Last resumed: ${resumeReason || "manual_dashboard"} at ${resumedAt}.`,
         );
       } else {
-        setText(els.agentStatusHint, "Agente operacional.");
+        setText(els.agentStatusHint, "Operational agent.");
       }
     }
   }
@@ -471,10 +471,10 @@ export function renderChannelConfig(channelPayload, els) {
         : channel.top_p;
     const pauseLabel = agentPaused ? "on" : "off";
     const updatedAt = String(channel.updated_at || "").trim();
-    const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
+    const updatedSuffix = updatedAt ? ` | updated: ${updatedAt}` : "";
     setText(
       els.channelHint,
-      `Canal ${channelId} | pause: ${pauseLabel} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`,
+      `Channel ${channelId} | pause: ${pauseLabel} | temperature: ${temperatureLabel} | top_p: ${topPLabel}${updatedSuffix}`,
     );
   }
   if (els?.channelIdentityStatusChip) {
@@ -492,16 +492,16 @@ export function renderChannelConfig(channelPayload, els) {
   }
   if (els?.channelIdentityHint) {
     const updatedAt = String(channel.identity_updated_at || "").trim();
-    const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
+    const updatedSuffix = updatedAt ? ` | updated: ${updatedAt}` : "";
     if (hasIdentity) {
       setText(
         els.channelIdentityHint,
-        `Canal ${channelId} | persona: ${personaName || "n/a"} | tone: ${tone || "n/a"} | emotes: ${emoteVocab.join(", ") || "n/a"}${updatedSuffix}`,
+        `Channel ${channelId} | persona: ${personaName || "n/a"} | tone: ${tone || "n/a"} | emotes: ${emoteVocab.join(", ") || "n/a"}${updatedSuffix}`,
       );
     } else {
       setText(
         els.channelIdentityHint,
-        `Canal ${channelId} | identidade estruturada vazia${updatedSuffix}`,
+        `Channel ${channelId} | structured identity is empty${updatedSuffix}`,
       );
     }
   }
@@ -530,12 +530,12 @@ export function renderAgentNotes(notePayload, els) {
   }
   if (els?.agentNotesHint) {
     const updatedAt = String(note.updated_at || "").trim();
-    const updatedSuffix = updatedAt ? ` | atualizado: ${updatedAt}` : "";
+    const updatedSuffix = updatedAt ? ` | updated: ${updatedAt}` : "";
     setText(
       els.agentNotesHint,
       hasNotes
-        ? `Canal ${channelId} | notes operacionais ativas${updatedSuffix}`
-        : `Canal ${channelId} | sem notes operacionais persistidas${updatedSuffix}`,
+        ? `Channel ${channelId} | operational notes active${updatedSuffix}`
+        : `Channel ${channelId} | no persisted operational notes${updatedSuffix}`,
     );
   }
 }
@@ -663,7 +663,7 @@ export function renderControlPlaneCapabilities(
 
   setText(
     els?.capabilitiesLine,
-    `Channel control: ${channelCapability?.enabled ? "on" : "off"} | Autonomia: ${autonomyCapability?.enabled ? "on" : "off"} | Panic: ${autonomyCapability?.suspended ? "suspended" : "ready"} | Risco: ${riskCapability?.enabled ? "on" : "off"}`,
+    `Channel control: ${channelCapability?.enabled ? "on" : "off"} | Autonomy: ${autonomyCapability?.enabled ? "on" : "off"} | Panic: ${autonomyCapability?.suspended ? "suspended" : "ready"} | Risk: ${riskCapability?.enabled ? "on" : "off"}`,
   );
 
   const responseContract = capabilities?.response_contract || {};
@@ -671,7 +671,7 @@ export function renderControlPlaneCapabilities(
   const maxLines = Number(responseContract.max_lines || 4);
   setText(
     els?.responseContract,
-    `Contrato ativo: ${maxMessages} mensagem / ${maxLines} linhas.`,
+    `Active contract: ${maxMessages} message(s) / ${maxLines} line(s).`,
   );
 }
 
@@ -727,7 +727,7 @@ export function appendGoalCard(els, goal = {}, index = 0) {
       if (cardCount <= 1) {
         showControlPlaneFeedback(
           els,
-          "Mantenha pelo menos 1 goal configurado.",
+          "Keep at least 1 configured goal.",
           "warn",
         );
         return;

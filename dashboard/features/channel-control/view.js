@@ -43,7 +43,7 @@ function isChannelBusy(els) {
 }
 
 /**
- * Prepara o input de token com o ultimo salvo.
+ * Initializes token input with the last saved value.
  */
 export function initTokenInput(els) {
   if (!els.adminToken) return;
@@ -81,7 +81,7 @@ export function initDashboardChannelInput(els, onApply) {
 }
 
 /**
- * Bloqueia os inputs durante operacao transacional.
+ * Disables inputs during transactional operations.
  */
 export function setChannelBusy(els, busy) {
   const activeBusy = Boolean(busy);
@@ -103,7 +103,7 @@ export function setChannelBusy(els, busy) {
 }
 
 /**
- * Exibe feedback de alerta do fluxo (ok, warn, error)
+ * Shows flow feedback alerts (ok, warn, error).
  */
 export function showChannelFeedback(els, message, type = "info") {
   if (!els.feedback) return;
@@ -124,7 +124,7 @@ export function renderDashboardChannelSelection(els, channelId) {
   if (els?.dashboardChannelHint) {
     setText(
       els.dashboardChannelHint,
-      `Observability, contexto e histórico persistido seguem #${safeChannel}.`,
+      `Observability, context and persisted history now follow #${safeChannel}.`,
     );
   }
   setStorageItem(DASHBOARD_CHANNEL_KEY, safeChannel);
@@ -155,15 +155,15 @@ export function applyChannelControlCapability(els, capability = {}) {
       els.modeReason,
       reason ||
         (enabled
-          ? "Channel manager em modo completo."
-          : "Join/part desabilitados neste modo."),
+          ? "Channel manager in full mode."
+          : "Join/part disabled in this mode."),
     );
   }
 
   if (!enabled) {
     showChannelFeedback(
       els,
-      "Join/part desabilitados: este runtime nao opera canais dinamicos fora de IRC.",
+      "Join/part disabled: this runtime does not operate dynamic channels outside IRC.",
       "warn",
     );
   }
@@ -184,8 +184,8 @@ export function renderConnectedChannels(els, channels, partActionCallback) {
     li.style.fontStyle = "italic";
     li.style.color = "var(--text-muted)";
     li.textContent = joinAllowed
-      ? "Nenhum canal ativo. O bot esta ocioso."
-      : "Modo EventSub ativo: runtime sem canais IRC para listar.";
+      ? "No active channel. Bot is idle."
+      : "EventSub mode active: no IRC channels available to list.";
     els.cardList.appendChild(li);
     return;
   }
@@ -203,9 +203,9 @@ export function renderConnectedChannels(els, channels, partActionCallback) {
     chip.appendChild(label);
     if (joinAllowed) {
       const partBtn = document.createElement("button");
-      partBtn.textContent = "Sair";
+      partBtn.textContent = "Leave";
       partBtn.className = "btn btn-danger btn-sm";
-      partBtn.title = `Desconectar de #${channel}`;
+      partBtn.title = `Disconnect from #${channel}`;
       partBtn.addEventListener("click", () => {
         partActionCallback(channel);
       });

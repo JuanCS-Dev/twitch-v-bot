@@ -25,7 +25,7 @@ export function renderHudMessages(messages, els) {
 
   if (safeMessages.length === 0) {
     els.messagesList.innerHTML =
-      '<li style="font-style:italic; color:var(--text-muted);">Nenhuma sugestão do agente ainda.</li>';
+      '<li style="font-style:italic; color:var(--text-muted);">No agent suggestions yet.</li>';
     return;
   }
 

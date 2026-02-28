@@ -1,5 +1,5 @@
-// Template string seguro para renderizar cartões de clips
-// Usa escapeHtml para evitar XSS
+// Safe template string for rendering clip cards.
+// Uses escapeHtml to avoid XSS.
 function escapeHtml(str) {
     if (!str) return "";
     const d = document.createElement('div');
@@ -11,21 +11,21 @@ export function renderClipCard(job) {
     const createdTime = new Date(job.created_at).toLocaleTimeString();
     const status = job.status || "queued";
 
-    // Links condicionais baseados no status
+    // Conditional links based on current status
     let actionsHtml = '';
     if (status === 'ready' && job.clip_url) {
-        actionsHtml += `<a href="${escapeHtml(job.clip_url)}" target="_blank" class="btn btn-primary btn-sm">Abrir Clip</a>`;
+        actionsHtml += `<a href="${escapeHtml(job.clip_url)}" target="_blank" class="btn btn-primary btn-sm">Open Clip</a>`;
         if (job.download_url) {
             actionsHtml += `<a href="${escapeHtml(job.download_url)}" target="_blank" class="btn btn-success btn-sm">Download</a>`;
         }
-        actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Editar</a>`;
+        actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Edit</a>`;
     } else if (status === 'creating' || status === 'polling') {
         if (job.edit_url) {
-             actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Editar (WIP)</a>`;
+             actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Edit (WIP)</a>`;
         }
     } else if (status === 'failed') {
-        // Retry manual será implementado futuramente se houver endpoint para isso
-        // Por enquanto apenas exibe erro
+        // Manual retry can be implemented later if endpoint is available.
+        // For now, error state is displayed only.
     }
 
     return `
@@ -36,7 +36,7 @@ export function renderClipCard(job) {
             <time class="clip-time">${createdTime}</time>
         </div>
         <div class="clip-body">
-            <h4 class="clip-title">${escapeHtml(job.title || "Sem título")}</h4>
+            <h4 class="clip-title">${escapeHtml(job.title || "Untitled")}</h4>
             <div class="clip-meta">
                 <span class="meta-item mode">${escapeHtml(job.mode)}</span>
                 <span class="meta-item broadcaster">${escapeHtml(job.broadcaster_id)}</span>
@@ -79,7 +79,7 @@ export function renderVisionStatus(payload, els) {
     }
 
     if (els.visionLastAnalysis) {
-        els.visionLastAnalysis.textContent = payload.last_analysis || "Nenhuma analise disponivel.";
+        els.visionLastAnalysis.textContent = payload.last_analysis || "No analysis available.";
     }
 
     if (els.visionStatusChip) {

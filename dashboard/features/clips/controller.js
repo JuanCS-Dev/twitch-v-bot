@@ -1,7 +1,7 @@
 import { fetchClipJobs, fetchVisionStatus, postVisionIngest } from "./api.js";
 import { renderClipCard, renderVisionStatus } from "./view.js";
 
-// Polling adaptativo usando Page Visibility API
+// Adaptive polling based on Page Visibility API.
 class AdaptivePoller {
     constructor(fn, intervalMs = 2000) {
         this.fn = fn;
@@ -11,7 +11,7 @@ class AdaptivePoller {
 
         document.addEventListener("visibilitychange", () => {
             if (this.isRunning) {
-                this.restart(); // Reinicia com novo intervalo baseado na visibilidade
+                this.restart(); // Restart with interval adjusted by visibility
             }
         });
     }
@@ -49,7 +49,7 @@ export function createClipsController({ els }) {
         if (!els.container) return;
 
         if (jobs.length === 0) {
-            els.container.innerHTML = '<div class="empty-state">Nenhum job de clip recente.</div>';
+            els.container.innerHTML = '<div class="empty-state">No recent clip jobs.</div>';
             return;
         }
 
@@ -81,33 +81,33 @@ export function createClipsController({ els }) {
                 renderVisionStatus(visionData, els);
             }
         } catch (error) {
-            console.error("Erro no polling de clips:", error);
+            console.error("Clip polling error:", error);
         }
     };
 
     const handleVisionIngest = async () => {
         if (!els.visionIngestInput || !els.visionIngestInput.files.length) {
-            if (els.visionFeedback) els.visionFeedback.textContent = "Selecione uma imagem primeiro.";
+            if (els.visionFeedback) els.visionFeedback.textContent = "Select an image first.";
             return;
         }
 
         const file = els.visionIngestInput.files[0];
         if (els.visionIngestBtn) els.visionIngestBtn.disabled = true;
-        if (els.visionFeedback) els.visionFeedback.textContent = "Enviando frame...";
+        if (els.visionFeedback) els.visionFeedback.textContent = "Uploading frame...";
 
         try {
             const result = await postVisionIngest(file);
             if (result && result.ok) {
-                els.visionFeedback.textContent = "Frame analisado com sucesso.";
+                els.visionFeedback.textContent = "Frame analyzed successfully.";
                 els.visionFeedback.className = "panel-hint event-level-info";
                 els.visionIngestInput.value = ""; // clear
                 await fetchAndRender();
             } else {
-                els.visionFeedback.textContent = `Erro: ${result?.reason || 'Falha no envio'}`;
+                els.visionFeedback.textContent = `Error: ${result?.reason || 'Upload failed'}`;
                 els.visionFeedback.className = "panel-hint event-level-warn";
             }
         } catch (error) {
-            els.visionFeedback.textContent = "Erro na comunicacao com o servidor.";
+            els.visionFeedback.textContent = "Error communicating with server.";
             els.visionFeedback.className = "panel-hint event-level-error";
         } finally {
             if (els.visionIngestBtn) els.visionIngestBtn.disabled = false;

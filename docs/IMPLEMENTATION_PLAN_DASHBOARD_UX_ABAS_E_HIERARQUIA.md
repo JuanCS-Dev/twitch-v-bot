@@ -1,8 +1,9 @@
 # IMPLEMENTATION PLAN - Dashboard UX em Abas e Hierarquia
 
 Data: 2026-02-27
-Status: concluido (fases 1-9 entregues)
+Status: em evolucao (fases 1-9 concluidas; fases 10-14 planejadas para refinamento UX)
 Escopo: frontend dashboard (`dashboard/`) sem mudanca de contrato de API
+Diretriz global: padronizacao da linguagem da UI em ingles (en-US), sem mistura PT-BR/EN em labels e fluxos visuais; conteudo de prompt pode permanecer em portugues para rollout nacional.
 
 ## 1) Diagnostico atual (baseado no codigo)
 
@@ -31,6 +32,8 @@ Reduzir carga cognitiva e criar hierarquia operacional com abas:
 - juntar o que e usado junto na mesma tarefa;
 - separar configuracao profunda de operacao ao vivo;
 - manter "contexto global de canal" visivel em qualquer aba.
+- padronizar toda a linguagem da interface em ingles (en-US), incluindo tabs, headers, hints, status e estados vazios.
+- manter textos de prompt editaveis/localizaveis, com PT-BR permitido quando fizer sentido operacional.
 
 ## 3) Arquitetura de informacao proposta
 
@@ -42,14 +45,14 @@ Reduzir carga cognitiva e criar hierarquia operacional com abas:
 
 ### 3.2 Abas principais
 
-1. `Operacao` (default)
+1. `Operation` (default)
 
 - `Risk Queue` + `Ops Playbooks`.
 - `Autonomy Runtime` (acoes de tick e telemetria operacional).
 - `Operational Events` (feed de eventos).
 - KPIs criticos (cards principais de saude/erros/latencia).
 
-2. `Inteligencia`
+2. `Intelligence`
 
 - `Streamer HUD`.
 - `Intelligence Overview`.
@@ -69,7 +72,7 @@ Reduzir carga cognitiva e criar hierarquia operacional com abas:
 - `Top Chatters/Triggers/Lifetime`.
 - `Persisted Snapshot`, `Persisted History`, `Persisted Timeline`, `Multi-Channel Comparison`.
 
-5. `Configuracao`
+5. `Configuration`
 
 - `Control Plane` (autonomia, budget, cooldowns, webhooks, goals).
 - `Channel Directives`, `Channel Identity`, `Agent Notes`.
@@ -183,6 +186,70 @@ Entrega:
 
 - Descoberta da aba ativa consistente em navegacao horizontal, sem regressao do fluxo atual.
 
+### Fase 10 - Sub-hierarquia interna da aba Inteligencia
+
+- Reorganizar `intelligence_panel.html` em blocos operacionais claros:
+  - `Coaching Tatico`
+  - `Post-Stream Report`
+  - `Semantic Memory`
+  - `Revenue Attribution`
+- Mover blocos secundarios para `details.advanced-settings` quando nao forem acao primaria de live.
+- Reduzir ruido visual por separadores repetidos (`hr`) e padronizar titulos/descricao por bloco.
+
+Entrega:
+
+- Aba `Inteligencia` com fluxo escaneavel e decisao mais rapida sem perda de funcionalidade.
+
+### Fase 11 - Densidade e governanca no Control Plane
+
+- Quebrar `control_plane.html` em secoes de governanca com disclosure progressivo:
+  - `Operational Control`
+  - `Channel Directives`
+  - `Identity + Agent Notes`
+  - `Goals Scheduler`
+  - `Advanced Budget/Cooldowns/Webhooks`
+- Padronizar hint/status chips para reduzir carga de leitura.
+- Preservar todos os IDs e contratos de controller.
+
+Entrega:
+
+- Aba `Configuracao` mais legivel para operacao sob pressao e manutencao sem regressao.
+
+### Fase 12 - Refino de Analytics para leitura orientada a decisao
+
+- Criar camada de "quick insight" no topo da aba `Analytics` (sinais chave antes das tabelas densas).
+- Separar claramente:
+  - contexto/runtime;
+  - timeline realtime;
+  - historico persistido/comparativo.
+- Manter tabelas densas acessiveis, mas com prioridade visual secundarizada.
+
+Entrega:
+
+- Aba `Analytics` com menor custo cognitivo para diagnostico rapido.
+
+### Fase 13 - Consolidacao visual (remocao de estilos inline)
+
+- Extrair estilos inline para classes CSS reutilizaveis em `layout.css`/`components.css`.
+- Padronizar composicoes repetidas (`form-row`, blocos de status, cards internos) com tokens existentes.
+- Reduzir variacao visual ad-hoc para melhorar consistencia de UX e manutencao.
+
+Entrega:
+
+- Dashboard com linguagem visual consistente e menor debito tecnico de markup.
+
+### Fase 14 - Coerencia semantica, UI em ingles e resiliencia responsiva
+
+- Padronizar idioma da UI em ingles (en-US) e ajustar `lang="en"` no shell.
+- Traduzir labels/titulos/hints/status chips/empty states para ingles sem quebrar IDs e contratos.
+- Preservar conteudo de prompts operacionalmente localizavel (PT-BR permitido).
+- Eliminar offsets sticky hardcoded quando possivel, usando variavel de layout ou medicao robusta.
+- Garantir foco/teclado e leitura sem ambiguidade em navegacao por abas e controles criticos.
+
+Entrega:
+
+- UX mais intuitiva e resiliente em desktop/mobile, com semantica consistente e linguagem unificada em ingles.
+
 ## 6) Regras de nao regressao
 
 - Nao alterar contratos de API (`/api/observability`, `/api/channel-control`, etc.).
@@ -190,6 +257,8 @@ Entrega:
 - Nao parar pollers por troca de aba.
 - Nao duplicar inicializacao de controllers.
 - Nao criar "tela paralela": tudo continua dentro da dashboard atual.
+- Nao introduzir novas strings visuais de UI em PT-BR; textos novos de interface devem ser ingles (en-US).
+- Conteudo de prompt (ex.: goals/instrucoes) pode permanecer em PT-BR quando necessario para operacao local.
 
 ## 7) Estrategia de testes para a execucao
 
@@ -204,6 +273,14 @@ Ajustes de testes existentes:
 - `dashboard/tests/multi_channel_focus.test.js`: adaptar fixtures para shell de abas.
 - `dashboard/tests/api_contract_parity.test.js`: manter verde (nao deve sofrer regressao).
 
+Novos testes planejados para fases 10-14:
+
+- `dashboard/tests/intelligence_hierarchy_contract.test.js`: estrutura e disclosure da aba `Inteligencia`.
+- `dashboard/tests/control_plane_information_density.test.js`: agrupamento, ordem e contratos de IDs no `Control Plane`.
+- `dashboard/tests/analytics_information_architecture.test.js`: prioridade visual e separacao de dominio em `Analytics`.
+- `dashboard/tests/dashboard_style_consolidation_contract.test.js`: reducao/control de `style=""` inline em shell/partials.
+- `dashboard/tests/dashboard_semantic_consistency.test.js`: consistencia de idioma (ingles), semantica e comportamento sticky responsivo.
+
 Validacao minima por fase:
 
 - `npm test -- dashboard/tests/<arquivo>.test.js` (focado por arquivo).
@@ -217,6 +294,14 @@ Validacao minima por fase:
 - Intelligence, Clips e Analytics ficam separados e coerentes.
 - Nenhuma acao operacional atual perde funcionalidade.
 - Testes de dashboard ficam verdes apos migracao.
+
+DoD adicional do ciclo de refinamento UX (fases 10-14):
+
+- Fluxos de decisao primaria (live ops) aparecem antes de configuracoes secundarias em cada aba.
+- `Inteligencia` e `Configuracao` deixam de concentrar blocos longos sem sub-hierarquia.
+- Reducao mensuravel de estilos inline nos partials.
+- Sem regressao de contratos de API, IDs e pollers.
+- Interface final sem mistura de idiomas na camada visual: tabs e textos operacionais de UI em ingles (en-US), com prompts podendo permanecer em PT-BR.
 
 ## 9) Progresso executado
 
@@ -376,3 +461,78 @@ Validacao minima por fase:
   - `npx prettier --check dashboard/features/navigation/tabs.js dashboard/tests/tabs_navigation.test.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
   - `node --test dashboard/tests/tabs_navigation.test.js`
   - `node --test dashboard/tests/*.test.js`
+
+### 2026-02-28 - Auditoria UX pos-fase 9 (baseline para fases 10-14)
+
+Classificacao operacional:
+
+- Legibilidade: boa.
+- Hierarquia macro (abas + resumo global): boa.
+- Intuitividade de microfluxo dentro das abas: media.
+
+Evidencias levantadas no codigo atual:
+
+- `intelligence_panel.html` concentra muitos blocos operacionais no mesmo painel (`391` linhas), com separacao majoritariamente por `hr`.
+- `control_plane.html` permanece muito denso (`471` linhas), apesar de disclosure parcial.
+- `analytics_logs.html` mistura contexto interno, timeline e historico persistido no mesmo fluxo inicial.
+- Existem `144` ocorrencias de `style=""` inline em `dashboard/index.html` + `dashboard/partials/*.html`, com maior concentracao em:
+  - `dashboard/partials/control_plane.html` (`50`)
+  - `dashboard/partials/intelligence_panel.html` (`45`)
+- Offsets sticky fixos em `dashboard/styles/layout.css` (`top: 86px` e `top: 130px`) podem degradar em variacoes reais de header.
+- Idioma da UI ainda esta majoritariamente em PT-BR, com necessidade de padronizacao para ingles (en-US).
+
+Gaps priorizados para execucao:
+
+- P0: sub-hierarquia interna em `Inteligencia` e `Configuracao` para reduzir carga cognitiva.
+- P0: padronizacao de linguagem para ingles (en-US) em toda a UI operacional.
+- P1: refino de `Analytics` para leitura orientada a decisao.
+- P1: consolidacao de estilo (extracao de inline para classes).
+- P2: coerencia semantica e robustez de sticky/foco.
+
+Validacao executada (baseline da auditoria):
+
+- `node --test dashboard/tests/*.test.js` -> `54/54` passando.
+
+### 2026-02-28 - Fase 14 em progresso (contrato de idioma da UI)
+
+- Ajuste de copy operacional para ingles (en-US) em views/controllers da dashboard, sem alterar contratos de IDs/fluxo.
+- Correcao de residuos PT-BR na UI:
+  - `dashboard/features/control-plane/controller.js` -> `"Control plane synced."`
+  - `dashboard/features/control-plane/view.js` -> hint de suspensao com `since`.
+- Regra explicitada: UI/layout em ingles; conteudo de prompt pode permanecer em portugues.
+- Cobertura adicionada:
+  - `dashboard/tests/dashboard_semantic_consistency.test.js`
+    - verifica `lang="en"` + labels principais em ingles;
+    - verifica copy operacional em ingles e preservacao do fallback de prompt `Objetivo ...`.
+- Ajustes em regressao existente:
+  - `dashboard/tests/multi_channel_focus.test.js` atualizado para novo contrato textual de UI em ingles.
+- Validacao executada:
+  - `npx prettier --check dashboard/tests/multi_channel_focus.test.js dashboard/tests/dashboard_semantic_consistency.test.js dashboard/features/control-plane/controller.js dashboard/features/control-plane/view.js docs/IMPLEMENTATION_PLAN_DASHBOARD_UX_ABAS_E_HIERARQUIA.md`
+  - `node --test dashboard/tests/dashboard_semantic_consistency.test.js dashboard/tests/multi_channel_focus.test.js`
+  - `node --test dashboard/tests/*.test.js`
+
+## 10) Matriz consolidada de rastreabilidade (planejamento -> implementacao)
+
+| Fase | Objetivo sintetico                                         | Status       | Evidencia de implementacao principal                                                              | Evidencia de validacao principal                                                        |
+| ---- | ---------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 1    | Shell de abas                                              | Concluida    | `index.html`, `main.js`, `features/navigation/tabs.js`                                            | `dashboard/tests/tabs_navigation.test.js`                                               |
+| 2    | Re-housing por dominio                                     | Concluida    | novos partials + redistribuicao por painel                                                        | `dashboard/tests/layout_partial_mapping.test.js`                                        |
+| 3    | Hierarquia visual e densidade                              | Concluida    | summary strip + intro por aba + disclosure progressivo                                            | `dashboard/tests/layout_hierarchy_density.test.js`, `summary_strip_runtime`             |
+| 4    | Responsividade por abas                                    | Concluida    | tablist horizontal + alvo de toque + contrato de overflow                                         | `tabs_responsiveness_contract`, `tables_overflow_contract`                              |
+| 5    | Hardening e rollout                                        | Concluida    | init idempotente + sincronia `aria-hidden`                                                        | `tabs_a11y.test.js`, `tabs_visibility_contract.test.js`                                 |
+| 6    | Deep-link por URL (`?tab=`)                                | Concluida    | sync de URL com `history.replaceState` e preservacao de params                                    | cobertura nova em `tabs_navigation.test.js`                                             |
+| 7    | Historico do navegador (`popstate`)                        | Concluida    | sync visual por `popstate` sem loop de rewrite                                                    | cobertura nova em `tabs_navigation.test.js`                                             |
+| 8    | Regressao cientifica (invariantes)                         | Concluida    | robustez para URL invalida e matriz multi-passo                                                   | `tabs_regression_matrix.test.js`                                                        |
+| 9    | Ergonomia horizontal (auto-reveal aba ativa)               | Concluida    | `scrollIntoView` em bootstrap/click/popstate                                                      | cobertura nova em `tabs_navigation.test.js`                                             |
+| 10   | Sub-hierarquia interna em Inteligencia                     | Planejada    | alvo: `dashboard/partials/intelligence_panel.html`                                                | alvo: `dashboard/tests/intelligence_hierarchy_contract.test.js`                         |
+| 11   | Densidade e governanca no Control Plane                    | Planejada    | alvo: `dashboard/partials/control_plane.html`                                                     | alvo: `dashboard/tests/control_plane_information_density.test.js`                       |
+| 12   | Refino de Analytics orientado a decisao                    | Planejada    | alvo: `dashboard/partials/analytics_logs.html`                                                    | alvo: `dashboard/tests/analytics_information_architecture.test.js`                      |
+| 13   | Consolidacao visual (reduzir inline styles)                | Planejada    | alvo: `dashboard/styles/layout.css`, `dashboard/styles/components.css`                            | alvo: `dashboard/tests/dashboard_style_consolidation_contract.test.js`                  |
+| 14   | Coerencia semantica, UI em ingles e resiliencia responsiva | Em progresso | `index.html` (`lang=en`) + traducao de strings em views/controllers + regra de prompt localizavel | `dashboard/tests/dashboard_semantic_consistency.test.js`, `multi_channel_focus.test.js` |
+
+Sequencia recomendada de execucao a partir do baseline atual:
+
+1. Fase 10 (impacto P0 na legibilidade de decisao em live).
+2. Fase 11 (impacto P0 na configuracao sob pressao operacional).
+3. Fase 12 (impacto P1 no diagnostico analitico).
+4. Fases 13 e 14 em seguida, para consolidacao visual e semantica.

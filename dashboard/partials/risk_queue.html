@@ -1,11 +1,11 @@
 <section class="grid-two" id="actionQueueSection">
   <article class="panel" id="aqPanel">
     <h2>Risk Queue (Approve / Reject)</h2>
-    <p class="panel-hint">Acoes moderativas e sugestoes exigem decisao explicita para manter seguranca operacional.</p>
+    <p class="panel-hint">Moderation actions and suggestions require explicit decisions to keep operations safe.</p>
 
     <div class="form-row" style="flex-wrap:wrap;">
       <div class="form-group" style="min-width:170px;">
-        <label for="aqStatusFilter">Filtro status</label>
+        <label for="aqStatusFilter">Status filter</label>
         <select id="aqStatusFilter" class="form-control">
           <option value="">all</option>
           <option value="pending">pending</option>
@@ -15,7 +15,7 @@
         </select>
       </div>
       <div class="form-group" style="min-width:150px;">
-        <label for="aqLimitInput">Limite</label>
+        <label for="aqLimitInput">Limit</label>
         <input id="aqLimitInput" class="form-control" type="number" min="1" max="300" step="1" value="80" />
       </div>
       <div class="form-group">
@@ -31,21 +31,21 @@
       <div><dt>Total</dt><dd id="aqTotalCount">0</dd></div>
     </dl>
 
-    <p id="aqFeedbackMsg" class="panel-hint event-level-info">Aguardando fila...</p>
+    <p id="aqFeedbackMsg" class="panel-hint event-level-info">Waiting for queue...</p>
     <ul id="aqList" class="events-list" style="max-height: 560px; overflow-y: auto;"></ul>
 
-    <h3>Ops Playbooks Determinísticos</h3>
-    <p class="panel-hint">State machine operacional com trilha auditável integrada na mesma fila de risco.</p>
+    <h3>Deterministic Ops Playbooks</h3>
+    <p class="panel-hint">Operational state machine with auditable traces integrated into the same risk queue.</p>
 
     <div class="form-row" style="flex-wrap:wrap;">
       <div class="form-group" style="min-width:260px;">
         <label for="aqOpsPlaybookSelect">Playbook</label>
         <select id="aqOpsPlaybookSelect" class="form-control">
-          <option value="">Nenhum playbook</option>
+          <option value="">No playbook</option>
         </select>
       </div>
       <div class="form-group" style="min-width:260px;">
-        <label for="aqOpsReasonInput">Motivo do trigger</label>
+        <label for="aqOpsReasonInput">Trigger reason</label>
         <input id="aqOpsReasonInput" class="form-control" type="text" value="manual_dashboard" />
       </div>
       <div class="form-group" style="min-width:140px;">
@@ -69,19 +69,19 @@
       <div><dt>Updated</dt><dd id="aqOpsUpdatedAt">-</dd></div>
     </dl>
 
-    <p id="aqOpsFeedbackMsg" class="panel-hint event-level-info">Aguardando status de playbooks...</p>
+    <p id="aqOpsFeedbackMsg" class="panel-hint event-level-info">Waiting for playbook status...</p>
     <ul id="aqOpsList" class="events-list" style="max-height: 420px; overflow-y: auto;"></ul>
   </article>
 
   <article class="panel">
-    <h2>Paridade Operacional</h2>
-    <p class="panel-hint">Esta dashboard cobre controle de canais, contrato de resposta 1x4, autonomia, fila de risco e outcomes/custo.</p>
+    <h2>Operational Parity</h2>
+    <p class="panel-hint">This dashboard covers channel control, 1x4 response contract, autonomy, risk queue, and outcomes/cost.</p>
     <dl class="kv">
-      <div><dt>Channel Control</dt><dd>mode-aware com guard frontend + backend</dd></div>
-      <div><dt>Contrato de resposta</dt><dd>1 mensagem, ate 4 linhas</dd></div>
-      <div><dt>Autonomia</dt><dd>agenda + heartbeat + budget anti-spam</dd></div>
-      <div><dt>Risco</dt><dd>auto chat, sugestao, moderacao confirmada</dd></div>
-      <div><dt>Metrica de valor</dt><dd>engajamento util + correcoes + ignorados + custo/token</dd></div>
+      <div><dt>Channel Control</dt><dd>mode-aware with frontend + backend guards</dd></div>
+      <div><dt>Response Contract</dt><dd>1 message, up to 4 lines</dd></div>
+      <div><dt>Autonomy</dt><dd>scheduler + heartbeat + anti-spam budget</dd></div>
+      <div><dt>Risk</dt><dd>auto chat, suggestion, confirmed moderation</dd></div>
+      <div><dt>Value Metrics</dt><dd>useful engagement + corrections + ignored + cost/token</dd></div>
     </dl>
   </article>
 </section>

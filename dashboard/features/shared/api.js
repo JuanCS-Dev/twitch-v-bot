@@ -3,8 +3,8 @@ import { getStorageItem } from "./dom.js";
 export const TIMEOUT_DEFAULT_MS = 12000;
 
 /**
- * Wrapper de Fetch padronizado que já captura erro Http como throwable real
- * e controla abort/timeout.
+ * Standard fetch wrapper that throws HTTP errors
+ * and handles abort/timeout.
  */
 export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DEFAULT_MS) {
     const controller = new AbortController();
@@ -40,12 +40,12 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
         if (currentOrigin.includes(".hf.space") || currentOrigin.includes("localhost") || currentOrigin.includes("127.0.0.1")) {
             finalUrl = `${currentOrigin}/${routePath}`;
         } else {
-            // Fallback para caso remoto mas fora do space (improvável neste setup)
+            // Fallback for remote context outside Space (unlikely in this setup)
             finalUrl = `https://juancs-dev-twitch-byte-bot.hf.space/${routePath}`;
         }
     }
 
-    // Anexa o token na Query String como fallback (Proxy do HF bloqueia headers as vezes)
+    // Attach token in query string as fallback (HF proxy may block headers).
     if (activeToken) {
         const separator = finalUrl.includes("?") ? "&" : "?";
         finalUrl = `${finalUrl}${separator}auth=${encodeURIComponent(activeToken)}`;
@@ -55,14 +55,14 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
         const response = await fetch(finalUrl, fetchOptions);
         let payload = {};
 
-        // Tratativa resiliente para corpo vazio/nao-json mas com sucesso HTTP
+        // Resilient path for empty/non-JSON body with successful HTTP status.
         try {
             payload = await response.json();
         } catch (_err) {
             payload = { ok: response.ok, rawFallback: true };
         }
 
-        // A API atual sempre retorna "ok: boolean". Validar contra a resposta
+        // API contract always includes "ok: boolean".
         const isPayloadOk = typeof payload === "object" && payload !== null && payload.ok !== false;
 
         if (!response.ok || !isPayloadOk) {
@@ -71,18 +71,18 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
             err.status = response.status;
             err.payload = payload;
 
-            // Alerta visual de falta de permissão se for 403
+            // Visual warning for missing/invalid permission on 403.
             if (response.status === 403) {
-                console.warn("Acesso Negado (403). Verifique seu Admin Token.");
+                console.warn("Access denied (403). Check your admin token.");
                 const feedback = document.getElementById("channelFeedbackMsg");
                 if (feedback) {
-                    feedback.textContent = "Erro 403: Token de Admin inválido ou ausente em 'Optional Auth'.";
+                    feedback.textContent = "Error 403: Admin token is invalid or missing in 'Optional Auth'.";
                     feedback.className = "panel-hint event-level-error";
                 }
                 const tokenInput = document.getElementById("adminTokenInput");
                 if (tokenInput) {
                     tokenInput.style.border = "2px solid var(--danger)";
-                    tokenInput.placeholder = "INSIRA O TOKEN AQUI";
+                    tokenInput.placeholder = "ENTER TOKEN HERE";
                 }
             }
 
@@ -92,7 +92,7 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_DE
         return payload;
     } catch (error) {
         if (error.name === "AbortError") {
-            throw new Error(`Timeout apos ${timeoutMs / 1000}s. A rede falhou ou o bot travou.`);
+            throw new Error(`Timeout after ${timeoutMs / 1000}s. Network failed or bot is unresponsive.`);
         }
         throw error;
     } finally {

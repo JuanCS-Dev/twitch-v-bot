@@ -1,9 +1,9 @@
-<!-- HERO V2: Manager Visual Guiado -->
+<!-- HERO V2: guided visual manager -->
 <section class="grid-hero" id="channelControlPanel">
   <article class="panel">
     <h2>Channel Manager</h2>
     <p class="panel-hint">
-      Canais monitorados simultaneamente. Sem terminal hostil.
+      Channels monitored in parallel. No hostile terminal.
     </p>
     <div
       class="form-row"
@@ -12,15 +12,15 @@
       <span id="channelControlModeChip" class="chip pending"
         >Mode: loading</span
       >
-      <span class="chip">Contract: 1 msg / 4 linhas</span>
+      <span class="chip">Contract: 1 msg / 4 lines</span>
     </div>
     <p id="channelControlModeReason" class="panel-hint">
-      Carregando capacidades do runtime...
+      Loading runtime capabilities...
     </p>
 
     <div class="form-row">
       <div class="form-group" style="flex: 1">
-        <label for="channelLoginInput">Twitch Channel (login sem arroba)</label>
+        <label for="channelLoginInput">Twitch Channel (login without @)</label>
         <input
           id="channelLoginInput"
           class="form-control"
@@ -31,7 +31,7 @@
       </div>
       <div class="form-group">
         <button id="btnJoinChannel" class="btn btn-primary" type="button">
-          Conectar
+          Connect
         </button>
       </div>
       <div class="form-group">
@@ -39,7 +39,7 @@
           id="btnSyncChannels"
           class="btn btn-secondary"
           type="button"
-          title="Sincronizar a força"
+          title="Force sync"
         >
           Re-Sync
         </button>
@@ -67,12 +67,12 @@
       class="panel-hint event-level-info"
       style="margin-top: var(--spacing-3); font-style: italic"
     >
-      Aguardando ação...
+      Waiting for action...
     </p>
   </article>
 
   <article class="card tone-purple">
-    <h2>Conexões Ativas</h2>
+    <h2>Active Connections</h2>
     <ul
       id="connectedChannelsList"
       class="events-list"
@@ -85,8 +85,8 @@
         border: 0;
         background: transparent;
       "
-    >
-      <!-- Render dinâmico de chipes e botoes drop -->
+      >
+      <!-- Dynamic rendering for chips and drop buttons -->
     </ul>
     <div
       style="
@@ -116,11 +116,11 @@
           class="btn btn-secondary"
           type="button"
         >
-          Monitor
+          Set Focus
         </button>
       </div>
       <div class="form-group" style="margin: 0">
-        <label for="dashboardChannelInput">Canal observado na dashboard</label>
+        <label for="dashboardChannelInput">Focused dashboard channel</label>
         <input
           id="dashboardChannelInput"
           class="form-control"
@@ -135,7 +135,7 @@
         class="panel-hint"
         style="margin-top: var(--spacing-2)"
       >
-        Observability e contexto abaixo seguem este canal.
+        Observability and context below follow this channel.
       </p>
     </div>
   </article>

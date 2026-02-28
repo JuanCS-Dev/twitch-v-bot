@@ -25,7 +25,7 @@ export function createChannelControlController({
         console.error("Dashboard channel sync error", error);
         showChannelFeedback(
           ctrlEls,
-          `Erro: ${getErrorMessage(error, "Falha ao sincronizar canal da dashboard.")}`,
+          `Error: ${getErrorMessage(error, "Failed to sync dashboard channel.")}`,
           "error",
         );
       });
@@ -36,7 +36,7 @@ export function createChannelControlController({
   async function handleChannelAction(actionType, channelLogin = "") {
     if (!ctrlEls) return;
     setChannelBusy(ctrlEls, true);
-    showChannelFeedback(ctrlEls, `Processando ${actionType}...`, "warn");
+    showChannelFeedback(ctrlEls, `Processing ${actionType}...`, "warn");
 
     try {
       const response = await sendChannelAction(actionType, channelLogin);
@@ -61,7 +61,7 @@ export function createChannelControlController({
       }
       showChannelFeedback(
         ctrlEls,
-        response?.message || "Acao concluida.",
+        response?.message || "Action completed.",
         "ok",
       );
       if (ctrlEls.channelInput) {
@@ -76,7 +76,7 @@ export function createChannelControlController({
               enabled: false,
               reason: getErrorMessage(
                 error,
-                "Modo sem suporte para join/part.",
+                "Mode does not support join/part.",
               ),
               supported_actions: [],
             },
@@ -85,14 +85,14 @@ export function createChannelControlController({
         );
         showChannelFeedback(
           ctrlEls,
-          getErrorMessage(error, "Modo nao suportado."),
+          getErrorMessage(error, "Unsupported mode."),
           "warn",
         );
         return;
       }
       showChannelFeedback(
         ctrlEls,
-        `Erro: ${getErrorMessage(error, "Falha no channel control.")}`,
+        `Error: ${getErrorMessage(error, "Channel control failed.")}`,
         "error",
       );
     } finally {
@@ -131,7 +131,7 @@ export function createChannelControlController({
         if (!channelLogin) {
           showChannelFeedback(
             ctrlEls,
-            "Digite o login do canal antes de conectar.",
+            "Enter the channel login before connecting.",
             "error",
           );
           return;

@@ -75,8 +75,7 @@ function buildPendingActions(item, onDecision) {
   const noteInput = document.createElement("input");
   noteInput.type = "text";
   noteInput.className = "form-control";
-  noteInput.placeholder =
-    "Nota opcional de auditoria (ex: aprovado para teste).";
+  noteInput.placeholder = "Optional audit note (e.g. approved for test).";
   controls.appendChild(noteInput);
 
   const buttonRow = document.createElement("div");
@@ -118,7 +117,7 @@ function buildActionItem(item, onDecision) {
   topRow.style.alignItems = "center";
 
   const title = document.createElement("strong");
-  title.textContent = String(item.title || "Acao sem titulo");
+  title.textContent = String(item.title || "Untitled action");
   topRow.appendChild(title);
   topRow.appendChild(
     buildChip(String(item.risk || "unknown"), chipClassByRisk(item.risk)),
@@ -146,7 +145,7 @@ function buildActionItem(item, onDecision) {
   } else if (item.decision_note) {
     const note = document.createElement("div");
     note.className = "panel-hint";
-    note.textContent = `Nota: ${item.decision_note}`;
+    note.textContent = `Note: ${item.decision_note}`;
     card.appendChild(note);
   }
 
@@ -193,8 +192,8 @@ function buildPlaybookItem(item) {
   progress.className = "panel-hint";
   progress.textContent =
     step > 0 && totalSteps > 0
-      ? `Passo ${step}/${totalSteps}: ${item?.current_step_title || "-"}`
-      : `Passos totais: ${formatNumber(totalSteps)}`;
+      ? `Step ${step}/${totalSteps}: ${item?.current_step_title || "-"}`
+      : `Total steps: ${formatNumber(totalSteps)}`;
   card.appendChild(progress);
 
   const meta = document.createElement("div");
@@ -205,15 +204,15 @@ function buildPlaybookItem(item) {
   const detail = document.createElement("div");
   detail.className = "panel-hint";
   if (waitingActionId) {
-    detail.textContent = `Aguardando decisao da fila para action_id=${waitingActionId}.`;
+    detail.textContent = `Awaiting queue decision for action_id=${waitingActionId}.`;
   } else if (
     String(item?.state || "")
       .trim()
       .toLowerCase() === "cooldown"
   ) {
-    detail.textContent = `Cooldown ate ${item?.cooldown_until || "-"}.`;
+    detail.textContent = `Cooldown until ${item?.cooldown_until || "-"}.`;
   } else {
-    detail.textContent = `Ultimo motivo: ${item?.last_outcome_reason || "n/a"}.`;
+    detail.textContent = `Last reason: ${item?.last_outcome_reason || "n/a"}.`;
   }
   card.appendChild(detail);
 
@@ -311,7 +310,7 @@ function syncOpsPlaybookSelect(playbooks, selectEl) {
   if (!items.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "Nenhum playbook";
+    option.textContent = "No playbook";
     selectEl.appendChild(option);
     selectEl.value = "";
     return;
@@ -347,7 +346,7 @@ function renderOpsPlaybookRows(playbooks, targetList) {
     const emptyItem = document.createElement("li");
     emptyItem.style.fontStyle = "italic";
     emptyItem.style.color = "var(--text-muted)";
-    emptyItem.textContent = "Nenhum playbook operacional registrado.";
+    emptyItem.textContent = "No operational playbooks registered.";
     targetList.appendChild(emptyItem);
     return;
   }
@@ -426,7 +425,7 @@ export function renderActionQueuePayload(payload, els, onDecision) {
     const emptyItem = document.createElement("li");
     emptyItem.style.fontStyle = "italic";
     emptyItem.style.color = "var(--text-muted)";
-    emptyItem.textContent = "Fila sem itens para o filtro atual.";
+    emptyItem.textContent = "Queue has no items for the current filter.";
     els.list.appendChild(emptyItem);
     return;
   }

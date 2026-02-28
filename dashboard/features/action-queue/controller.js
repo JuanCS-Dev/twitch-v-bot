@@ -30,8 +30,8 @@ export function createActionQueueController({
         isPolling = true;
         setActionQueueBusy(aqEls, true);
         if (showFeedback) {
-            showActionQueueFeedback(aqEls, "Carregando fila de risco...", "warn");
-            showOpsPlaybooksFeedback(aqEls, "Carregando playbooks operacionais...", "warn");
+            showActionQueueFeedback(aqEls, "Loading risk queue...", "warn");
+            showOpsPlaybooksFeedback(aqEls, "Loading operational playbooks...", "warn");
         }
         try {
             const query = getActionQueueQuery(aqEls);
@@ -59,16 +59,16 @@ export function createActionQueueController({
                     const awaitingCount = opsResult.value?.summary?.awaiting_decision || 0;
                     showOpsPlaybooksFeedback(
                         aqEls,
-                        `Playbooks atualizados (${awaitingCount} aguardando decisao).`,
+                        `Playbooks refreshed (${awaitingCount} awaiting decision).`,
                         "ok"
                     );
                 }
             } else {
                 showOpsPlaybooksFeedback(
                     aqEls,
-                    `Erro: ${getErrorMessage(
+                    `Error: ${getErrorMessage(
                         opsResult.reason,
-                        "Falha ao carregar playbooks operacionais."
+                        "Failed to load operational playbooks."
                     )}`,
                     "error"
                 );
@@ -78,7 +78,7 @@ export function createActionQueueController({
             console.error("Action queue refresh error", error);
             showActionQueueFeedback(
                 aqEls,
-                `Erro: ${getErrorMessage(error, "Falha ao carregar fila.")}`,
+                `Error: ${getErrorMessage(error, "Failed to load queue.")}`,
                 "error"
             );
         } finally {
@@ -102,12 +102,12 @@ export function createActionQueueController({
         setActionQueueBusy(aqEls, true);
         showActionQueueFeedback(
             aqEls,
-            `Aplicando decisao ${decision} em ${actionId}...`,
+            `Applying ${decision} decision on ${actionId}...`,
             "warn"
         );
         try {
             await decideActionQueueItem(actionId, decision, note);
-            showActionQueueFeedback(aqEls, "Decisao registrada.", "ok");
+            showActionQueueFeedback(aqEls, "Decision recorded.", "ok");
             await Promise.all([
                 refreshActionQueue({ showFeedback: false }),
                 fetchAndRenderObservability(),
@@ -116,7 +116,7 @@ export function createActionQueueController({
             console.error("Action queue decision error", error);
             showActionQueueFeedback(
                 aqEls,
-                `Erro: ${getErrorMessage(error, "Falha ao registrar decisao.")}`,
+                `Error: ${getErrorMessage(error, "Failed to record decision.")}`,
                 "error"
             );
         } finally {
@@ -128,20 +128,20 @@ export function createActionQueueController({
         if (!aqEls) return;
         const triggerPayload = getOpsPlaybookTriggerPayload(aqEls, selectedChannel);
         if (!triggerPayload.playbookId) {
-            showOpsPlaybooksFeedback(aqEls, "Selecione um playbook para disparar.", "warn");
+            showOpsPlaybooksFeedback(aqEls, "Select a playbook before triggering.", "warn");
             return;
         }
 
         setActionQueueBusy(aqEls, true);
         showOpsPlaybooksFeedback(
             aqEls,
-            `Disparando playbook ${triggerPayload.playbookId}...`,
+            `Triggering playbook ${triggerPayload.playbookId}...`,
             "warn"
         );
         try {
             const payload = await triggerOpsPlaybook(triggerPayload);
             renderOpsPlaybooksPayload(payload, aqEls);
-            showOpsPlaybooksFeedback(aqEls, "Playbook disparado com sucesso.", "ok");
+            showOpsPlaybooksFeedback(aqEls, "Playbook triggered successfully.", "ok");
             await Promise.all([
                 refreshActionQueue({ showFeedback: false }),
                 fetchAndRenderObservability(),
@@ -150,7 +150,7 @@ export function createActionQueueController({
             console.error("Ops playbook trigger error", error);
             showOpsPlaybooksFeedback(
                 aqEls,
-                `Erro: ${getErrorMessage(error, "Falha ao disparar playbook.")}`,
+                `Error: ${getErrorMessage(error, "Failed to trigger playbook.")}`,
                 "error"
             );
         } finally {

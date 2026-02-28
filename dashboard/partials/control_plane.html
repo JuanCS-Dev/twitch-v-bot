@@ -2,8 +2,8 @@
   <article class="panel" id="cpPanel">
     <h2>Control Plane</h2>
     <p class="panel-hint">
-      Ajustes transacionais da IA em tempo real. Opções avançadas estão ocultas
-      por padrão (Progressive Disclosure).
+      Real-time transactional AI tuning. Advanced options are hidden by default
+      (Progressive Disclosure).
     </p>
 
     <div
@@ -12,7 +12,7 @@
     >
       <span id="cpModeChip" class="chip pending">MODE</span>
       <span id="cpResponseContract" class="chip"
-        >Contrato ativo: 1 mensagem / 4 linhas.</span
+        >Active contract: 1 message / 4 lines.</span
       >
     </div>
     <p
@@ -20,7 +20,7 @@
       class="panel-hint"
       style="margin-bottom: var(--spacing-5)"
     >
-      Carregando capacidades...
+      Loading capabilities...
     </p>
 
     <div
@@ -58,7 +58,7 @@
         </div>
       </div>
       <p id="cpAgentStatusHint" class="panel-hint" style="margin: 0">
-        Agente operacional.
+        Operational agent.
       </p>
     </div>
 
@@ -150,7 +150,7 @@
           <label class="toggle-switch" style="margin-top: 1.4rem">
             <input id="cpChannelAgentPaused" type="checkbox" />
             <span class="toggle-slider"></span>
-            Pause/Silence neste canal
+            Pause/Silence on this channel
           </label>
         </div>
       </div>
@@ -178,7 +178,7 @@
             class="form-control"
             type="text"
             maxlength="80"
-            placeholder="Ex.: Byte Coach"
+            placeholder="e.g. Byte Coach"
           />
         </div>
         <div class="form-group" style="min-width: 280px">
@@ -188,7 +188,7 @@
             class="form-control"
             type="text"
             maxlength="160"
-            placeholder="Ex.: tatico, objetivo e sem spoiler"
+            placeholder="e.g. tactical, objective, spoiler-free"
           />
         </div>
       </div>
@@ -203,7 +203,7 @@
             class="form-control"
             type="text"
             maxlength="720"
-            placeholder="Ex.: PogChamp, Kappa, LUL"
+            placeholder="e.g. PogChamp, Kappa, LUL"
           />
         </div>
       </div>
@@ -214,7 +214,7 @@
           class="form-control"
           rows="3"
           maxlength="1200"
-          placeholder="Contexto recorrente do canal para continuidade das respostas."
+          placeholder="Recurring channel context to keep reply continuity."
         ></textarea>
       </div>
       <div class="form-group" style="margin-bottom: var(--spacing-2)">
@@ -223,7 +223,7 @@
           id="cpAgentNotes"
           class="form-control"
           rows="4"
-          placeholder="Ex.: Priorize lore e contexto do streamer. Evite backseat agressivo."
+          placeholder="e.g. Prioritize streamer lore/context. Avoid aggressive backseating."
         ></textarea>
       </div>
       <p
@@ -231,18 +231,18 @@
         class="panel-hint"
         style="margin: 0 0 var(--spacing-1) 0"
       >
-        Overrides persistidos em <code>channels_config</code>.
+        Overrides persisted in <code>channels_config</code>.
       </p>
       <p
         id="cpChannelIdentityHint"
         class="panel-hint"
         style="margin: 0 0 var(--spacing-1) 0"
       >
-        Identidade persistida em <code>channel_identity</code> e aplicada no
+        Identity persisted in <code>channel_identity</code> and applied to the
         system prompt.
       </p>
       <p id="cpAgentNotesHint" class="panel-hint" style="margin: 0">
-        Notes persistidas em <code>agent_notes</code> e injetadas no system
+        Notes persisted in <code>agent_notes</code> and injected into the
         prompt.
       </p>
     </div>
@@ -252,13 +252,13 @@
         <label class="toggle-switch">
           <input id="cpAutonomyEnabled" type="checkbox" />
           <span class="toggle-slider"></span>
-          Autonomia Global
+          Global Autonomy
         </label>
       </div>
     </div>
 
     <details class="advanced-settings">
-      <summary>Configurações Avançadas de Budget & Cooldowns</summary>
+      <summary>Advanced Budget & Cooldown Settings</summary>
       <div class="advanced-settings-content">
         <div
           class="form-row"
@@ -323,7 +323,7 @@
             />
           </div>
           <div class="form-group" style="min-width: 140px">
-            <label for="cpBudgetDaily">Budget Diário</label>
+            <label for="cpBudgetDaily">Daily Budget</label>
             <input
               id="cpBudgetDaily"
               class="form-control"
@@ -352,7 +352,7 @@
             Outbound Webhooks
           </h4>
           <p class="panel-hint" style="margin-bottom: var(--spacing-3)">
-            Configure um endpoint para receber eventos do agente (Fase 18).
+            Configure an endpoint to receive agent events (Phase 18).
           </p>
           <div
             class="form-row"
@@ -364,16 +364,16 @@
                 id="cpWebhookUrl"
                 class="form-control"
                 type="url"
-                placeholder="https://api.exemplo.com/webhooks/byte"
+                placeholder="https://api.example.com/webhooks/byte"
               />
             </div>
             <div class="form-group" style="min-width: 180px; flex: 1">
-              <label for="cpWebhookSecret">HMAC Secret (opcional)</label>
+              <label for="cpWebhookSecret">HMAC Secret (optional)</label>
               <input
                 id="cpWebhookSecret"
                 class="form-control"
                 type="password"
-                placeholder="Segredo para assinatura sha256"
+                placeholder="Secret for sha256 signing"
               />
             </div>
           </div>
@@ -388,14 +388,14 @@
             <label class="toggle-switch">
               <input id="cpWebhookActive" type="checkbox" checked />
               <span class="toggle-slider"></span>
-              Ativar Envios
+              Enable Dispatch
             </label>
             <button
               id="cpWebhookTestBtn"
               class="btn btn-secondary"
               type="button"
             >
-              Testar Webhook
+              Test Webhook
             </button>
           </div>
         </div>
@@ -454,10 +454,10 @@
           <polyline points="17 21 17 13 7 13 7 21"></polyline>
           <polyline points="7 3 7 8 15 8"></polyline>
         </svg>
-        Salvar Config
+        Save Config
       </button>
       <button id="cpReloadBtn" class="btn btn-secondary" type="button">
-        Recarregar
+        Reload
       </button>
     </div>
     <p
@@ -465,7 +465,7 @@
       class="panel-hint event-level-info"
       style="margin-top: var(--spacing-2)"
     >
-      Aguardando configuracao...
+      Waiting for configuration...
     </p>
   </article>
 </section>

@@ -34,7 +34,7 @@ export function createControlPlaneController({
     if (!cpEls) return;
     setControlPlaneBusy(cpEls, true);
     if (showFeedback) {
-      showControlPlaneFeedback(cpEls, "Carregando control plane...", "warn");
+      showControlPlaneFeedback(cpEls, "Loading control plane...", "warn");
     }
     try {
       const payload = await getControlPlaneState();
@@ -45,13 +45,13 @@ export function createControlPlaneController({
         payload?.mode || "",
       );
       if (showFeedback) {
-        showControlPlaneFeedback(cpEls, "Control plane sincronizado.", "ok");
+        showControlPlaneFeedback(cpEls, "Control plane synced.", "ok");
       }
     } catch (error) {
       console.error("Control plane load error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao carregar control plane.")}`,
+        `Error: ${getErrorMessage(error, "Failed to load control plane.")}`,
         "error",
       );
     } finally {
@@ -67,7 +67,7 @@ export function createControlPlaneController({
     if (!rawChannelId) {
       showControlPlaneFeedback(
         cpEls,
-        "Informe um canal para carregar directives.",
+        "Provide a channel to load directives.",
         "warn",
       );
       return;
@@ -77,7 +77,7 @@ export function createControlPlaneController({
     if (showFeedback) {
       showControlPlaneFeedback(
         cpEls,
-        "Carregando directives operacionais do canal...",
+        "Loading channel operational directives...",
         "warn",
       );
     }
@@ -94,8 +94,10 @@ export function createControlPlaneController({
       if (whList.length > 0) {
         const wh = whList[0];
         if (cpEls.cpWebhookUrl) cpEls.cpWebhookUrl.value = wh.url || "";
-        if (cpEls.cpWebhookSecret) cpEls.cpWebhookSecret.value = wh.secret || "";
-        if (cpEls.cpWebhookActive) cpEls.cpWebhookActive.checked = Boolean(wh.is_active);
+        if (cpEls.cpWebhookSecret)
+          cpEls.cpWebhookSecret.value = wh.secret || "";
+        if (cpEls.cpWebhookActive)
+          cpEls.cpWebhookActive.checked = Boolean(wh.is_active);
       } else {
         if (cpEls.cpWebhookUrl) cpEls.cpWebhookUrl.value = "";
         if (cpEls.cpWebhookSecret) cpEls.cpWebhookSecret.value = "";
@@ -103,17 +105,13 @@ export function createControlPlaneController({
       }
 
       if (showFeedback) {
-        showControlPlaneFeedback(
-          cpEls,
-          "Directives operacionais sincronizados.",
-          "ok",
-        );
+        showControlPlaneFeedback(cpEls, "Operational directives synced.", "ok");
       }
     } catch (error) {
       console.error("Channel config load error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao carregar directives do canal.")}`,
+        `Error: ${getErrorMessage(error, "Failed to load channel directives.")}`,
         "error",
       );
     } finally {
@@ -124,7 +122,7 @@ export function createControlPlaneController({
   async function saveControlPlaneState() {
     if (!cpEls) return;
     setControlPlaneBusy(cpEls, true);
-    showControlPlaneFeedback(cpEls, "Salvando configuracao...", "warn");
+    showControlPlaneFeedback(cpEls, "Saving configuration...", "warn");
     try {
       const payload = collectControlPlanePayload(cpEls);
       const updated = await updateControlPlaneConfig(payload);
@@ -134,12 +132,16 @@ export function createControlPlaneController({
         updated?.capabilities || {},
         updated?.mode || "",
       );
-      showControlPlaneFeedback(cpEls, "Configuracao salva com sucesso.", "ok");
+      showControlPlaneFeedback(
+        cpEls,
+        "Configuration saved successfully.",
+        "ok",
+      );
     } catch (error) {
       console.error("Control plane save error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao salvar configuracao.")}`,
+        `Error: ${getErrorMessage(error, "Failed to save configuration.")}`,
         "error",
       );
     } finally {
@@ -152,7 +154,7 @@ export function createControlPlaneController({
     setControlPlaneBusy(cpEls, true);
     showControlPlaneFeedback(
       cpEls,
-      "Aplicando directives operacionais...",
+      "Applying operational directives...",
       "warn",
     );
     try {
@@ -172,8 +174,8 @@ export function createControlPlaneController({
             url: url,
             secret: String(cpEls.cpWebhookSecret?.value || "").trim(),
             event_types: [], // empty list means all events
-            is_active: Boolean(cpEls.cpWebhookActive?.checked)
-          })
+            is_active: Boolean(cpEls.cpWebhookActive?.checked),
+          }),
         );
       }
 
@@ -182,14 +184,14 @@ export function createControlPlaneController({
       renderAgentNotes(updatedNotes?.note || {}, cpEls);
       showControlPlaneFeedback(
         cpEls,
-        "Directives operacionais salvos com sucesso.",
+        "Operational directives saved successfully.",
         "ok",
       );
     } catch (error) {
       console.error("Channel config save error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao salvar directives do canal.")}`,
+        `Error: ${getErrorMessage(error, "Failed to save channel directives.")}`,
         "error",
       );
     } finally {
@@ -201,16 +203,20 @@ export function createControlPlaneController({
     if (!cpEls) return;
     const payload = collectChannelConfigPayload(cpEls);
     setControlPlaneBusy(cpEls, true);
-    showControlPlaneFeedback(cpEls, "Disparando webhook de teste...", "warn");
+    showControlPlaneFeedback(cpEls, "Triggering test webhook...", "warn");
     try {
       await testWebhook({ channel_id: payload.channel_id });
-      showControlPlaneFeedback(cpEls, "Webhook de teste enfileirado com sucesso.", "ok");
+      showControlPlaneFeedback(
+        cpEls,
+        "Test webhook queued successfully.",
+        "ok",
+      );
     } catch (error) {
       console.error("Webhook test error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao disparar webhook.")}`,
-        "error"
+        `Error: ${getErrorMessage(error, "Failed to trigger webhook.")}`,
+        "error",
       );
     } finally {
       setControlPlaneBusy(cpEls, false);
@@ -234,14 +240,14 @@ export function createControlPlaneController({
       );
       showControlPlaneFeedback(
         cpEls,
-        nextSuspended ? "Agente suspenso." : "Agente retomado.",
+        nextSuspended ? "Agent suspended." : "Agent resumed.",
         "ok",
       );
     } catch (error) {
       console.error("Control plane suspend/resume error", error);
       showControlPlaneFeedback(
         cpEls,
-        `Erro: ${getErrorMessage(error, "Falha ao atualizar estado do agente.")}`,
+        `Error: ${getErrorMessage(error, "Failed to update agent state.")}`,
         "error",
       );
     } finally {
@@ -257,11 +263,7 @@ export function createControlPlaneController({
           ? cpEls.goalsList.querySelectorAll("[data-goal-item='1']").length
           : 0;
         appendGoalCard(cpEls, {}, currentGoalCount);
-        showControlPlaneFeedback(
-          cpEls,
-          "Goal adicionada. Ajuste e salve.",
-          "info",
-        );
+        showControlPlaneFeedback(cpEls, "Goal added. Adjust and save.", "info");
       });
     }
     if (cpEls.saveBtn) {
