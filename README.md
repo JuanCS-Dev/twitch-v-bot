@@ -1,3 +1,11 @@
+---
+title: Byte Bot
+sdk: docker
+emoji: 🤖
+colorFrom: purple
+colorTo: blue
+---
+
 # 🤖 BYTE AI — Agentic Stream Runtime (2026)
 ## The First "Stream Co-Producer" for Twitch
 
