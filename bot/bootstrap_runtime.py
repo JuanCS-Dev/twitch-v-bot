@@ -22,7 +22,7 @@ from bot.runtime_config import (
 )
 from bot.sentiment_engine import sentiment_engine
 from bot.status_runtime import parse_channel_logins
-from bot.twitch_tokens import TwitchTokenManager
+from bot.twitch_tokens import TwitchTokenManager, TwitchTokenManagerSettings
 
 
 def get_secret(secret_name: str = "twitch-client-secret") -> str:
@@ -84,15 +84,13 @@ def build_irc_token_manager() -> TwitchTokenManager:
     client_id = TWITCH_CLIENT_ID or require_env("TWITCH_CLIENT_ID")
     client_secret = resolve_client_secret_for_irc_refresh()
 
-    settings = {"clips_auth_scopes": "chat:read chat:edit clips:edit"}
-
     return TwitchTokenManager(
         access_token=user_token,
         refresh_token=refresh_token,
         client_id=client_id,
         client_secret=client_secret or "",
         refresh_margin_seconds=TWITCH_TOKEN_REFRESH_MARGIN_SECONDS,
-        settings=settings,
+        settings=TwitchTokenManagerSettings(),
         observability=observability,
         logger=logger,
     )
