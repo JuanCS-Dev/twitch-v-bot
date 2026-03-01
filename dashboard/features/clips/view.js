@@ -13,38 +13,50 @@ export function renderClipCard(job) {
 
     // Conditional links based on current status
     let actionsHtml = '';
+    let thumbnailHtml = '';
+
     if (status === 'ready' && job.clip_url) {
         actionsHtml += `<a href="${escapeHtml(job.clip_url)}" target="_blank" class="btn btn-primary btn-sm">Open Clip</a>`;
         if (job.download_url) {
             actionsHtml += `<a href="${escapeHtml(job.download_url)}" target="_blank" class="btn btn-success btn-sm">Download</a>`;
         }
         actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Edit</a>`;
+
+        // Thumbnail handling
+        if (job.thumbnail_url) {
+            thumbnailHtml = `<div class="clip-thumbnail-wrapper"><img src="${escapeHtml(job.thumbnail_url)}" alt="Clip Thumbnail" class="clip-thumbnail" loading="lazy"/></div>`;
+        }
     } else if (status === 'creating' || status === 'polling') {
         if (job.edit_url) {
              actionsHtml += `<a href="${escapeHtml(job.edit_url)}" target="_blank" class="btn btn-secondary btn-sm">Edit (WIP)</a>`;
         }
+        thumbnailHtml = `<div class="clip-thumbnail-wrapper clip-thumbnail-loading"><div class="spinner-small"></div><span>Processing...</span></div>`;
     } else if (status === 'failed') {
         // Manual retry can be implemented later if endpoint is available.
         // For now, error state is displayed only.
+        thumbnailHtml = `<div class="clip-thumbnail-wrapper clip-thumbnail-error"><span>Failed</span></div>`;
     }
 
     return `
     <article class="clip-card" data-status="${escapeHtml(status)}" data-id="${escapeHtml(job.job_id)}">
-        <div class="clip-header">
-            <span class="clip-status-indicator"></span>
-            <span class="clip-id-label">#${escapeHtml(job.action_id.split('_').pop())}</span>
-            <time class="clip-time">${createdTime}</time>
-        </div>
-        <div class="clip-body">
-            <h4 class="clip-title">${escapeHtml(job.title || "Untitled")}</h4>
-            <div class="clip-meta">
-                <span class="meta-item mode">${escapeHtml(job.mode)}</span>
-                <span class="meta-item broadcaster">${escapeHtml(job.broadcaster_id)}</span>
+        ${thumbnailHtml}
+        <div class="clip-content-wrapper">
+            <div class="clip-header">
+                <span class="clip-status-indicator"></span>
+                <span class="clip-id-label">#${escapeHtml(job.action_id.split('_').pop())}</span>
+                <time class="clip-time">${createdTime}</time>
             </div>
-            ${job.error ? `<div class="clip-error">${escapeHtml(job.error)}</div>` : ''}
-        </div>
-        <div class="clip-actions">
-            ${actionsHtml}
+            <div class="clip-body">
+                <h4 class="clip-title">${escapeHtml(job.title || "Untitled")}</h4>
+                <div class="clip-meta">
+                    <span class="meta-item mode">${escapeHtml(job.mode)}</span>
+                    <span class="meta-item broadcaster">${escapeHtml(job.broadcaster_id)}</span>
+                </div>
+                ${job.error ? `<div class="clip-error">${escapeHtml(job.error)}</div>` : ''}
+            </div>
+            <div class="clip-actions">
+                ${actionsHtml}
+            </div>
         </div>
     </article>
     `;
