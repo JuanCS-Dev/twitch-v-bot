@@ -654,6 +654,21 @@ export function getControlPlaneElements() {
     cpWebhookSecret: document.getElementById("cpWebhookSecret"),
     cpWebhookActive: document.getElementById("cpWebhookActive"),
     cpWebhookTestBtn: document.getElementById("cpWebhookTestBtn"),
+    ppPersonaName: document.getElementById("ppPersonaName"),
+    ppPronouns: document.getElementById("ppPronouns"),
+    ppLore: document.getElementById("ppLore"),
+    ppTone: document.getElementById("ppTone"),
+    ppSentenceStyle: document.getElementById("ppSentenceStyle"),
+    ppEmoteVocab: document.getElementById("ppEmoteVocab"),
+    ppBannedTopics: document.getElementById("ppBannedTopics"),
+    ppCtaTriggers: document.getElementById("ppCtaTriggers"),
+    ppModelChat: document.getElementById("ppModelChat"),
+    ppModelCoaching: document.getElementById("ppModelCoaching"),
+    ppModelSearch: document.getElementById("ppModelSearch"),
+    ppModelReasoning: document.getElementById("ppModelReasoning"),
+    ppLoadBtn: document.getElementById("ppLoadBtn"),
+    ppSaveBtn: document.getElementById("ppSaveBtn"),
+    ppStatusChip: document.getElementById("ppStatusChip"),
     currentSuspendedState: false,
   };
 }
@@ -688,6 +703,20 @@ export function setControlPlaneBusy(els, busy) {
     els?.agentNotesInput,
     els?.loadChannelConfigBtn,
     els?.saveChannelConfigBtn,
+    els?.ppPersonaName,
+    els?.ppPronouns,
+    els?.ppLore,
+    els?.ppTone,
+    els?.ppSentenceStyle,
+    els?.ppEmoteVocab,
+    els?.ppBannedTopics,
+    els?.ppCtaTriggers,
+    els?.ppModelChat,
+    els?.ppModelCoaching,
+    els?.ppModelSearch,
+    els?.ppModelReasoning,
+    els?.ppLoadBtn,
+    els?.ppSaveBtn,
   ];
   inputElements.forEach((element) => {
     if (element) element.disabled = disabled;
@@ -921,5 +950,91 @@ export function collectAgentNotesPayload(els) {
   return {
     channel_id: safeChannelId,
     notes: String(els?.agentNotesInput?.value || ""),
+  };
+}
+
+export function renderPersonaProfile(profile, els) {
+  const safeProfile = profile && typeof profile === "object" ? profile : {};
+  const base = safeProfile.base_identity || {};
+  const tonality = safeProfile.tonality_engine || {};
+  const constraints = safeProfile.behavioral_constraints || {};
+  const routing = safeProfile.model_routing || {};
+
+  if (els?.ppPersonaName) els.ppPersonaName.value = String(base.name || "");
+  if (els?.ppPronouns) els.ppPronouns.value = String(base.pronouns || "");
+  if (els?.ppLore) els.ppLore.value = String(base.lore || "");
+  if (els?.ppTone) els.ppTone.value = String(tonality.tone || "");
+  if (els?.ppSentenceStyle)
+    els.ppSentenceStyle.value = String(tonality.sentence_style || "");
+  if (els?.ppEmoteVocab)
+    els.ppEmoteVocab.value = Array.isArray(tonality.emote_vocab)
+      ? tonality.emote_vocab.join(", ")
+      : "";
+  if (els?.ppBannedTopics)
+    els.ppBannedTopics.value = Array.isArray(constraints.banned_topics)
+      ? constraints.banned_topics.join(", ")
+      : "";
+  if (els?.ppCtaTriggers)
+    els.ppCtaTriggers.value = Array.isArray(constraints.cta_triggers)
+      ? constraints.cta_triggers.join(", ")
+      : "";
+  if (els?.ppModelChat)
+    els.ppModelChat.value = String(routing.chat || "");
+  if (els?.ppModelCoaching)
+    els.ppModelCoaching.value = String(routing.coaching || "");
+  if (els?.ppModelSearch)
+    els.ppModelSearch.value = String(routing.search || "");
+  if (els?.ppModelReasoning)
+    els.ppModelReasoning.value = String(routing.reasoning || "");
+
+  if (els?.ppStatusChip) {
+    const hasProfile = Boolean(safeProfile.has_profile);
+    setText(
+      els.ppStatusChip,
+      hasProfile
+        ? `Profile loaded (${safeProfile.source || "memory"})`
+        : "No profile loaded.",
+    );
+    els.ppStatusChip.className = `panel-hint event-level-${hasProfile ? "info" : "warn"}`;
+  }
+}
+
+export function collectPersonaProfilePayload(els) {
+  const safeChannelId =
+    String(els?.channelIdInput?.value || "")
+      .trim()
+      .toLowerCase() || "default";
+
+  const parseTokenList = (el) => {
+    const raw = String(el?.value || "").trim();
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+  };
+
+  return {
+    channel_id: safeChannelId,
+    base_identity: {
+      name: String(els?.ppPersonaName?.value || "").trim(),
+      pronouns: String(els?.ppPronouns?.value || "").trim(),
+      lore: String(els?.ppLore?.value || "").trim(),
+    },
+    tonality_engine: {
+      tone: String(els?.ppTone?.value || "").trim(),
+      sentence_style: String(els?.ppSentenceStyle?.value || "").trim(),
+      emote_vocab: parseTokenList(els?.ppEmoteVocab),
+    },
+    behavioral_constraints: {
+      banned_topics: parseTokenList(els?.ppBannedTopics),
+      cta_triggers: parseTokenList(els?.ppCtaTriggers),
+    },
+    model_routing: {
+      chat: String(els?.ppModelChat?.value || "").trim() || null,
+      coaching: String(els?.ppModelCoaching?.value || "").trim() || null,
+      search: String(els?.ppModelSearch?.value || "").trim() || null,
+      reasoning: String(els?.ppModelReasoning?.value || "").trim() || null,
+    },
   };
 }

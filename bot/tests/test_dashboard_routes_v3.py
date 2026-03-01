@@ -919,3 +919,82 @@ class TestDashboardRoutesV3:
         handler._dashboard_authorized.return_value = False
         _handle_autonomy_tick(handler)
         handler._send_forbidden.assert_called_once()
+
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_get_persona_profile(self, mock_persistence):
+        from bot.dashboard_server_routes import _handle_get_persona_profile
+
+        mock_persistence.load_persona_profile_sync.return_value = {
+            "channel_id": "canal_a",
+            "base_identity": {"name": "Test Persona", "pronouns": "ele/dele", "lore": ""},
+            "tonality_engine": {"tone": "tatico", "emote_vocab": [], "sentence_style": ""},
+            "behavioral_constraints": {"banned_topics": [], "cta_triggers": []},
+            "model_routing": {"chat": None, "coaching": None, "search": None, "reasoning": None},
+            "has_profile": True,
+            "source": "memory",
+        }
+        handler = MagicMock(path="/api/persona-profile?channel=Canal_A")
+        handler._dashboard_authorized.return_value = True
+        _handle_get_persona_profile(handler, {"channel": ["Canal_A"]})
+
+        mock_persistence.load_persona_profile_sync.assert_called_with("canal_a")
+        handler._send_json.assert_called_once()
+        response = handler._send_json.call_args[0][0]
+        assert response["ok"] is True
+        assert response["profile"]["has_profile"] is True
+        assert response["profile"]["base_identity"]["name"] == "Test Persona"
+
+    @patch("bot.dashboard_server_routes.context_manager")
+    @patch("bot.dashboard_server_routes.persistence")
+    def test_handle_put_persona_profile(self, mock_persistence, mock_context_manager):
+        from bot.dashboard_server_routes import _handle_put_persona_profile
+
+        mock_persistence.load_persona_profile_sync.return_value = {
+            "channel_id": "canal_a",
+            "base_identity": {"name": "", "pronouns": "", "lore": ""},
+            "tonality_engine": {"tone": "", "emote_vocab": [], "sentence_style": ""},
+            "behavioral_constraints": {"banned_topics": [], "cta_triggers": []},
+            "model_routing": {"chat": None, "coaching": None, "search": None, "reasoning": None},
+            "has_profile": False,
+            "source": "memory",
+        }
+        mock_persistence.save_persona_profile_sync.return_value = {
+            "channel_id": "canal_a",
+            "base_identity": {"name": "New Persona", "pronouns": "", "lore": ""},
+            "tonality_engine": {
+                "tone": "energetico",
+                "emote_vocab": ["LUL"],
+                "sentence_style": "short_punchy",
+            },
+            "behavioral_constraints": {"banned_topics": ["politics"], "cta_triggers": ["follow"]},
+            "model_routing": {
+                "chat": "custom-model",
+                "coaching": None,
+                "search": None,
+                "reasoning": None,
+            },
+            "has_profile": True,
+            "source": "memory",
+        }
+        handler = MagicMock(path="/api/persona-profile?channel=Canal_A")
+        handler._dashboard_authorized.return_value = True
+        payload = {
+            "channel_id": "Canal_A",
+            "base_identity": {"name": "New Persona"},
+            "tonality_engine": {
+                "tone": "energetico",
+                "emote_vocab": ["LUL"],
+                "sentence_style": "short_punchy",
+            },
+            "behavioral_constraints": {"banned_topics": ["politics"], "cta_triggers": ["follow"]},
+            "model_routing": {"chat": "custom-model"},
+        }
+        _handle_put_persona_profile(handler, {"channel": ["Canal_A"]}, payload)
+
+        mock_persistence.save_persona_profile_sync.assert_called_once()
+        mock_context_manager.apply_persona_profile.assert_called_once()
+        handler._send_json.assert_called_once()
+        response = handler._send_json.call_args[0][0]
+        assert response["ok"] is True
+        assert response["profile"]["has_profile"] is True
+        assert response["profile"]["model_routing"]["chat"] == "custom-model"

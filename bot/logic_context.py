@@ -47,6 +47,10 @@ class StreamContext:
         self.persona_tone = ""
         self.persona_emote_vocab: list[str] = []
         self.persona_lore = ""
+        self.persona_sentence_style = ""
+        self.persona_banned_topics: list[str] = []
+        self.persona_cta_triggers: list[str] = []
+        self.channel_model_routing: dict[str, str | None] = {}
         self.live_observability: dict[str, str] = {
             "game": "",
             "movie": "",
@@ -220,6 +224,22 @@ class ContextManager:
             ctx.persona_tone = str(channel_identity.get("tone") or "")
             ctx.persona_emote_vocab = list(channel_identity.get("emote_vocab") or [])
             ctx.persona_lore = str(channel_identity.get("lore") or "")
+
+            persona_profile = await persistence.load_persona_profile(channel_id)
+            if persona_profile.get("has_profile"):
+                base = persona_profile.get("base_identity") or {}
+                tonality = persona_profile.get("tonality_engine") or {}
+                constraints = persona_profile.get("behavioral_constraints") or {}
+                routing = persona_profile.get("model_routing") or {}
+                ctx.persona_name = str(base.get("name") or "") or ctx.persona_name
+                ctx.persona_lore = str(base.get("lore") or "") or ctx.persona_lore
+                ctx.persona_tone = str(tonality.get("tone") or "") or ctx.persona_tone
+                vocab = list(tonality.get("emote_vocab") or [])
+                ctx.persona_emote_vocab = vocab or ctx.persona_emote_vocab
+                ctx.persona_sentence_style = str(tonality.get("sentence_style") or "")
+                ctx.persona_banned_topics = list(constraints.get("banned_topics") or [])
+                ctx.persona_cta_triggers = list(constraints.get("cta_triggers") or [])
+                ctx.channel_model_routing = dict(routing)
             ctx.channel_config_loaded = True
 
         try:
@@ -278,6 +298,14 @@ class ContextManager:
             emote_vocab=list(channel_identity.get("emote_vocab") or []),
             lore=str(channel_identity.get("lore") or ""),
         )
+        persona_profile = persistence.load_persona_profile_sync(key)
+        self.apply_persona_profile(
+            key,
+            base_identity=persona_profile.get("base_identity"),
+            tonality_engine=persona_profile.get("tonality_engine"),
+            behavioral_constraints=persona_profile.get("behavioral_constraints"),
+            model_routing=persona_profile.get("model_routing"),
+        )
         return ctx
 
     def apply_agent_notes(self, channel_id: str, *, notes: str) -> None:
@@ -308,6 +336,42 @@ class ContextManager:
             str(item).strip() for item in list(emote_vocab or []) if str(item).strip()
         ]
         ctx.persona_lore = str(lore or "")
+
+    def apply_persona_profile(
+        self,
+        channel_id: str,
+        *,
+        base_identity: dict | None = None,
+        tonality_engine: dict | None = None,
+        behavioral_constraints: dict | None = None,
+        model_routing: dict | None = None,
+    ) -> None:
+        key = (channel_id or "default").strip().lower()
+        with self._lock:
+            ctx = self._contexts.get(key)
+        if ctx is None:
+            return
+        base = base_identity if isinstance(base_identity, dict) else {}
+        tonality = tonality_engine if isinstance(tonality_engine, dict) else {}
+        constraints = behavioral_constraints if isinstance(behavioral_constraints, dict) else {}
+        routing = model_routing if isinstance(model_routing, dict) else {}
+        if base.get("name"):
+            ctx.persona_name = str(base["name"])
+        if base.get("lore"):
+            ctx.persona_lore = str(base["lore"])
+        if tonality.get("tone"):
+            ctx.persona_tone = str(tonality["tone"])
+        vocab = list(tonality.get("emote_vocab") or [])
+        if vocab:
+            ctx.persona_emote_vocab = [str(v).strip() for v in vocab if str(v).strip()]
+        ctx.persona_sentence_style = str(tonality.get("sentence_style") or "")
+        ctx.persona_banned_topics = [
+            str(t).strip() for t in list(constraints.get("banned_topics") or []) if str(t).strip()
+        ]
+        ctx.persona_cta_triggers = [
+            str(t).strip() for t in list(constraints.get("cta_triggers") or []) if str(t).strip()
+        ]
+        ctx.channel_model_routing = {k: (str(v) if v else None) for k, v in dict(routing).items()}
 
     async def cleanup(self, channel_id: str) -> None:
         """Remove contexto da RAM (Async para manter assinatura onde esperado)."""

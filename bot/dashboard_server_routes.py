@@ -258,6 +258,11 @@ def build_channel_context_payload(channel_id: str | None = None) -> dict[str, An
         ),
         "has_persisted_history": bool(persisted_history),
     }
+    persisted_persona_profile = persistence.load_persona_profile_sync(safe_channel_id)
+    channel_payload["persisted_persona_profile"] = dict(persisted_persona_profile or {})
+    channel_payload["has_persisted_persona_profile"] = bool(
+        persisted_persona_profile and persisted_persona_profile.get("has_profile")
+    )
     return {
         "ok": True,
         "mode": TWITCH_CHAT_MODE,
@@ -713,6 +718,23 @@ def _handle_get_dashboard_config(handler: Any, _query: dict[str, list[str]]) -> 
     handle_get_config_js(handler)
 
 
+def _handle_get_persona_profile(handler: Any, query: dict[str, list[str]]) -> None:
+    try:
+        channel_id = _resolve_channel_id(query)
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+    profile = persistence.load_persona_profile_sync(channel_id)
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "profile": profile,
+        },
+        status_code=200,
+    )
+
+
 _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/observability": _handle_get_observability,
     "/api/channel-context": _handle_get_channel_context,
@@ -730,6 +752,7 @@ _GET_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]]], None]] = {
     "/api/vision/status": _handle_get_vision_status,
     "/api/observability/conversions": _handle_get_revenue_conversions,
     "/api/webhooks": _handle_get_webhooks,
+    "/api/persona-profile": _handle_get_persona_profile,
     "/dashboard/config.js": _handle_get_dashboard_config,
 }
 
@@ -916,12 +939,65 @@ def _handle_put_webhooks(
     )
 
 
+def _handle_put_persona_profile(
+    handler: Any,
+    query: dict[str, list[str]],
+    payload: dict[str, Any],
+) -> None:
+    try:
+        channel_id = _resolve_channel_id(query, payload)
+        current = persistence.load_persona_profile_sync(channel_id)
+        profile = persistence.save_persona_profile_sync(
+            channel_id,
+            base_identity=(
+                payload.get("base_identity")
+                if "base_identity" in payload
+                else current.get("base_identity")
+            ),
+            tonality_engine=(
+                payload.get("tonality_engine")
+                if "tonality_engine" in payload
+                else current.get("tonality_engine")
+            ),
+            behavioral_constraints=(
+                payload.get("behavioral_constraints")
+                if "behavioral_constraints" in payload
+                else current.get("behavioral_constraints")
+            ),
+            model_routing=(
+                payload.get("model_routing")
+                if "model_routing" in payload
+                else current.get("model_routing")
+            ),
+        )
+        context_manager.apply_persona_profile(
+            channel_id,
+            base_identity=profile.get("base_identity"),
+            tonality_engine=profile.get("tonality_engine"),
+            behavioral_constraints=profile.get("behavioral_constraints"),
+            model_routing=profile.get("model_routing"),
+        )
+    except ValueError as error:
+        send_invalid_request(handler, str(error))
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "mode": TWITCH_CHAT_MODE,
+            "profile": profile,
+        },
+        status_code=200,
+    )
+
+
 _PUT_ROUTE_HANDLERS: dict[str, Callable[[Any, dict[str, list[str]], dict[str, Any]], None]] = {
     "/api/control-plane": _handle_put_control_plane,
     "/api/channel-config": _handle_put_channel_config,
     "/api/agent-notes": _handle_put_agent_notes,
     "/api/semantic-memory": _handle_put_semantic_memory,
     "/api/webhooks": _handle_put_webhooks,
+    "/api/persona-profile": _handle_put_persona_profile,
 }
 
 

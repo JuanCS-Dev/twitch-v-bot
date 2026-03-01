@@ -428,6 +428,28 @@ PARITY_CONTRACT: tuple[ParityContractEntry, ...] = (
         dashboard_test_files=("dashboard/tests/api_contract_parity.test.js",),
         route_snippet="/api/webhooks/test",
     ),
+    ParityContractEntry(
+        method="GET",
+        backend_route="/api/persona-profile",
+        domain="channel_governance",
+        dashboard_surface="control_plane",
+        status="integrated",
+        dashboard_route_prefix="/api/persona-profile",
+        backend_test_files=("bot/tests/test_dashboard_routes_v3.py",),
+        dashboard_test_files=("dashboard/tests/api_contract_parity.test.js",),
+        route_snippet="/api/persona-profile",
+    ),
+    ParityContractEntry(
+        method="PUT",
+        backend_route="/api/persona-profile",
+        domain="channel_governance",
+        dashboard_surface="control_plane",
+        status="integrated",
+        dashboard_route_prefix="/api/persona-profile",
+        backend_test_files=("bot/tests/test_dashboard_routes_v3.py",),
+        dashboard_test_files=("dashboard/tests/api_contract_parity.test.js",),
+        route_snippet="/api/persona-profile",
+    ),
 )
 
 

@@ -65,15 +65,30 @@ def _normalize_generation_override(
     return parsed
 
 
-def _select_model(enable_grounding: bool, is_serious: bool) -> str:
-    """Select the optimal Nebius model for the request type."""
+def _select_model(
+    enable_grounding: bool,
+    is_serious: bool,
+    *,
+    context: Any = None,
+) -> str:
+    """Select the optimal Nebius model for the request type.
+
+    Per-channel model routing overrides from persona profiles take
+    precedence when available in the context.
+    """
     from bot.runtime_config import NEBIUS_MODEL_DEFAULT, NEBIUS_MODEL_REASONING, NEBIUS_MODEL_SEARCH
 
+    routing = getattr(context, "channel_model_routing", None) or {}
+
     if enable_grounding:
-        return NEBIUS_MODEL_SEARCH
+        override = routing.get("search")
+        return override if override else NEBIUS_MODEL_SEARCH
     if is_serious:
-        return NEBIUS_MODEL_REASONING
-    return NEBIUS_MODEL_DEFAULT
+        override = routing.get("reasoning")
+        return override if override else NEBIUS_MODEL_REASONING
+
+    override = routing.get("chat")
+    return override if override else NEBIUS_MODEL_DEFAULT
 
 
 def _extract_search_query(user_msg: str) -> str:
@@ -207,6 +222,28 @@ def _build_identity_instruction(context: Any) -> str:
     if lore_lines:
         lines.append("- Lore/continuidade:")
         lines.extend(f"  - {line}" for line in lore_lines)
+
+    sentence_style = str(getattr(context, "persona_sentence_style", "") or "").strip()
+    if sentence_style:
+        style_label = {
+            "short_punchy": "curto e direto",
+            "long_analytical": "analitico e detalhado",
+            "balanced": "equilibrado",
+        }.get(sentence_style, sentence_style)
+        lines.append(f"- Estilo de frase: {style_label}")
+
+    banned_topics = list(getattr(context, "persona_banned_topics", []) or [])
+    if banned_topics:
+        safe_topics = [str(t)[:80] for t in banned_topics[:10] if str(t).strip()]
+        if safe_topics:
+            lines.append(f"- Topicos proibidos (NUNCA aborde): {', '.join(safe_topics)}")
+
+    cta_triggers = list(getattr(context, "persona_cta_triggers", []) or [])
+    if cta_triggers:
+        safe_cta = [str(t)[:80] for t in cta_triggers[:10] if str(t).strip()]
+        if safe_cta:
+            lines.append(f"- Gatilhos de CTA: {', '.join(safe_cta)}")
+
     return "\n".join(lines)
 
 
@@ -391,7 +428,7 @@ async def agent_inference(
     search_results, grounding_metadata = await _fetch_search_results(user_msg, enable_grounding)
 
     is_serious = not enable_grounding and len(user_msg) >= 40
-    model = _select_model(enable_grounding, is_serious)
+    model = _select_model(enable_grounding, is_serious, context=context)
 
     # CURA: O contexto agora é resolvido síncronamente
     if context is None:

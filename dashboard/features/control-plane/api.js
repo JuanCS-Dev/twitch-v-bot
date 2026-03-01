@@ -9,6 +9,7 @@ const AGENT_SUSPEND_ENDPOINT = "./api/agent/suspend";
 const AGENT_RESUME_ENDPOINT = "./api/agent/resume";
 const WEBHOOKS_ENDPOINT = "./api/webhooks";
 const WEBHOOKS_TEST_ENDPOINT = "./api/webhooks/test";
+const PERSONA_PROFILE_ENDPOINT = "./api/persona-profile";
 const REQUEST_TIMEOUT_MS = 12000;
 
 function authHeaders() {
@@ -162,6 +163,37 @@ export async function testWebhook(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
     WEBHOOKS_TEST_ENDPOINT,
     {
       method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload || {}),
+    },
+    timeoutMs,
+  );
+}
+
+export async function getPersonaProfile(
+  channelId,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+) {
+  const safeChannelId = encodeURIComponent(
+    String(channelId || "")
+      .trim()
+      .toLowerCase(),
+  );
+  return await fetchWithTimeout(
+    `${PERSONA_PROFILE_ENDPOINT}?channel=${safeChannelId}`,
+    { method: "GET", headers: authHeaders() },
+    timeoutMs,
+  );
+}
+
+export async function updatePersonaProfile(
+  payload,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+) {
+  return await fetchWithTimeout(
+    PERSONA_PROFILE_ENDPOINT,
+    {
+      method: "PUT",
       headers: authHeaders(),
       body: JSON.stringify(payload || {}),
     },

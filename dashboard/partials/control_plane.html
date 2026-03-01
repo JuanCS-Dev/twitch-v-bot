@@ -8,22 +8,14 @@
 
     <div class="form-row form-row-center form-row-mb-3">
       <span id="cpModeChip" class="chip pending">MODE</span>
-      <span id="cpResponseContract" class="chip"
-        >Active contract: 1 message / 4 lines.</span
-      >
+      <span id="cpResponseContract" class="chip">Active contract: 1 message / 4 lines.</span>
     </div>
     <p id="cpCapabilitiesLine" class="panel-hint panel-hint-mb-4">
       Loading capabilities...
     </p>
 
-    <section
-      id="cpOperationalControlSection"
-      aria-labelledby="cpOperationalControlHeading"
-      class="section-surface"
-    >
-      <div
-        class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2"
-      >
+    <section id="cpOperationalControlSection" aria-labelledby="cpOperationalControlHeading" class="section-surface">
+      <div class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2">
         <h3 id="cpOperationalControlHeading" class="heading-reset">
           Operational Control
         </h3>
@@ -42,35 +34,19 @@
       </div>
     </section>
 
-    <section
-      id="cpChannelDirectivesSection"
-      aria-labelledby="cpChannelDirectivesHeading"
-      class="section-surface"
-    >
-      <div
-        class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2"
-      >
+    <section id="cpChannelDirectivesSection" aria-labelledby="cpChannelDirectivesHeading" class="section-surface">
+      <div class="form-row form-row-center form-row-between form-row-gap-3 form-row-mb-2">
         <div class="form-row form-row-center form-row-gap-2 form-row-m0">
           <h3 id="cpChannelDirectivesHeading" class="heading-reset">
             Channel Directives
           </h3>
-          <span id="cpChannelConfigStatusChip" class="chip pending"
-            >MODEL DEFAULT</span
-          >
+          <span id="cpChannelConfigStatusChip" class="chip pending">MODEL DEFAULT</span>
         </div>
         <div class="form-row form-row-gap-2 form-row-m0">
-          <button
-            id="cpLoadChannelConfigBtn"
-            class="btn btn-secondary"
-            type="button"
-          >
+          <button id="cpLoadChannelConfigBtn" class="btn btn-secondary" type="button">
             Load Channel
           </button>
-          <button
-            id="cpSaveChannelConfigBtn"
-            class="btn btn-primary"
-            type="button"
-          >
+          <button id="cpSaveChannelConfigBtn" class="btn btn-primary" type="button">
             Apply Directives
           </button>
         </div>
@@ -83,36 +59,16 @@
       <div class="form-row form-row-wrap form-row-mb-2">
         <div class="form-group form-group-min-170">
           <label for="cpChannelConfigId">Channel</label>
-          <input
-            id="cpChannelConfigId"
-            class="form-control"
-            type="text"
-            value="default"
-          />
+          <input id="cpChannelConfigId" class="form-control" type="text" value="default" />
         </div>
         <div class="form-group form-group-min-150">
           <label for="cpChannelTemperature">Temperature</label>
-          <input
-            id="cpChannelTemperature"
-            class="form-control"
-            type="number"
-            min="0"
-            max="2"
-            step="0.01"
-            placeholder="0.15"
-          />
+          <input id="cpChannelTemperature" class="form-control" type="number" min="0" max="2" step="0.01"
+            placeholder="0.15" />
         </div>
         <div class="form-group form-group-min-150">
           <label for="cpChannelTopP">Top P</label>
-          <input
-            id="cpChannelTopP"
-            class="form-control"
-            type="number"
-            min="0"
-            max="1"
-            step="0.01"
-            placeholder="auto"
-          />
+          <input id="cpChannelTopP" class="form-control" type="number" min="0" max="1" step="0.01" placeholder="auto" />
         </div>
         <div class="form-group form-group-min-220">
           <label class="toggle-switch toggle-switch-mt-14">
@@ -128,12 +84,8 @@
       <summary>Identity + Agent Notes</summary>
       <div class="advanced-settings-content">
         <div class="form-row form-row-center form-row-gap-2 form-row-mb-2">
-          <span id="cpChannelIdentityStatusChip" class="chip pending"
-            >IDENTITY CLEAR</span
-          >
-          <span id="cpAgentNotesStatusChip" class="chip pending"
-            >NOTES CLEAR</span
-          >
+          <span id="cpChannelIdentityStatusChip" class="chip pending">IDENTITY CLEAR</span>
+          <span id="cpAgentNotesStatusChip" class="chip pending">NOTES CLEAR</span>
         </div>
 
         <p id="cpChannelIdentityHint" class="panel-hint panel-hint-m0-mb-1">
@@ -148,82 +100,45 @@
         <div class="form-row form-row-wrap form-row-mb-2">
           <div class="form-group form-group-min-220">
             <label for="cpChannelPersonaName">Persona Name</label>
-            <input
-              id="cpChannelPersonaName"
-              class="form-control"
-              type="text"
-              maxlength="80"
-              placeholder="e.g. Byte Coach"
-            />
+            <input id="cpChannelPersonaName" class="form-control" type="text" maxlength="80"
+              placeholder="e.g. Byte Coach" />
           </div>
           <div class="form-group form-group-min-280">
             <label for="cpChannelTone">Tone</label>
-            <input
-              id="cpChannelTone"
-              class="form-control"
-              type="text"
-              maxlength="160"
-              placeholder="e.g. tactical, objective, spoiler-free"
-            />
+            <input id="cpChannelTone" class="form-control" type="text" maxlength="160"
+              placeholder="e.g. tactical, objective, spoiler-free" />
           </div>
         </div>
 
         <div class="form-row form-row-wrap form-row-mb-2">
           <div class="form-group form-group-min-260 u-flex-1">
             <label for="cpChannelEmoteVocab">Emote Vocab (csv)</label>
-            <input
-              id="cpChannelEmoteVocab"
-              class="form-control"
-              type="text"
-              maxlength="720"
-              placeholder="e.g. PogChamp, Kappa, LUL"
-            />
+            <input id="cpChannelEmoteVocab" class="form-control" type="text" maxlength="720"
+              placeholder="e.g. PogChamp, Kappa, LUL" />
           </div>
         </div>
 
         <div class="form-group form-group-mb-2">
           <label for="cpChannelLore">Lore / Continuity</label>
-          <textarea
-            id="cpChannelLore"
-            class="form-control"
-            rows="3"
-            maxlength="1200"
-            placeholder="Recurring channel context to keep reply continuity."
-          ></textarea>
+          <textarea id="cpChannelLore" class="form-control" rows="3" maxlength="1200"
+            placeholder="Recurring channel context to keep reply continuity."></textarea>
         </div>
         <div class="form-group form-group-mb-0">
           <label for="cpAgentNotes">Operational Notes</label>
-          <textarea
-            id="cpAgentNotes"
-            class="form-control"
-            rows="4"
-            placeholder="e.g. Prioritize streamer lore/context. Avoid aggressive backseating."
-          ></textarea>
+          <textarea id="cpAgentNotes" class="form-control" rows="4"
+            placeholder="e.g. Prioritize streamer lore/context. Avoid aggressive backseating."></textarea>
         </div>
       </div>
     </details>
 
-    <section
-      id="cpGoalsSchedulerSection"
-      aria-labelledby="cpGoalsSchedulerHeading"
-      class="form-row-mt-4"
-    >
+    <section id="cpGoalsSchedulerSection" aria-labelledby="cpGoalsSchedulerHeading" class="form-row-mt-4">
       <div class="form-row form-row-between form-row-center form-row-mb-2">
         <h3 id="cpGoalsSchedulerHeading" class="heading-reset">
           Goals Scheduler
         </h3>
         <button id="cpAddGoalBtn" class="btn btn-secondary" type="button">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -236,11 +151,7 @@
       <ul id="cpGoalsList" class="events-list"></ul>
     </section>
 
-    <section
-      id="cpTacticalCalendarSection"
-      aria-labelledby="cpTacticalCalendarHeading"
-      class="form-row-mt-4"
-    >
+    <section id="cpTacticalCalendarSection" aria-labelledby="cpTacticalCalendarHeading" class="form-row-mt-4">
       <div class="form-row form-row-between form-row-center form-row-mb-2">
         <h3 id="cpTacticalCalendarHeading" class="heading-reset">
           Tactical Calendar
@@ -268,72 +179,30 @@
         <div class="form-row form-row-wrap form-row-mb-4">
           <div class="form-group form-group-min-140">
             <label for="cpHeartbeatInterval">Heartbeat (s)</label>
-            <input
-              id="cpHeartbeatInterval"
-              class="form-control"
-              type="number"
-              min="15"
-              max="3600"
-              step="1"
-            />
+            <input id="cpHeartbeatInterval" class="form-control" type="number" min="15" max="3600" step="1" />
           </div>
           <div class="form-group form-group-min-140">
             <label for="cpMinCooldown">Cooldown (s)</label>
-            <input
-              id="cpMinCooldown"
-              class="form-control"
-              type="number"
-              min="15"
-              max="3600"
-              step="1"
-            />
+            <input id="cpMinCooldown" class="form-control" type="number" min="15" max="3600" step="1" />
           </div>
           <div class="form-group form-group-min-140">
             <label for="cpActionIgnoreAfter">Auto-ignore (s)</label>
-            <input
-              id="cpActionIgnoreAfter"
-              class="form-control"
-              type="number"
-              min="60"
-              max="86400"
-              step="1"
-            />
+            <input id="cpActionIgnoreAfter" class="form-control" type="number" min="60" max="86400" step="1" />
           </div>
         </div>
 
         <div class="form-row form-row-wrap">
           <div class="form-group form-group-min-140">
             <label for="cpBudget10m">Budget 10m</label>
-            <input
-              id="cpBudget10m"
-              class="form-control"
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-            />
+            <input id="cpBudget10m" class="form-control" type="number" min="0" max="100" step="1" />
           </div>
           <div class="form-group form-group-min-140">
             <label for="cpBudget60m">Budget 60m</label>
-            <input
-              id="cpBudget60m"
-              class="form-control"
-              type="number"
-              min="0"
-              max="600"
-              step="1"
-            />
+            <input id="cpBudget60m" class="form-control" type="number" min="0" max="600" step="1" />
           </div>
           <div class="form-group form-group-min-140">
             <label for="cpBudgetDaily">Daily Budget</label>
-            <input
-              id="cpBudgetDaily"
-              class="form-control"
-              type="number"
-              min="0"
-              max="5000"
-              step="1"
-            />
+            <input id="cpBudgetDaily" class="form-control" type="number" min="0" max="5000" step="1" />
           </div>
         </div>
 
@@ -345,21 +214,13 @@
           <div class="form-row form-row-wrap form-row-mb-2">
             <div class="form-group form-group-min-220 u-flex-2">
               <label for="cpWebhookUrl">Webhook URL</label>
-              <input
-                id="cpWebhookUrl"
-                class="form-control"
-                type="url"
-                placeholder="https://api.example.com/webhooks/byte"
-              />
+              <input id="cpWebhookUrl" class="form-control" type="url"
+                placeholder="https://api.example.com/webhooks/byte" />
             </div>
             <div class="form-group form-group-min-180 u-flex-1">
               <label for="cpWebhookSecret">HMAC Secret (optional)</label>
-              <input
-                id="cpWebhookSecret"
-                class="form-control"
-                type="password"
-                placeholder="Secret for sha256 signing"
-              />
+              <input id="cpWebhookSecret" class="form-control" type="password"
+                placeholder="Secret for sha256 signing" />
             </div>
           </div>
           <div class="form-row form-row-center form-row-between form-row-gap-3">
@@ -368,11 +229,7 @@
               <span class="toggle-slider"></span>
               Enable Dispatch
             </label>
-            <button
-              id="cpWebhookTestBtn"
-              class="btn btn-secondary"
-              type="button"
-            >
+            <button id="cpWebhookTestBtn" class="btn btn-secondary" type="button">
               Test Webhook
             </button>
           </div>
@@ -380,22 +237,115 @@
       </div>
     </details>
 
+    <details class="advanced-settings">
+      <summary>Persona Studio & Model Routing (Phase 22)</summary>
+      <div class="section-indent">
+
+        <div class="section-divider-top">
+          <h4 class="heading-xs-strong">Base Identity</h4>
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-180 u-flex-1">
+              <label for="ppPersonaName">Persona Name</label>
+              <input id="ppPersonaName" class="form-control" type="text" maxlength="80" placeholder="Byte Coach" />
+            </div>
+            <div class="form-group form-group-min-120 u-flex-1">
+              <label for="ppPronouns">Pronouns</label>
+              <input id="ppPronouns" class="form-control" type="text" maxlength="40" placeholder="ele/dele" />
+            </div>
+          </div>
+          <div class="form-group form-group-mb-3">
+            <label for="ppLore">Lore / Backstory</label>
+            <textarea id="ppLore" class="form-control" rows="3" maxlength="1200"
+              placeholder="Backstory and continuity..."></textarea>
+          </div>
+        </div>
+
+        <div class="section-divider-top">
+          <h4 class="heading-xs-strong">Tonality Engine</h4>
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-220 u-flex-2">
+              <label for="ppTone">Tone of Voice</label>
+              <input id="ppTone" class="form-control" type="text" maxlength="160"
+                placeholder="tatico, objetivo, motivador" />
+            </div>
+            <div class="form-group form-group-min-140 u-flex-1">
+              <label for="ppSentenceStyle">Sentence Style</label>
+              <select id="ppSentenceStyle" class="form-control">
+                <option value="">Default</option>
+                <option value="short_punchy">Short & Punchy</option>
+                <option value="long_analytical">Analytical & Detailed</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group form-group-mb-3">
+            <label for="ppEmoteVocab">Emote Vocabulary</label>
+            <input id="ppEmoteVocab" class="form-control" type="text"
+              placeholder="PogChamp, LUL, Kappa (comma-separated)" />
+          </div>
+        </div>
+
+        <div class="section-divider-top">
+          <h4 class="heading-xs-strong">Behavioral Constraints</h4>
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-220 u-flex-1">
+              <label for="ppBannedTopics">Banned Topics</label>
+              <input id="ppBannedTopics" class="form-control" type="text"
+                placeholder="politics, religion (comma-separated)" />
+            </div>
+            <div class="form-group form-group-min-220 u-flex-1">
+              <label for="ppCtaTriggers">CTA Triggers</label>
+              <input id="ppCtaTriggers" class="form-control" type="text"
+                placeholder="follow, subscribe (comma-separated)" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider-top">
+          <h4 class="heading-xs-strong">Model Routing Overrides</h4>
+          <p class="panel-hint panel-hint-mb-3">
+            Per-channel model overrides. Leave empty to use global defaults.
+          </p>
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-180 u-flex-1">
+              <label for="ppModelChat">Chat Model</label>
+              <input id="ppModelChat" class="form-control" type="text" maxlength="120" placeholder="global default" />
+            </div>
+            <div class="form-group form-group-min-180 u-flex-1">
+              <label for="ppModelCoaching">Coaching Model</label>
+              <input id="ppModelCoaching" class="form-control" type="text" maxlength="120"
+                placeholder="global default" />
+            </div>
+          </div>
+          <div class="form-row form-row-wrap form-row-mb-2">
+            <div class="form-group form-group-min-180 u-flex-1">
+              <label for="ppModelSearch">Search Model</label>
+              <input id="ppModelSearch" class="form-control" type="text" maxlength="120" placeholder="global default" />
+            </div>
+            <div class="form-group form-group-min-180 u-flex-1">
+              <label for="ppModelReasoning">Reasoning Model</label>
+              <input id="ppModelReasoning" class="form-control" type="text" maxlength="120"
+                placeholder="global default" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-mt-3 form-row-center form-row-between form-row-gap-3">
+          <button id="ppLoadBtn" class="btn btn-secondary" type="button">Load Profile</button>
+          <button id="ppSaveBtn" class="btn btn-primary" type="button">Apply Profile</button>
+        </div>
+        <p id="ppStatusChip" class="panel-hint event-level-info panel-hint-mt-2">
+          No profile loaded.
+        </p>
+
+      </div>
+    </details>
+
     <div class="form-row form-row-mt-5">
       <button id="cpSaveBtn" class="btn btn-primary" type="button">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
-          ></path>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
           <polyline points="17 21 17 13 7 13 7 21"></polyline>
           <polyline points="7 3 7 8 15 8"></polyline>
         </svg>

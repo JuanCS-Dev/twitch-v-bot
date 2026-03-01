@@ -6,11 +6,13 @@ import {
   getControlPlaneState,
   getChannelConfig,
   getAgentNotes,
+  getPersonaProfile,
   resumeAgent,
   suspendAgent,
   updateAgentNotes,
   updateChannelConfig,
   updateControlPlaneConfig,
+  updatePersonaProfile,
   getWebhooks,
   updateWebhook,
   testWebhook,
@@ -124,6 +126,12 @@ test("control-plane and channel directives APIs keep backend contract", async ()
     is_active: true,
   });
   await testWebhook({ channel_id: "canal_a" });
+  await getPersonaProfile("Canal_A");
+  await updatePersonaProfile({
+    channel_id: "canal_a",
+    base_identity: { name: "Byte Coach" },
+    tonality_engine: { tone: "tatico" },
+  });
 
   assert.ok(findCall(calls, "/api/control-plane", "GET"));
   const updateControlPlaneCall = findCall(calls, "/api/control-plane", "PUT");
@@ -164,6 +172,14 @@ test("control-plane and channel directives APIs keep backend contract", async ()
   );
 
   assert.ok(findCall(calls, "/api/webhooks/test", "POST"));
+
+  assert.ok(findCall(calls, "/api/persona-profile?channel=canal_a", "GET"));
+  const updateProfileCall = findCall(calls, "/api/persona-profile", "PUT");
+  assert.ok(updateProfileCall);
+  assert.equal(
+    JSON.parse(String(updateProfileCall.options.body)).base_identity.name,
+    "Byte Coach",
+  );
 });
 
 test("operational runtime APIs keep backend contract", async () => {

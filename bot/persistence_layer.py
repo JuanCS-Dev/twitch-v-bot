@@ -8,6 +8,7 @@ from bot.persistence_agent_notes_repository import AgentNotesRepository
 from bot.persistence_channel_config_repository import ChannelConfigRepository
 from bot.persistence_channel_identity_repository import ChannelIdentityRepository
 from bot.persistence_observability_history_repository import ObservabilityHistoryRepository
+from bot.persistence_persona_profile_repository import PersonaProfileRepository
 from bot.persistence_post_stream_report_repository import PostStreamReportRepository
 from bot.persistence_revenue_attribution_repository import RevenueAttributionRepository
 from bot.persistence_semantic_memory_repository import SemanticMemoryRepository
@@ -37,6 +38,7 @@ class PersistenceLayer:
         self._semantic_memory_cache: dict[str, list[dict[str, Any]]] = {}
         self._revenue_cache: dict[str, list[dict[str, Any]]] = {}
         self._webhook_cache: dict[str, list[dict[str, Any]]] = {}
+        self._persona_profile_cache: dict[str, dict[str, Any]] = {}
 
         if self._url and self._key:
             try:
@@ -87,6 +89,11 @@ class PersistenceLayer:
             enabled=self._enabled,
             client=self._client,
             cache=self._webhook_cache,
+        )
+        self._persona_profile_repo = PersonaProfileRepository(
+            enabled=self._enabled,
+            client=self._client,
+            cache=self._persona_profile_cache,
         )
 
     @property
@@ -695,6 +702,48 @@ class PersistenceLayer:
         delivery: dict[str, Any],
     ) -> None:
         self.save_webhook_delivery_sync(webhook_id, channel_id, delivery)
+
+    # --- Persona Profiles ---
+
+    def load_persona_profile_sync(self, channel_id: str) -> dict[str, Any]:
+        return self._persona_profile_repo.load_sync(channel_id)
+
+    async def load_persona_profile(self, channel_id: str) -> dict[str, Any]:
+        return self.load_persona_profile_sync(channel_id)
+
+    def save_persona_profile_sync(
+        self,
+        channel_id: str,
+        *,
+        base_identity: Any = None,
+        tonality_engine: Any = None,
+        behavioral_constraints: Any = None,
+        model_routing: Any = None,
+    ) -> dict[str, Any]:
+        return self._persona_profile_repo.save_sync(
+            channel_id,
+            base_identity=base_identity,
+            tonality_engine=tonality_engine,
+            behavioral_constraints=behavioral_constraints,
+            model_routing=model_routing,
+        )
+
+    async def save_persona_profile(
+        self,
+        channel_id: str,
+        *,
+        base_identity: Any = None,
+        tonality_engine: Any = None,
+        behavioral_constraints: Any = None,
+        model_routing: Any = None,
+    ) -> dict[str, Any]:
+        return self.save_persona_profile_sync(
+            channel_id,
+            base_identity=base_identity,
+            tonality_engine=tonality_engine,
+            behavioral_constraints=behavioral_constraints,
+            model_routing=model_routing,
+        )
 
 
 persistence = PersistenceLayer()

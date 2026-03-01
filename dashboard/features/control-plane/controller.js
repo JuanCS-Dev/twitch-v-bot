@@ -2,11 +2,13 @@ import {
   getAgentNotes,
   getChannelConfig,
   getControlPlaneState,
+  getPersonaProfile,
   resumeAgent,
   suspendAgent,
   updateAgentNotes,
   updateChannelConfig,
   updateControlPlaneConfig,
+  updatePersonaProfile,
   getWebhooks,
   updateWebhook,
   testWebhook,
@@ -16,9 +18,11 @@ import {
   collectAgentNotesPayload,
   collectChannelConfigPayload,
   collectControlPlanePayload,
+  collectPersonaProfilePayload,
   renderAgentNotes,
   renderChannelConfig,
   renderControlPlaneState,
+  renderPersonaProfile,
   setControlPlaneBusy,
   showControlPlaneFeedback,
 } from "./view.js";
@@ -89,6 +93,11 @@ export function createControlPlaneController({
       ]);
       renderChannelConfig(response?.channel || {}, cpEls);
       renderAgentNotes(notesResponse?.note || {}, cpEls);
+
+      const profileResponse = await getPersonaProfile(payload.channel_id).catch(
+        () => null,
+      );
+      renderPersonaProfile(profileResponse?.profile || {}, cpEls);
 
       const whList = webhooksResponse?.webhooks || [];
       if (whList.length > 0) {
@@ -182,6 +191,15 @@ export function createControlPlaneController({
       const [updated, updatedNotes] = await Promise.all(promises);
       renderChannelConfig(updated?.channel || {}, cpEls);
       renderAgentNotes(updatedNotes?.note || {}, cpEls);
+
+      const ppPayload = collectPersonaProfilePayload(cpEls);
+      try {
+        const ppResponse = await updatePersonaProfile(ppPayload);
+        renderPersonaProfile(ppResponse?.profile || {}, cpEls);
+      } catch {
+        // non-blocking: profile save failure should not block channel config save
+      }
+
       showControlPlaneFeedback(
         cpEls,
         "Operational directives saved successfully.",
@@ -216,6 +234,62 @@ export function createControlPlaneController({
       showControlPlaneFeedback(
         cpEls,
         `Error: ${getErrorMessage(error, "Failed to trigger webhook.")}`,
+        "error",
+      );
+    } finally {
+      setControlPlaneBusy(cpEls, false);
+    }
+  }
+
+  async function loadPersonaProfile() {
+    if (!cpEls) return;
+    const rawChannelId = String(cpEls?.channelIdInput?.value || "")
+      .trim()
+      .toLowerCase();
+    if (!rawChannelId) {
+      showControlPlaneFeedback(
+        cpEls,
+        "Provide a channel to load persona profile.",
+        "warn",
+      );
+      return;
+    }
+    setControlPlaneBusy(cpEls, true);
+    showControlPlaneFeedback(cpEls, "Loading persona profile...", "warn");
+    try {
+      const response = await getPersonaProfile(rawChannelId);
+      renderPersonaProfile(response?.profile || {}, cpEls);
+      showControlPlaneFeedback(cpEls, "Persona profile synced.", "ok");
+    } catch (error) {
+      console.error("Persona profile load error", error);
+      showControlPlaneFeedback(
+        cpEls,
+        `Error: ${getErrorMessage(error, "Failed to load persona profile.")}`,
+        "error",
+      );
+    } finally {
+      setControlPlaneBusy(cpEls, false);
+    }
+  }
+
+  async function savePersonaProfile() {
+    if (!cpEls) return;
+    setControlPlaneBusy(cpEls, true);
+    showControlPlaneFeedback(cpEls, "Applying persona profile...", "warn");
+    try {
+      const payload = collectPersonaProfilePayload(cpEls);
+      const response = await updatePersonaProfile(payload);
+      renderPersonaProfile(response?.profile || {}, cpEls);
+      showControlPlaneFeedback(
+        cpEls,
+        "Persona profile saved successfully.",
+        "ok",
+      );
+    } catch (error) {
+      console.error("Persona profile save error", error);
+      showControlPlaneFeedback(
+        cpEls,
+        `Error: ${getErrorMessage(error, "Failed to save persona profile.")}`,
         "error",
       );
     } finally {
@@ -299,6 +373,16 @@ export function createControlPlaneController({
     if (cpEls.cpWebhookTestBtn) {
       cpEls.cpWebhookTestBtn.addEventListener("click", () => {
         triggerTestWebhook();
+      });
+    }
+    if (cpEls.ppLoadBtn) {
+      cpEls.ppLoadBtn.addEventListener("click", () => {
+        loadPersonaProfile();
+      });
+    }
+    if (cpEls.ppSaveBtn) {
+      cpEls.ppSaveBtn.addEventListener("click", () => {
+        savePersonaProfile();
       });
     }
   }
