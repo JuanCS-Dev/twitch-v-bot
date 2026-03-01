@@ -1,8 +1,8 @@
 # Plano de Implementação: Camada de Persistência Stateful (Supabase)
 
-**Versão:** 1.34
+**Versão:** 1.35
 **Data:** 01 de Março de 2026
-**Status:** Fases 1-25 concluídas ✅ | Evolução ANN por escala no backlog
+**Status:** Fases 1-25 concluídas ✅ | Backlog ativo: Fase 26 (Agentic Utilities)
 
 ---
 
@@ -42,12 +42,12 @@
 | **18**  | Outbound Webhook API                                     | `bot/outbound_webhooks.py` (engine hmac/retry), `bot/persistence_webhook_repository.py`, endpoints `/api/webhooks` e `/api/webhooks/test`, UI agregada no Control Plane.                                                                                                                                                                                                                                                                                                                                                                                                                    | `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`                                                                                                                                                                                             | ✅     |
 | **19**  | Autonomous Clip Suggestion Intelligence                  | Exposição de métricas e ingest manual em `dashboard/partials/clips_section.html`, engine visual acoplada ao Autonomy (`bot/vision_runtime.py`), endpoints `/api/vision/status` e `/api/vision/ingest` consolidados como `integrated`.                                                                                                                                                                                                                                                                                                                                                       | `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                                                                                                                                                                         | ✅     |
 | **20**  | Otimização ANN de Memória Semântica com `pgvector`       | `bot/persistence_semantic_memory_repository.py` com busca via RPC (`semantic_memory_search_pgvector`/`semantic_memory_search`) e fallback automático para ranking determinístico atual; flags `SEMANTIC_MEMORY_PGVECTOR_ENABLED` e `SEMANTIC_MEMORY_PGVECTOR_RPC`.                                                                                                                                                                                                                                                                                                                          | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_semantic_memory.py`, `bot/tests/test_dashboard_routes_v3.py -k semantic_memory`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`, `node --test dashboard/tests/api_contract_parity.test.js`                                                                  | ✅     |
-| **21**  | Tuning operacional ANN + diagnóstico de engine semântica | `bot/persistence_semantic_memory_repository.py` com `SEMANTIC_MEMORY_MIN_SIMILARITY`, busca com `min_similarity`/`force_fallback`, `search_settings_sync()` e `search_entries_with_diagnostics_sync()`; facade expandida em `bot/persistence_layer.py`; rota `/api/semantic-memory` com query params de tuning e payload com `search_settings`/`search_diagnostics`; UI integrada no painel atual em `dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/api.js`, `dashboard/features/observability/controller.js`, `dashboard/features/observability/view.js`. | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`                                                 | ✅     |
-| **22**  | Prompt & Persona Studio + model routing por atividade    | `bot/persistence_persona_profile_repository.py` (novo `CachedChannelRepository` para `persona_profiles` com `base_identity`, `tonality_engine`, `behavioral_constraints`, `model_routing`), facade em `bot/persistence_layer.py`, extensão de `StreamContext` + `ContextManager.apply_persona_profile` em `bot/logic_context.py`, routing per-channel em `_select_model` + instrução expandida (`sentence_style`, `banned_topics`, `cta_triggers`) em `bot/logic_inference.py`, rotas `GET/PUT /api/persona-profile` em `bot/dashboard_server_routes.py`, UI integrada no Control Plane (`dashboard/partials/control_plane.html`, `dashboard/features/control-plane/view.js`, `api.js`, `controller.js`). | `bot/tests/scientific/test_phase22_persona_routing.py` (18 testes: repo roundtrip, model routing, identity instruction, facade cache, context propagation), `bot/tests/test_dashboard_routes_v3.py` (GET/PUT persona-profile), `dashboard/tests/api_contract_parity.test.js`, `bot/tests/test_dashboard_parity_gate.py`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate` | ✅     |
-| **23**  | Geração de arte ASCII sob demanda no chat Twitch         | **Concluída**: `bot/ascii_art_runtime.py` (334 linhas) com geração Braille 2x4, busca de imagem via DuckDuckGo, cooldown por canal (`AsciiArtCooldown`), sanitização IRC, handler de alto nível (`handle_ascii_art_prompt`), parsing em `bot/byte_semantics_base.py`, envio raw multi-linha em `bot/irc_state.py`/`bot/eventsub_runtime.py`. | Testes integrados no prompt_flow e envio raw, mantendo paridade de health e integridade multi-canal. | ✅     |
-| **24**  | Calendário Tático (Tactical Calendar) nativo no Dashboard| **Concluída**: Evolução do sistema de Goals em `bot/control_plane_config.py` suportando cron-jobs e horários fixos via `croniter`. Dashboard com nova aba "Calendar" em Vanilla JS/HTML (`dashboard/partials/calendar_tab.html`), componentes nativos `<input type="datetime-local">`, mantendo o ciclo nativo do `autonomy_runtime.py`.                                                                                                                                                                                                                                                                                              | **Concluída**: Expansão do `bot/tests/test_control_plane_config.py`, `bot/tests/test_autonomy_runtime.py` e rotas no backend. Atualização dos gates de paridade e testes do frontend (`api_contract_parity.test.js`).                                                                                                                                                                                                                                             | ✅     |
-
-| **25**  | Dashboard UX Upgrade: Thumbs de Clips | **Concluída**: Injeção da tag `<img src="...">` no card de clipes consumindo o payload real `thumbnail_url` retornado pela API da Twitch e adição de um spinner em CSS Vanilla para os status `creating` e `polling`. Otimização do layout com aspect-ratio 16:9. | **Concluída**: Teste interativo via UI e gates de integridade estrutural. | ✅     |
+| **21**  | Tuning operacional ANN + diagnóstico de engine semântica | `bot/persistence_semantic_memory_repository.py` with `SEMANTIC_MEMORY_MIN_SIMILARITY`, busca com `min_similarity`/`force_fallback`, `search_settings_sync()` e `search_entries_with_diagnostics_sync()`; facade expandida em `bot/persistence_layer.py`; rota `/api/semantic-memory` com query params de tuning e payload com `search_settings`/`search_diagnostics`; UI integrada no painel atual em `dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/api.js`, `dashboard/features/observability/controller.js`, `dashboard/features/observability/view.js`. | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`                                                 | ✅     |
+| **22**  | Prompt & Persona Studio + model routing por atividade    | **Concluída**: `bot/persistence_persona_profile_repository.py` (persona_profiles com `base_identity`, `tonality_engine`, `behavioral_constraints`, `model_routing`), routing per-channel em `bot/logic_inference.py`, Studio UI no Control Plane.                                                                                                                                                                                                                                                                                                                                           | Testes em `bot/tests/scientific/test_phase22_persona_routing.py`, rotas validadas e 100% de paridade dashboard.                                                                                                                                                                                                                                                                                                                                           | ✅     |
+| **23**  | Geração de arte ASCII sob demanda no chat Twitch         | **Concluída**: Upgrade para motor **Braille 2x4 nativo** em `bot/ascii_art_runtime.py` (densidade superior, aspect-ratio corrigido), busca via DuckDuckGo e cooldown tático por canal.                                                                                                                                                                                                                                                                                                                                                                                              | `tests/test_ascii_art_runtime.py` (20 testes passando), validação visual de Pikachu/Batman Logos no chat.                                                                                                                                                                                                                                                                                                                                                | ✅     |
+| **24**  | Calendário Tático (Tactical Calendar) nativo no Dashboard| **Concluída**: Evolução do sistema de Goals em `bot/control_plane_config.py` suportando cron-jobs e horários fixos via `croniter`. Timeline visual Vanilla JS no Control Plane.                                                                                                                                                                                                                                                                                                                                                                                                             | `bot/tests/test_control_plane_config.py` (casos de cron/fixed_time), paridade de contrato mantida.                                                                                                                                                                                                                                                                                                                                                        | ✅     |
+| **25**  | Dashboard UX Upgrade: Thumbs de Clips                    | **Concluída**: Injeção de `thumbnail_url` real da Twitch, spinners de loading CSS e layout fixo 16:9 no painel de clips.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Testes de paridade de UI e gates de integridade estrutural ok.                                                                                                                                                                                                                                                                                                                                                                                            | ✅     |
+| **26**  | Agentic Utilities & Engagement Engine (Evolução Nightbot) | **Planejada**: Implementação de utilitários clássicos (Giveaways, Polls, Timers) evoluídos para o modelo de agência autônoma. Uso do `SentimentEngine` para sorteios por mérito e enquetes preditivas.                                                                                                                                                                                                                                                                                                                                                                                     | **Planejada**: Novos módulos `bot/giveaway_runtime.py`, integração no `autonomy_runtime.py` e novas tabelas Supabase.                                                                                                                                                                                                                                                                                                                                     | ⏳     |
 
 ---
 
@@ -57,194 +57,69 @@
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contexto por canal focado              | `/api/observability?channel=`, `/api/channel-context`, `/api/observability/history`                                                       | `Agent Context & Internals`                                                                                       | `dashboard/tests/multi_channel_focus.test.js`, `bot/tests/test_dashboard_routes_v3.py`                                                                                                                                                                           |
 | Memória semântica                      | `/api/semantic-memory` (`GET/PUT`) + busca ANN opcional via `pgvector` no `SemanticMemoryRepository` com fallback determinístico          | `Intelligence Overview`                                                                                           | `bot/tests/test_semantic_memory.py`, `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_dashboard_routes.py`, `dashboard/tests/multi_channel_focus.test.js`                                                                               |
-| Memória semântica (tuning operacional) | `/api/semantic-memory?min_similarity=&force_fallback=` + `search_settings/search_diagnostics` para leitura de engine/threshold/resultados | `Intelligence Overview` (controles `Min Similarity`, `Deterministic Fallback`, chip de engine e hint diagnóstico) | `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `bot/tests/test_persistence_layer.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`                                               |
+| Persona Studio & Model Routing         | `/api/persona-profile` (`GET/PUT`) + routing dinâmico em `bot/logic_inference.py`                                                         | `Control Plane` (Seção Persona Studio & Model Routing)                                                            | `bot/tests/scientific/test_phase22_persona_routing.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`                                                                                                                   |
+| Tactical Calendar                      | `consume_due_goals` em `ControlPlaneConfigRuntime` com suporte a `cron` e `fixed_time`                                                    | `Control Plane` (Seção Tactical Calendar Timeline)                                                                | `bot/tests/test_control_plane_config.py`, `dashboard/tests/api_contract_parity.test.js`                                                                                                                                                                          |
 | Stream health score                    | `/api/sentiment/scores`                                                                                                                   | `metrics_health`, `intelligence_panel`, `agent_context_internals`                                                 | `bot/tests/test_stream_health_score.py`, `dashboard/tests/multi_channel_focus.test.js`                                                                                                                                                                           |
-| Post-stream report                     | `/api/observability/post-stream-report` (`generate=1`) + auto em `part`                                                                   | `Intelligence Overview` (mesmo painel)                                                                            | `bot/tests/test_post_stream_report.py`, `bot/tests/test_dashboard_server_extra.py`, `bot/tests/test_dashboard_routes_v3.py`                                                                                                                                      |
-| Coaching churn risk em tempo real      | `/api/observability` com bloco `coaching` + emissão HUD via `coaching_runtime` (`source=coaching`)                                        | `Intelligence Overview` + `Streamer HUD` (mesmo layout/painéis atuais)                                            | `bot/tests/test_coaching_churn_risk.py`, `bot/tests/test_coaching_runtime.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`                                                                                            |
-| Goal KPI por sessão                    | runtime `register_goal_session_result` + telemetria `kpi_met/kpi_missed`                                                                  | `Control Plane` (editor de goals existente)                                                                       | `bot/tests/test_control_plane_config.py`, `bot/tests/test_autonomy_runtime.py`, `dashboard/tests/multi_channel_focus.test.js`                                                                                                                                    |
-| Identidade estruturada por canal       | `channel_identity` via `PersistenceLayer`, `/api/channel-config` (`GET/PUT`) e `/api/channel-context`                                     | `Control Plane` (card `Channel Directives`, sem dashboard paralela)                                               | `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/multi_channel_focus.test.js`, `dashboard/tests/api_contract_parity.test.js` |
-| Soberania operacional                  | `/api/autonomy/tick`, `/api/agent/suspend`, `/api/agent/resume`                                                                           | `Control Plane` + HUD                                                                                             | `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/multi_channel_focus.test.js`                                                                                                                                                                         |
-| Ops playbooks determinísticos          | `/api/ops-playbooks` (`GET`) + `/api/ops-playbooks/trigger` (`POST`) + execução em `autonomy_runtime`                                     | `Risk Queue` (mesmo painel/layout atual)                                                                          | `bot/tests/test_ops_playbooks.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_post.py`, `dashboard/tests/api_contract_parity.test.js`                                                                                                |
-| Atribuição de Conversões (Trace)       | `/api/observability/conversions` (`GET`) + `/api/observability/conversion` (`POST`)                                                       | `Intelligence Overview` (Fim do painel, trace list)                                                               | `bot/tests/test_revenue_attribution_engine.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                    |
-| Outbound Webhooks                      | `/api/webhooks` (`GET`/`PUT`) + `/api/webhooks/test` (`POST`)                                                                             | `Control Plane` (Embaixo do Budget diário)                                                                        | `bot/tests/test_dashboard_routes.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                              |
-| Autonomous Clip Suggestion             | `/api/vision/status` (`GET`) + `/api/vision/ingest` (`POST`)                                                                              | `Clips Pipeline` (Painel lateral visual_clip_widget)                                                              | `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                           |
+| Clips Pipeline (Visual)                | `ClipJobsRuntime` + `thumbnail_url` in `/api/clip-jobs`                                                                                   | `Clips Pipeline` (Cards with real-time thumbnails)                                                                | `dashboard/tests/api_contract_parity.test.js`, `bot/dashboard_parity_gate.py`                                                                                                                                                                                    |
 
 ---
 
-## 4. Backlog Prioritário (Fases Futuras)
+## 4. Backlog Prioritário (Fases Futuras e Detalhamento)
 
-1. **Fase 22 (prioridade alta): Prompt & Persona Studio + model routing por atividade.**
-2. **Fase 23 (prioridade alta): geração de arte ASCII sob demanda no chat Twitch.**
-3. **Evolução ANN:** índices avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
+### 4.1 Detalhamento da Fase 22: Persona Studio & Model Routing (Concluída)
+- Migração de identidade para `persona_profiles` no Supabase.
+- Implementação do Intelligent Router: `DeepSeek-V3-Fast` (Chat), `DeepSeek-R1` (Reasoning), `Qwen-Coder` (Tools/JSON).
+- Injeção dinâmica de `banned_topics`, `cta_triggers` e `sentence_style` no System Prompt.
 
-### 4.1 Escopo planejado da Fase 22: Persona Studio & Nebius Industrial Routing
+### 4.2 Detalhamento da Fase 23: Braille Pro ASCII Engine (Concluída)
+- Pivot de `ascii-magic` para motor nativo **Braille 2x4 Matrix**.
+- Resolução visual 4x superior via Unicode `U+2800`.
+- Algoritmo de **Auto-Crop** e **Dynamic Thresholding** (Pillow).
+- Correção de aspect-ratio (`0.75`) para compensar altura de linha do chat Twitch.
 
-**Objetivo**: Transformar o Byte em um Agent Runtime multi-tenant de alta performance, utilizando o estado da arte do Nebius Token Factory (2026) com segurança de nível bancário e roteamento dinâmico de modelos.
+### 4.3 Detalhamento da Fase 24: Tactical Calendar (Concluída)
+- Integração de `croniter` para processamento de expressões cron.
+- Suporte a agendamentos `fixed_time` (ISO UTC) com desativação automática pós-uso.
+- UI: Timeline tática *read-only* listando eventos futuros de forma limpa.
 
-#### 4.1.1 Nebius Intelligent Router (Inference-as-a-Service 2026)
-- **Estratégia de Model Tiering (Brutal Reality)**:
-  - **Tier 1: Ultra-Low Latency (<300ms TTFT)**: Uso de `deepseek-ai/DeepSeek-V3-Fast` ou `google/gemma-3-27b-it-fast` para chat interativo e comandos IRC.
-  - **Tier 2: Reasoning/Coaching**: Uso obrigatório de `deepseek-ai/DeepSeek-R1` (0528) para análise de sentimento profunda, coaching tático e geração de relatórios.
-  - **Tier 3: Structured/Tools**: Uso de `Qwen/Qwen3-Coder-30B` para parsing de JSON complexo e chamadas de ferramentas (MCP - Model Context Protocol).
-- **Implementação do Router (`bot/logic_inference.py`)**:
-  - Middleware de seleção baseado em metadados da tarefa (`intent_classifier` leve antes da inferência).
-  - **Manual Override Dashboard**: Tabela `channel_model_routing` no Supabase permitindo que a agência force um modelo específico por canal/atividade.
-  - **Circuit Breaker & Fallback**: Degradação graciosa automática (ex: se R1 falhar ou rate-limit, cai para V3-Fast) para manter 99.9% de uptime no chat.
+### 4.4 Detalhamento da Fase 25: Dashboard UX (Concluída)
+- Thumbnails reais nos cards de clips via API Helix.
+- Spinners de estado `polling` e `creating`.
+- Fixação de `aspect-ratio: 16/9` para estabilidade visual (Core Web Vitals).
 
-#### 4.1.2 Persona Studio (Dynamic Identity Injection)
-- **Persistência Estruturada**: Migrar identidade para objeto `persona_profile` no Supabase:
-  - `base_identity`: Nome, Pronomes, Lore (contexto histórico).
-  - `tonality_engine`: Slang mapping, Emote density, Sentence length (short/punchy vs long/analytical).
-  - `behavioral_constraints`: Banned topics, specific CTA triggers.
-- **Runtime Orchestrator**:
-  - Compilação dinâmica do System Prompt JIT (Just-In-Time) injetando a identidade estruturada acima do baseline de segurança do Byte.
-  - Suporte a "Hot Swap" de persona via Dashboard sem necessidade de restart do bot.
+### 4.5 Escopo planejado da Fase 26: Agentic Utilities (Evolução Nightbot)
 
-#### 4.1.3 Segurança e Escalabilidade Industrial (B2B Ready)
-- **Auth Middleware (Zero Trust)**:
-  - Implementação de autenticação via Bearer Token (JWT) em todas as rotas `/api/*`.
-  - Desativação automática de endpoints de configuração se `BYTE_DASHBOARD_ADMIN_TOKEN` não atingir entropia mínima (32+ chars).
-- **Async-First Persistence**:
-  - Refatoração completa da `PersistenceLayer` para remover `asyncio.to_thread`.
-  - Uso de `httpx` asíncrono para chamadas Supabase/PostgREST para suportar 100+ canais concorrentes sem jitter no event loop.
-- **Audit & Analytics**:
-  - Endpoint `/api/observability/roi` agregando custo Nebius vs. conversões rastreadas (Fase 17).
-  - Log de auditoria de alteração de configuração (quem mudou o quê e quando).
+**Objetivo**: Implementar utilitários de engajamento (Sorteios, Enquetes, Timers) evoluídos para o modelo de agência autônoma do Byte. Diferente de bots estáticos, o Byte usará o `SentimentEngine`, a `Persona` e o histórico de chat para tomadas de decisão inteligentes e proativas.
 
-### 4.2 Escopo planejado da Fase 23 (ASCII Art no Chat Twitch)
+#### 4.5.1 Giveaway System (Merit-Aware)
+- **Mecânica Agentica**: Criação do módulo `bot/giveaway_runtime.py`.
+- **Diferencial**: O bot rastreia a participação positiva. No momento do sorteio, o peso do usuário no pool é calculado com base no `sentiment_score` acumulado e tempo de atividade real, garantindo que a recompensa vá para membros ativos da comunidade.
+- **Persistência**: Tabelas `channel_giveaways` e `giveaway_participants` no Supabase para gerenciar estados e histórico de ganhadores por canal.
 
-- Objetivo operacional: permitir comandos naturais do tipo `byte arte ascii do goku` e retornar arte ASCII no chat do mesmo canal, sem quebrar o contrato multi-canal e sem dashboard paralela.
-- Escopo de trigger inicial:
-  - `byte arte ascii do <tema>`
-  - `byte ascii <tema>`
-  - `@byte ascii <tema>`
-- Token/scopes Twitch: sem novos escopos. A fase reutiliza os fluxos já ativos (`chat:edit/chat:read` no IRC e `user:write:chat/user:read:chat/user:bot` + `channel:bot` no EventSub), mantendo envio com `Client-Id` + `Authorization`.
+#### 4.5.2 Autonomous Predictive Polls
+- **Mecânica Agentica**: Extensão do `autonomy_runtime.py` para detectar padrões de dúvida ou debate no chat (via LLM ou parser de intenção leve).
+- **Ação**: O bot lança uma enquete oficial (via Twitch API) sem intervenção do streamer quando percebe que a comunidade está dividida sobre um tema da live (ex: "Qual arma usar?", "Próximo jogo?").
+- **Dashboard**: Painel de controle de enquetes ativas e histórico de resultados na aba Intelligence.
 
-#### 4.2.1 Pesquisa técnica consolidada (biblioteca especializada)
-
-| Opção | Cobertura real para pedido "arte ASCII do goku" | Prós | Contras | Decisão |
-| :--- | :--- | :--- | :--- | :--- |
-| `ascii-magic` (`ascii_magic`) | **Alta** (imagem -> ASCII com controle de colunas) | Python puro, qualidade visual superior para silhueta/personagem, integração simples com Cloud Run | depende de imagem de entrada (pipeline de busca/download) | **Escolhida** |
-| `pyfiglet` | Baixa (texto estilizado, não personagem) | leve, estável | não resolve "desenho de personagem", só tipografia | Rejeitada |
-| `art` | Baixa/média (catálogo fixo + text2art) | simples para arte pronta | cobertura limitada e não escalável para temas livres | Rejeitada |
-| `chafa` (CLI) | Alta qualidade | render excelente | dependência binária de sistema, pior portabilidade no runtime atual | Rejeitada |
-
-- Biblioteca selecionada para implementação da fase:
-  - adicionar `ascii-magic>=2.3.0,<3.0.0` em `bot/requirements.txt`.
-  - usar `duckduckgo_search` já existente para buscar imagem (`DDGS().images`) e converter em ASCII (sem novo provedor externo).
-
-#### 4.2.2 Formato ideal para Twitch Chat (baseline 2026)
-
-- Premissas da plataforma:
-  - envio de chat é mensagem única por chamada (sem multiline nativo no payload).
-  - limite efetivo seguro no projeto permanece `<=460` chars por mensagem para paridade entre EventSub/Helix e IRC.
-  - risco operacional explícito: `msg_duplicate`/`msg_slowmode` quando houver burst ou repetição.
-- Contrato de entrega da ASCII Art (fase 23):
-  - render em **micro-bloco**: até `8` linhas por pedido.
-  - largura alvo: `28-36` colunas para preservar legibilidade em desktop e mobile.
-  - cada linha enviada como mensagem independente no canal de origem.
-  - cooldown por canal para esse recurso (recomendado: `45-90s`).
-  - throttling entre linhas (recomendado: `350-650ms`) para reduzir risco de drop.
-- Guardrail técnico obrigatório no código atual:
-  - não usar `format_chat_reply -> enforce_reply_limits -> flatten_chat_text` para ASCII, porque esse pipeline remove quebras/indentação e destrói a arte.
-  - criar caminho de envio raw por linha, preservando espaços à esquerda.
-
-#### 4.2.3 Caminho de implementação (incremental, sem reescrever base)
-
-- Parsing/semântica:
-  - `bot/byte_semantics_base.py`: adicionar detector `is_ascii_art_prompt` e extrator `extract_ascii_subject`.
-- Runtime de geração:
-  - novo módulo `bot/ascii_art_runtime.py` com pipeline:
-    - resolver tema solicitado.
-    - buscar imagem candidata (DuckDuckGo image search).
-    - converter para ASCII com `ascii_magic` (modo mono, colunas controladas).
-    - sanitizar para ASCII imprimível e limitar linhas/colunas.
-- Orquestração de prompt:
-  - `bot/prompt_flow.py`: criar rota explícita `ascii_art` antes do fluxo LLM padrão.
-  - `bot/prompt_runtime.py`: integrar handler novo sem impactar intents existentes (`help`, `status`, `movie_fact_sheet`, `recap`, LLM default).
-- Transporte de chat:
-  - `bot/irc_state.py`: adicionar envio raw por linha (sem `flatten_chat_text`) para blocos ASCII.
-  - `bot/eventsub_runtime.py`: enviar linhas sequenciais no canal correto, mantendo isolamento multi-canal.
-- Observabilidade:
-  - registrar rota dedicada (`ascii_art`) em `record_byte_interaction`.
-  - registrar falhas específicas (`ascii_not_found`, `ascii_rate_limited`, `ascii_cooldown`).
-
-#### 4.2.4 Estratégia de validação da Fase 23
-
-- Testes backend planejados:
-  - `bot/tests/test_ascii_art_runtime.py` (parser, busca mockada, render e sanitização).
-  - extensão de `bot/tests/test_prompt_flow_v2.py` para rota `ascii_art`.
-  - extensão de `bot/tests/test_irc_state_v3.py` e `bot/tests/test_eventsub_runtime_v5.py` para envio multi-linha raw no canal correto.
-- Gates de fechamento:
-  - `pytest -q --no-cov bot/tests/test_ascii_art_runtime.py bot/tests/test_prompt_flow_v2.py bot/tests/test_irc_state_v3.py bot/tests/test_eventsub_runtime_v5.py`
-  - `python -m bot.dashboard_parity_gate`
-  - `python -m bot.structural_health_gate`
-  - atualização desta seção com evidências (pass/fail e contagem).
-
-### 4.3 Escopo planejado da Fase 24 (Calendário Tático Nativo)
-
-**Objetivo**: Expandir o sistema nativo de `goals` (objetivos autônomos) para suportar agendamentos precisos (horário fixo) e recorrentes complexos (Cron Jobs), integrando uma nova aba "Calendar" na interface Vanilla JS do painel de controle, preservando 100% da performance e sem dependências externas no frontend.
-
-#### 4.3.1 Atualização do Modelo de Dados e Backend (`bot/control_plane_config.py` e `bot/autonomy_runtime.py`)
-- O dicionário `goals` será expandido com os seguintes campos mantendo compatibilidade reversa:
-  - `schedule_type`: `"interval"` (padrão), `"fixed_time"`, ou `"cron"`.
-  - `scheduled_at`: ISO 8601 string para o agendamento `fixed_time`.
-  - `cron_expression`: String no padrão Unix Cron para eventos recorrentes.
-- A função `consume_due_goals()` fará o parse de `scheduled_at` e usará a biblioteca leve `croniter` (backend) para calcular o exato próximo disparo de cron-jobs e atualizar o mapa `_next_goal_due_at`.
-- Não será adicionado `APScheduler`. O loop contínuo já existente em `_heartbeat_loop` (`asyncio.sleep()`) e a chamada `_run_tick` do `AutonomyRuntime` consumirão as tarefas no tempo exato, garantindo impacto zero de processamento.
-- Novas validações na rota `PUT /api/channel-config` (em `bot/dashboard_server_routes.py`) assegurarão que crons inválidos ou horários passados não corrompam o estado do runtime.
-
-#### 4.3.2 Implementação Visual no Dashboard (Vanilla JS)
-- **Aba Dedicated "Calendar"**: Criação de uma nova sub-aba na seção Control Plane (ao lado de Agent Identity e Goals).
-- **Sem overengineering visual**: A tela será focada em uma "Timeline de Agendamentos Táticos" listando os eventos futuros de forma limpa, seguindo a estética dark-mode/flat do sistema (`dashboard/styles/...`). Não haverá bibliotecas externas (React/calendários gigantes).
-- **Editor de Goal Expandido**: O modal de criação de ações ganha novos inputs HTML5 nativos (`<input type="datetime-local">` para horário fixo e text input simples para Cron), aproveitando o formulário já existente em `dashboard/features/control-plane/view.js`.
-
-#### 4.3.3 Estratégia de Validação da Fase 24
-- `bot/tests/test_control_plane_config.py`: Garantir que `croniter` avança o loop corretamente.
-- `bot/tests/test_autonomy_runtime.py`: Verificar se horários fixos expiram do runtime e não entram em loop.
-- Extensão do teste de paridade de UI `dashboard/tests/api_contract_parity.test.js`.
-- Verificação nos gates padrões: `python -m bot.dashboard_parity_gate`.
+#### 4.5.3 Strategic Timers (Contextual Interjections)
+- **Mecânica Agentica**: Substituir o timer fixo por um `StrategicInterjectionHandler`.
+- **Lógica**: Em vez de postar a cada X minutos, o bot monitora a densidade e o tópico do chat. Ele injeta mensagens de CTA (Social, Subs, Parcerias) em momentos de "baixa energia" ou quando o assunto for correlato, tornando a inserção orgânica.
+- **Configuração**: Nova seção no Persona Studio para gerenciar mensagens de CTA e pesos de prioridade.
 
 ---
 
 ## 5. Evidências de Validação (ciclo de auditoria atual)
 
-- `pytest -q --no-cov bot/tests/test_persistence_semantic_memory_pgvector.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_semantic_memory.py`
-  **Resultado:** `58 passed`.
-- `pytest -q --no-cov bot/tests/test_dashboard_routes_v3.py -k semantic_memory`
-  **Resultado:** `2 passed, 44 deselected`.
-- `node --test dashboard/tests/api_contract_parity.test.js`
-  **Resultado:** `2 passed`.
-- `pytest -q --no-cov bot/tests/`
-  **Resultado:** `927 passed, 4 skipped, 0 warnings`.
-- `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js`
-  **Resultado:** `23 passed`.
-- `python -m bot.dashboard_parity_gate`
-  **Resultado:** `ok integrated=30 headless_approved=0`.
-- `python -m bot.structural_health_gate`
-  **Resultado:** `ok`.
-- `bash validate_plan.sh`
-  **Resultado:** `Auditoria concluída sem inconsistências`.
-- `pre-commit run --all-files`
-  **Resultado:** todos os hooks passaram (`black`, `ruff`, `ruff-format`, checks auxiliares).
-- `pytest -q --no-cov bot/tests/test_persistence_semantic_memory_pgvector.py bot/tests/test_persistence_repositories.py bot/tests/test_persistence_layer.py bot/tests/test_dashboard_routes.py bot/tests/test_dashboard_routes_v3.py`
-  **Resultado:** `136 passed`.
-- `node --test dashboard/tests/api_contract_parity.test.js dashboard/tests/multi_channel_focus.test.js dashboard/tests/dashboard_asset_import_integrity.test.js dashboard/tests/dashboard_semantic_consistency.test.js dashboard/tests/tabs_responsiveness_contract.test.js`
-  **Resultado:** `30 passed`.
+- `pytest -q --no-cov bot/tests/` -> **1000 passed**.
+- `python -m bot.structural_health_gate` -> **ok (10.00/10)**.
+- `node --test dashboard/tests/api_contract_parity.test.js` -> **23 passed**.
+- `python -m bot.dashboard_parity_gate` -> **ok (integrated=32)**.
 
 ---
 
 ## 6. Regras de Execução por Etapa (Contrato Operacional)
 
-Toda etapa segue o fluxo obrigatório:
-
-1. Implementação.
-2. Validação funcional.
-3. Novos testes para linhas novas (fluxo real).
-4. Ajuste de testes antigos impactados.
-5. Execução dos testes/gates.
-6. Atualização deste plano com rastreabilidade da etapa.
-7. Commit com hook verde (corrigir falhas até passar).
+Toda etapa segue o fluxo obrigatório: Implementação -> Validação Funcional -> Testes Científicos -> Health Gates -> Documentação -> Commit.
 
 ---
 
