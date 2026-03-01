@@ -100,7 +100,7 @@ class MockElement {
     const safeEvent = event || {};
     safeEvent.target = safeEvent.target || this;
     safeEvent.currentTarget = this;
-    safeEvent.preventDefault = safeEvent.preventDefault || (() => {});
+    safeEvent.preventDefault = safeEvent.preventDefault || (() => { });
     const handlers = this.listeners.get(safeEvent.type) || [];
     handlers.forEach((handler) => handler(safeEvent));
     return true;
@@ -646,7 +646,7 @@ test("channel control controller propagates focused channel sync failures to fee
   const els = createChannelControlElements(document);
   const controller = createChannelControlController({
     ctrlEls: els,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },
@@ -1424,7 +1424,7 @@ test("control plane controller mirrors the focused channel into channel tuning",
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(_error, fallback) {
       return fallback;
     },
@@ -1447,7 +1447,7 @@ test("control plane controller warns when loading directives without a channel",
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },
@@ -1507,7 +1507,7 @@ test("control plane controller loads channel directives including agent notes", 
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },
@@ -1540,7 +1540,7 @@ test("control plane controller surfaces directive load errors", async () => {
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },
@@ -1607,7 +1607,7 @@ test("control plane controller saves channel directives including agent notes", 
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },
@@ -1617,9 +1617,10 @@ test("control plane controller saves channel directives including agent notes", 
   cpEls.saveChannelConfigBtn.click();
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.ok(calls.some((call) => call.url.includes("/api/channel-config")));
   assert.ok(calls.some((call) => call.url.includes("/api/agent-notes")));
+  assert.ok(calls.some((call) => call.url.includes("/api/persona-profile")));
   const channelConfigCall = calls.find((call) =>
     call.url.includes("/api/channel-config"),
   );
@@ -1667,7 +1668,7 @@ test("control plane controller surfaces directive save errors", async () => {
   const controller = createControlPlaneController({
     cpEls,
     autEls: null,
-    applyRuntimeCapabilities() {},
+    applyRuntimeCapabilities() { },
     getErrorMessage(error, fallback) {
       return error?.message || fallback;
     },

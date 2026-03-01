@@ -72,6 +72,6 @@ class TestIrcStateMassive(unittest.IsolatedAsyncioTestCase):
     async def test_admin_part_channel_not_connected(self):
         bot = MockBot()
         bot.joined_channels = set()
-        ok, msg, chans = await bot.admin_part_channel("missing")
+        ok, msg, _chans = await bot.admin_part_channel("missing")
         self.assertFalse(ok)
         self.assertIn("not connected", msg)

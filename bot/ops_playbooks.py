@@ -502,7 +502,7 @@ class OpsPlaybookRuntime:
             for item in self._runtime.values()
         )
         return {
-            "total": int(len(self._runtime)),
+            "total": len(self._runtime),
             "idle": int(states.get(PLAYBOOK_STATE_IDLE, 0)),
             "awaiting_decision": int(states.get(PLAYBOOK_STATE_AWAITING_DECISION, 0)),
             "cooldown": int(states.get(PLAYBOOK_STATE_COOLDOWN, 0)),

@@ -87,7 +87,7 @@ class TestIrcStateV3:
             return MagicMock()
 
         with patch("asyncio.create_task", side_effect=create_task_side_effect):
-            res, msg, channels = await state.admin_join_channel("channel2")
+            res, _msg, _channels = await state.admin_join_channel("channel2")
             assert res is True
             assert "channel2" in state.joined_channels
 
@@ -102,6 +102,6 @@ class TestIrcStateV3:
             return MagicMock()
 
         with patch("asyncio.create_task", side_effect=create_task_side_effect):
-            res, msg, channels = await state.admin_part_channel("channel2")
+            res, _msg, _channels = await state.admin_part_channel("channel2")
             assert res is True
             assert "channel2" not in state.joined_channels
