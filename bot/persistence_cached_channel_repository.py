@@ -78,7 +78,8 @@ class CachedChannelRepository(ABC):
                 .maybe_single()
                 .execute()
             )
-            payload = self._row_to_payload(normalized, result.data or {})
+            raw_data = getattr(result, "data", None) or {}
+            payload = self._row_to_payload(normalized, raw_data)
             self._cache[normalized] = payload
             return payload
         except Exception as error:

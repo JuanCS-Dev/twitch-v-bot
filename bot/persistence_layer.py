@@ -229,7 +229,7 @@ class PersistenceLayer:
                 .maybe_single()
                 .execute()
             )
-            return result.data
+            return getattr(result, "data", None)
         except Exception as e:
             logger.error("PersistenceLayer: Falha ao carregar estado de %s: %s", normalized, e)
             return None
@@ -541,7 +541,7 @@ class PersistenceLayer:
                 .maybe_single()
                 .execute()
             )
-            row = result.data or None
+            row = getattr(result, "data", None)
             if not row:
                 return dict(cached) if cached else None
             payload = {
