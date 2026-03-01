@@ -191,6 +191,15 @@ class TestDashboardRoutesV3:
             "source": "supabase",
         }
         mock_persistence.load_recent_history_sync.return_value = ["viewer: hi", "byte: bora"]
+        mock_persistence.load_persona_profile_sync.return_value = {
+            "channel_id": "canal_a",
+            "base_identity": {"name": "Byte Coach", "pronouns": "ele/dele", "lore": ""},
+            "tonality_engine": {"tone": "analitico", "emote_vocab": [], "sentence_style": ""},
+            "behavioral_constraints": {"banned_topics": [], "cta_triggers": []},
+            "model_routing": {"chat": None, "coaching": None, "search": None, "reasoning": None},
+            "has_profile": True,
+            "source": "memory",
+        }
 
         payload = build_channel_context_payload("canal_a")
 
@@ -206,6 +215,10 @@ class TestDashboardRoutesV3:
         assert payload["channel"]["persisted_channel_identity"]["has_identity"] is True
         assert payload["channel"]["has_persisted_identity"] is True
         assert payload["channel"]["persisted_recent_history"] == ["viewer: hi", "byte: bora"]
+        assert payload["channel"]["has_persisted_persona_profile"] is True
+        assert (
+            payload["channel"]["persisted_persona_profile"]["base_identity"]["name"] == "Byte Coach"
+        )
 
     @patch("bot.dashboard_server_routes.persistence")
     @patch("bot.dashboard_server_routes.context_manager")
@@ -228,6 +241,7 @@ class TestDashboardRoutesV3:
         mock_persistence.load_agent_notes_sync.return_value = None
         mock_persistence.load_channel_identity_sync.return_value = None
         mock_persistence.load_recent_history_sync.return_value = []
+        mock_persistence.load_persona_profile_sync.return_value = None
 
         payload = build_channel_context_payload("canal_a")
 
@@ -239,6 +253,8 @@ class TestDashboardRoutesV3:
         assert payload["channel"]["persisted_agent_notes"] is None
         assert payload["channel"]["persisted_channel_identity"] is None
         assert payload["channel"]["persisted_recent_history"] == []
+        assert payload["channel"]["has_persisted_persona_profile"] is False
+        assert payload["channel"]["persisted_persona_profile"] == {}
 
     @patch("bot.dashboard_server_routes.persistence")
     def test_build_observability_history_payload(self, mock_persistence):
