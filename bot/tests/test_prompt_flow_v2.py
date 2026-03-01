@@ -31,9 +31,11 @@ class TestPromptFlowV2:
         rt.logger = MagicMock()
         rt.byte_help_message = "Help message"
         rt.max_reply_lines = 5
-        rt.max_chat_message_length = 500
+        rt.is_ascii_art_prompt = MagicMock(return_value=False)
+        rt.is_help_prompt = MagicMock(return_value=False)
         rt.serious_reply_max_lines = 10
         rt.serious_reply_max_length = 1000
+        rt.max_chat_message_length = 500
         rt.quality_safe_fallback = "Safe Fallback"
 
         rt.format_chat_reply = lambda x: f"Formatted: {x}" if x else ""
@@ -102,6 +104,7 @@ class TestPromptFlowV2:
 
     @pytest.mark.asyncio
     async def test_handle_byte_prompt_status(self, runtime_mock):
+        runtime_mock.is_ascii_art_prompt.return_value = False
         reply_fn = AsyncMock()
         status_line_factory = MagicMock(return_value="My Status")
         await handle_byte_prompt_text(

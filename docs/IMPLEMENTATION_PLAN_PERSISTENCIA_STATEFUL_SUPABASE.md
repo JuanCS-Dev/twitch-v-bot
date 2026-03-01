@@ -44,6 +44,8 @@
 | **20**  | Otimização ANN de Memória Semântica com `pgvector`       | `bot/persistence_semantic_memory_repository.py` com busca via RPC (`semantic_memory_search_pgvector`/`semantic_memory_search`) e fallback automático para ranking determinístico atual; flags `SEMANTIC_MEMORY_PGVECTOR_ENABLED` e `SEMANTIC_MEMORY_PGVECTOR_RPC`.                                                                                                                                                                                                                                                                                                                          | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_semantic_memory.py`, `bot/tests/test_dashboard_routes_v3.py -k semantic_memory`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`, `node --test dashboard/tests/api_contract_parity.test.js`                                                                  | ✅     |
 | **21**  | Tuning operacional ANN + diagnóstico de engine semântica | `bot/persistence_semantic_memory_repository.py` com `SEMANTIC_MEMORY_MIN_SIMILARITY`, busca com `min_similarity`/`force_fallback`, `search_settings_sync()` e `search_entries_with_diagnostics_sync()`; facade expandida em `bot/persistence_layer.py`; rota `/api/semantic-memory` com query params de tuning e payload com `search_settings`/`search_diagnostics`; UI integrada no painel atual em `dashboard/partials/intelligence_panel.html`, `dashboard/features/observability/api.js`, `dashboard/features/observability/controller.js`, `dashboard/features/observability/view.js`. | `bot/tests/test_persistence_semantic_memory_pgvector.py`, `bot/tests/test_persistence_repositories.py`, `bot/tests/test_persistence_layer.py`, `bot/tests/test_dashboard_routes.py`, `bot/tests/test_dashboard_routes_v3.py`, `dashboard/tests/api_contract_parity.test.js`, `dashboard/tests/multi_channel_focus.test.js`, `python -m bot.dashboard_parity_gate`, `python -m bot.structural_health_gate`                                                 | ✅     |
 | **22**  | Prompt & Persona Studio + model routing por atividade    | **Planejada** para implementação no layout atual: persistência por canal de prompt/persona e mapeamento de modelo por atividade, integração no runtime de inferência e APIs de configuração. Alvos principais: `bot/persistence_layer.py`, novo repositório dedicado de prompt profile, `bot/logic_inference.py`, `bot/dashboard_server_routes.py`, `dashboard/partials/control_plane.html`, `dashboard/features/control-plane/*`.                                                                                                                                                          | **Planejada**: novos testes de repositório/facade/runtime/rotas em `bot/tests/*`, cobertura de UI e contrato em `dashboard/tests/multi_channel_focus.test.js` e `dashboard/tests/api_contract_parity.test.js`, mais gates `python -m bot.dashboard_parity_gate` e `python -m bot.structural_health_gate`.                                                                                                                                                 | ⏳     |
+| **23**  | Geração de arte ASCII sob demanda no chat Twitch         | **Planejada** para o runtime de envio: novo módulo `bot/ascii_art_runtime.py`, pipeline com `ascii_magic`, roteamento em `bot/prompt_flow.py`, parsing em `bot/byte_semantics_base.py`, e envio raw multi-linha em `bot/irc_state.py`/`bot/eventsub_runtime.py`.                                                                                                                                                                                                                                                                                                                                                                | **Planejada**: `bot/tests/test_ascii_art_runtime.py`, testes integrados no prompt_flow e envio raw, mantendo paridade de health e integridade multi-canal.                                                                                                                                                                                                                                                                                                        | ⏳     |
+| **24**  | Calendário Tático (Tactical Calendar) nativo no Dashboard| **Concluída**: Evolução do sistema de Goals em `bot/control_plane_config.py` suportando cron-jobs e horários fixos via `croniter`. Dashboard com nova aba "Calendar" em Vanilla JS/HTML (`dashboard/partials/calendar_tab.html`), componentes nativos `<input type="datetime-local">`, mantendo o ciclo nativo do `autonomy_runtime.py`.                                                                                                                                                                                                                                                                                              | **Concluída**: Expansão do `bot/tests/test_control_plane_config.py`, `bot/tests/test_autonomy_runtime.py` e rotas no backend. Atualização dos gates de paridade e testes do frontend (`api_contract_parity.test.js`).                                                                                                                                                                                                                                             | ✅     |
 
 ---
 
@@ -73,33 +75,39 @@
 2. **Fase 23 (prioridade alta): geração de arte ASCII sob demanda no chat Twitch.**
 3. **Evolução ANN:** índices avançados (`ivfflat`/HNSW) e política dinâmica de probes/latência por volume real.
 
-### 4.1 Escopo planejado da Fase 22
+### 4.1 Escopo planejado da Fase 22: Persona Studio & Nebius Industrial Routing
 
-- Objetivo operacional: permitir configurar via dashboard os prompts-base, persona do agent e o modelo por atividade, sem ajuste manual em código/env.
-- Integração visual: manter no layout atual (aba `Configuration` / `Control Plane`), sem dashboard paralela e com UI em inglês.
-- Persistência por canal:
-  - `system_prompt` e variações por domínio.
-  - `persona_profile` estruturado (tone, style, constraints, banned patterns).
-  - `activity_model_routing` (`activity -> model`).
-- Runtime/inferência:
-  - resolução de modelo por atividade com fallback para defaults globais.
-  - injeção de prompt/persona por canal preservando isolamento multi-canal.
-  - compatibilidade com configuração atual quando não houver profile salvo.
-- API/Dashboard planejados:
-  - `GET/PUT /api/prompt-profile?channel=...`
-  - `GET /api/models/catalog`
-  - seção no `Control Plane` com editor de prompt-base, persona e matriz de roteamento de modelo por atividade.
-- Atividades iniciais para roteamento:
-  - `chat_reply`
-  - `sentiment_analysis`
-  - `coaching_generation`
-  - `post_stream_report`
-  - `clip_intelligence`
-  - `semantic_memory_enrichment`
-- Estratégia de validação da fase:
-  - testes backend (repositório/facade/runtime/rotas) para persistência e resolução correta de modelo.
-  - testes dashboard para fluxo real de load/edit/save e contrato de API.
-  - execução de gates de paridade e saúde estrutural no fechamento da etapa.
+**Objetivo**: Transformar o Byte em um Agent Runtime multi-tenant de alta performance, utilizando o estado da arte do Nebius Token Factory (2026) com segurança de nível bancário e roteamento dinâmico de modelos.
+
+#### 4.1.1 Nebius Intelligent Router (Inference-as-a-Service 2026)
+- **Estratégia de Model Tiering (Brutal Reality)**:
+  - **Tier 1: Ultra-Low Latency (<300ms TTFT)**: Uso de `deepseek-ai/DeepSeek-V3-Fast` ou `google/gemma-3-27b-it-fast` para chat interativo e comandos IRC.
+  - **Tier 2: Reasoning/Coaching**: Uso obrigatório de `deepseek-ai/DeepSeek-R1` (0528) para análise de sentimento profunda, coaching tático e geração de relatórios.
+  - **Tier 3: Structured/Tools**: Uso de `Qwen/Qwen3-Coder-30B` para parsing de JSON complexo e chamadas de ferramentas (MCP - Model Context Protocol).
+- **Implementação do Router (`bot/logic_inference.py`)**:
+  - Middleware de seleção baseado em metadados da tarefa (`intent_classifier` leve antes da inferência).
+  - **Manual Override Dashboard**: Tabela `channel_model_routing` no Supabase permitindo que a agência force um modelo específico por canal/atividade.
+  - **Circuit Breaker & Fallback**: Degradação graciosa automática (ex: se R1 falhar ou rate-limit, cai para V3-Fast) para manter 99.9% de uptime no chat.
+
+#### 4.1.2 Persona Studio (Dynamic Identity Injection)
+- **Persistência Estruturada**: Migrar identidade para objeto `persona_profile` no Supabase:
+  - `base_identity`: Nome, Pronomes, Lore (contexto histórico).
+  - `tonality_engine`: Slang mapping, Emote density, Sentence length (short/punchy vs long/analytical).
+  - `behavioral_constraints`: Banned topics, specific CTA triggers.
+- **Runtime Orchestrator**:
+  - Compilação dinâmica do System Prompt JIT (Just-In-Time) injetando a identidade estruturada acima do baseline de segurança do Byte.
+  - Suporte a "Hot Swap" de persona via Dashboard sem necessidade de restart do bot.
+
+#### 4.1.3 Segurança e Escalabilidade Industrial (B2B Ready)
+- **Auth Middleware (Zero Trust)**:
+  - Implementação de autenticação via Bearer Token (JWT) em todas as rotas `/api/*`.
+  - Desativação automática de endpoints de configuração se `BYTE_DASHBOARD_ADMIN_TOKEN` não atingir entropia mínima (32+ chars).
+- **Async-First Persistence**:
+  - Refatoração completa da `PersistenceLayer` para remover `asyncio.to_thread`.
+  - Uso de `httpx` asíncrono para chamadas Supabase/PostgREST para suportar 100+ canais concorrentes sem jitter no event loop.
+- **Audit & Analytics**:
+  - Endpoint `/api/observability/roi` agregando custo Nebius vs. conversões rastreadas (Fase 17).
+  - Log de auditoria de alteração de configuração (quem mudou o quê e quando).
 
 ### 4.2 Escopo planejado da Fase 23 (ASCII Art no Chat Twitch)
 
@@ -170,6 +178,30 @@
   - `python -m bot.dashboard_parity_gate`
   - `python -m bot.structural_health_gate`
   - atualização desta seção com evidências (pass/fail e contagem).
+
+### 4.3 Escopo planejado da Fase 24 (Calendário Tático Nativo)
+
+**Objetivo**: Expandir o sistema nativo de `goals` (objetivos autônomos) para suportar agendamentos precisos (horário fixo) e recorrentes complexos (Cron Jobs), integrando uma nova aba "Calendar" na interface Vanilla JS do painel de controle, preservando 100% da performance e sem dependências externas no frontend.
+
+#### 4.3.1 Atualização do Modelo de Dados e Backend (`bot/control_plane_config.py` e `bot/autonomy_runtime.py`)
+- O dicionário `goals` será expandido com os seguintes campos mantendo compatibilidade reversa:
+  - `schedule_type`: `"interval"` (padrão), `"fixed_time"`, ou `"cron"`.
+  - `scheduled_at`: ISO 8601 string para o agendamento `fixed_time`.
+  - `cron_expression`: String no padrão Unix Cron para eventos recorrentes.
+- A função `consume_due_goals()` fará o parse de `scheduled_at` e usará a biblioteca leve `croniter` (backend) para calcular o exato próximo disparo de cron-jobs e atualizar o mapa `_next_goal_due_at`.
+- Não será adicionado `APScheduler`. O loop contínuo já existente em `_heartbeat_loop` (`asyncio.sleep()`) e a chamada `_run_tick` do `AutonomyRuntime` consumirão as tarefas no tempo exato, garantindo impacto zero de processamento.
+- Novas validações na rota `PUT /api/channel-config` (em `bot/dashboard_server_routes.py`) assegurarão que crons inválidos ou horários passados não corrompam o estado do runtime.
+
+#### 4.3.2 Implementação Visual no Dashboard (Vanilla JS)
+- **Aba Dedicated "Calendar"**: Criação de uma nova sub-aba na seção Control Plane (ao lado de Agent Identity e Goals).
+- **Sem overengineering visual**: A tela será focada em uma "Timeline de Agendamentos Táticos" listando os eventos futuros de forma limpa, seguindo a estética dark-mode/flat do sistema (`dashboard/styles/...`). Não haverá bibliotecas externas (React/calendários gigantes).
+- **Editor de Goal Expandido**: O modal de criação de ações ganha novos inputs HTML5 nativos (`<input type="datetime-local">` para horário fixo e text input simples para Cron), aproveitando o formulário já existente em `dashboard/features/control-plane/view.js`.
+
+#### 4.3.3 Estratégia de Validação da Fase 24
+- `bot/tests/test_control_plane_config.py`: Garantir que `croniter` avança o loop corretamente.
+- `bot/tests/test_autonomy_runtime.py`: Verificar se horários fixos expiram do runtime e não entram em loop.
+- Extensão do teste de paridade de UI `dashboard/tests/api_contract_parity.test.js`.
+- Verificação nos gates padrões: `python -m bot.dashboard_parity_gate`.
 
 ---
 

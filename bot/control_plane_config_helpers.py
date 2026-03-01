@@ -1,5 +1,8 @@
 from collections import deque
+from datetime import datetime
 from typing import Any
+
+from croniter import croniter
 
 from bot.control_plane_constants import (
     RISK_SUGGEST_STREAMER,
@@ -19,6 +22,28 @@ GOAL_KPI_SUCCESS_OUTCOMES: dict[str, set[str]] = {
     "action_queued": {"queued"},
     "clip_candidate_queued": {"queued"},
 }
+
+
+def compute_next_goal_due_at(goal: dict[str, Any], current_time: float) -> float:
+    schedule_type = str(goal.get("schedule_type", "interval")).strip().lower()
+    interval = max(60, int(goal.get("interval_seconds", 600) or 600))
+
+    if schedule_type == "cron":
+        cron_expr = str(goal.get("cron_expression", "") or "").strip()
+        if cron_expr and croniter.is_valid(cron_expr):
+            try:
+                return croniter(cron_expr, current_time).get_next(float)
+            except Exception:
+                pass
+    elif schedule_type == "fixed_time":
+        scheduled_at_str = str(goal.get("scheduled_at", "") or "").strip()
+        if scheduled_at_str:
+            try:
+                dt = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
+                return dt.timestamp()
+            except ValueError:
+                pass
+    return current_time + interval
 
 
 def sanitize_goal_comparison(raw_value: Any) -> str:
@@ -91,6 +116,14 @@ def normalize_goal(raw_goal: Any, index: int) -> dict[str, Any]:
         maximum=86_400,
         fallback=600,
     )
+
+    schedule_type = str(goal.get("schedule_type", "interval")).strip().lower()
+    if schedule_type not in {"interval", "fixed_time", "cron"}:
+        schedule_type = "interval"
+
+    scheduled_at = str(goal.get("scheduled_at", "") or "").strip()
+    cron_expression = str(goal.get("cron_expression", "") or "").strip()
+
     enabled = bool(goal.get("enabled", True))
     default_kpi_name = default_goal_kpi_name(risk)
     kpi_name = str(goal.get("kpi_name", "") or default_kpi_name).strip().lower()
@@ -121,6 +154,9 @@ def normalize_goal(raw_goal: Any, index: int) -> dict[str, Any]:
         "prompt": prompt,
         "risk": risk,
         "interval_seconds": interval_seconds,
+        "schedule_type": schedule_type,
+        "scheduled_at": scheduled_at,
+        "cron_expression": cron_expression,
         "enabled": enabled,
         "kpi_name": kpi_name,
         "target_value": target_value,

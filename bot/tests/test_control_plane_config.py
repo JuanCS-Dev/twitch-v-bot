@@ -102,6 +102,64 @@ class TestControlPlaneConfig(unittest.TestCase):
         goals = self.cpc.consume_due_goals(timestamp=now + 61)
         self.assertEqual(len(goals), 1)
 
+    def test_consume_due_goals_fixed_time(self):
+        now = time.time()
+        # Create a goal with fixed_time
+        goals = [
+            {
+                "id": "fixed_1",
+                "enabled": True,
+                "schedule_type": "fixed_time",
+                "scheduled_at": "2026-03-01T20:00:00Z",
+            }
+        ]
+        self.cpc.update_config({"autonomy_enabled": True, "goals": goals})
+
+        # Timestamp for 2026-03-01T19:59:59Z
+        due = self.cpc.consume_due_goals(timestamp=1772395199.0)
+        self.assertEqual(len(due), 0)
+
+        # Timestamp for 2026-03-01T20:00:01Z
+        due = self.cpc.consume_due_goals(timestamp=1772395201.0)
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0]["id"], "fixed_1")
+
+        # Fixed time goal should be disabled after consumption
+        cfg = self.cpc.get_config()
+        self.assertFalse(cfg["goals"][0]["enabled"])
+
+    def test_consume_due_goals_cron(self):
+        # We need a predictable time. Let's use 2026-01-01 12:00:00 UTC (timestamp: 1767268800)
+        start_time = 1767268800.0
+
+        goals = [
+            {
+                "id": "cron_1",
+                "enabled": True,
+                "schedule_type": "cron",
+                "cron_expression": "0 * * * *",  # Every hour
+            }
+        ]
+
+        self.cpc.update_config({"autonomy_enabled": True, "goals": goals})
+
+        # Initial run - shouldn't trigger immediately, schedules for 13:00
+        due = self.cpc.consume_due_goals(timestamp=start_time)
+        self.assertEqual(len(due), 0)
+
+        # 59 minutes later - still not due
+        due = self.cpc.consume_due_goals(timestamp=start_time + 3540)
+        self.assertEqual(len(due), 0)
+
+        # 1 hour later - should be due
+        due = self.cpc.consume_due_goals(timestamp=start_time + 3600)
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0]["id"], "cron_1")
+
+        # Should stay enabled for next run
+        cfg = self.cpc.get_config()
+        self.assertTrue(cfg["goals"][0]["enabled"])
+
     def test_consume_due_goals_skips_when_suspended_without_force(self):
         self.cpc.update_config(
             {"autonomy_enabled": True, "goals": [{"id": "g1", "interval_seconds": 60}]}

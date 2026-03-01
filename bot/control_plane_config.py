@@ -2,10 +2,14 @@ import copy
 import threading
 import time
 from collections import deque
+from datetime import datetime, timezone
 from typing import Any, ClassVar
+
+from croniter import croniter
 
 from bot.control_plane_config_helpers import (
     budget_usage,
+    compute_next_goal_due_at,
     goal_target_met,
     infer_goal_observed_value,
     normalize_goals,
@@ -416,20 +420,30 @@ class ControlPlaneConfigRuntime:
                 if not bool(goal.get("enabled", True)):
                     continue
 
-                interval = max(60, int(goal.get("interval_seconds", 600) or 600))
+                schedule_type = str(goal.get("schedule_type", "interval")).strip().lower()
+
                 if force:
                     due_goals.append(copy.deepcopy(goal))
-                    self._next_goal_due_at[goal_id] = now + interval
+                    self._next_goal_due_at[goal_id] = compute_next_goal_due_at(goal, now)
+                    if schedule_type == "fixed_time":
+                        goal["enabled"] = False
                     continue
 
                 due_at = self._next_goal_due_at.get(goal_id)
                 if due_at is None:
-                    self._next_goal_due_at[goal_id] = now + interval
+                    initial_due = compute_next_goal_due_at(goal, now)
+                    if schedule_type == "fixed_time" and initial_due < now - 60:
+                        goal["enabled"] = False
+                        continue
+                    self._next_goal_due_at[goal_id] = initial_due
                     continue
 
                 if now >= due_at:
                     due_goals.append(copy.deepcopy(goal))
-                    self._next_goal_due_at[goal_id] = now + interval
+                    if schedule_type == "fixed_time":
+                        goal["enabled"] = False
+                    else:
+                        self._next_goal_due_at[goal_id] = compute_next_goal_due_at(goal, now)
 
             self._next_goal_due_at = {
                 goal_id: due_at

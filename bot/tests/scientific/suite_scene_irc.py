@@ -133,7 +133,7 @@ class ScientificSceneAndIrcTestsMixin(ScientificTestCase):
         mock_auto_scene.return_value = []
 
         async def fake_handle(
-            prompt, author_name, reply_fn, status_line_factory=None, channel_id=None
+            prompt, author_name, reply_fn, status_line_factory=None, channel_id=None, **kwargs
         ):
             await reply_fn("ok no canal certo")
 

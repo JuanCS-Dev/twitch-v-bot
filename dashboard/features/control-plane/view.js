@@ -233,6 +233,66 @@ function createGoalCard(goal = {}, index = 0) {
   );
   card.appendChild(firstRow);
 
+  const scheduleRow = document.createElement("div");
+  scheduleRow.className = "form-row";
+  scheduleRow.style.flexWrap = "wrap";
+  scheduleRow.style.marginTop = "var(--spacing-2)";
+
+  const scheduleTypeSelect = document.createElement("select");
+  scheduleTypeSelect.className = "form-control";
+  scheduleTypeSelect.dataset.goalField = "schedule_type";
+  ["interval", "fixed_time", "cron"].forEach((type) => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    if ((goal.schedule_type || "interval") === type) option.selected = true;
+    scheduleTypeSelect.appendChild(option);
+  });
+  scheduleRow.appendChild(createGoalField("Schedule Type", scheduleTypeSelect, { minWidth: "150px" }));
+
+  const scheduledAtInput = document.createElement("input");
+  scheduledAtInput.type = "datetime-local";
+  scheduledAtInput.className = "form-control";
+  let formattedScheduledAt = String(goal.scheduled_at || "");
+  if (formattedScheduledAt.endsWith("Z")) {
+    formattedScheduledAt = formattedScheduledAt.replace("Z", "").slice(0, 16);
+  }
+  scheduledAtInput.value = formattedScheduledAt;
+  scheduledAtInput.dataset.goalField = "scheduled_at";
+  const scheduledAtWrapper = createGoalField("Fixed Time (UTC)", scheduledAtInput, { minWidth: "200px" });
+  scheduleRow.appendChild(scheduledAtWrapper);
+
+  const cronInput = document.createElement("input");
+  cronInput.type = "text";
+  cronInput.className = "form-control";
+  cronInput.placeholder = "e.g. 0 20 * * 5";
+  cronInput.value = String(goal.cron_expression || "");
+  cronInput.dataset.goalField = "cron_expression";
+  const cronWrapper = createGoalField("Cron Expression", cronInput, { minWidth: "180px" });
+  scheduleRow.appendChild(cronWrapper);
+
+  card.appendChild(scheduleRow);
+
+  const updateScheduleFieldsVisibility = () => {
+    const val = scheduleTypeSelect.value;
+    const intervalWrapper = intervalInput.parentElement;
+    if (val === "interval") {
+      intervalWrapper.style.display = "block";
+      scheduledAtWrapper.style.display = "none";
+      cronWrapper.style.display = "none";
+    } else if (val === "fixed_time") {
+      intervalWrapper.style.display = "none";
+      scheduledAtWrapper.style.display = "block";
+      cronWrapper.style.display = "none";
+    } else if (val === "cron") {
+      intervalWrapper.style.display = "none";
+      scheduledAtWrapper.style.display = "none";
+      cronWrapper.style.display = "block";
+    }
+  };
+  scheduleTypeSelect.addEventListener("change", updateScheduleFieldsVisibility);
+  updateScheduleFieldsVisibility();
+
   const secondRow = document.createElement("div");
   secondRow.className = "form-row";
   secondRow.style.flexWrap = "wrap";
@@ -324,11 +384,19 @@ function parseGoalFromCard(card, index) {
   const safePrompt =
     String(getField("prompt")?.value || "").trim() || `Objetivo ${index + 1}.`;
 
+  let safeScheduledAt = String(getField("scheduled_at")?.value || "").trim();
+  if (safeScheduledAt && !safeScheduledAt.endsWith("Z")) {
+    safeScheduledAt += "Z";
+  }
+
   return {
     id: normalizeGoalId(getField("id")?.value, index),
     name: safeName,
     prompt: safePrompt,
     risk: safeRisk,
+    schedule_type: String(getField("schedule_type")?.value || "interval").trim().toLowerCase(),
+    scheduled_at: safeScheduledAt,
+    cron_expression: String(getField("cron_expression")?.value || "").trim(),
     interval_seconds: readInt(getField("interval_seconds"), 600, 60, 86400),
     enabled: Boolean(getField("enabled")?.checked),
     kpi_name: safeKpi,
@@ -576,6 +644,7 @@ export function getControlPlaneElements() {
     budgetDaily: document.getElementById("cpBudgetDaily"),
     actionIgnoreAfter: document.getElementById("cpActionIgnoreAfter"),
     goalsList: document.getElementById("cpGoalsList"),
+    calendarTimelineList: document.getElementById("cpCalendarTimelineList"),
     addGoalBtn: document.getElementById("cpAddGoalBtn"),
     saveBtn: document.getElementById("cpSaveBtn"),
     reloadBtn: document.getElementById("cpReloadBtn"),
@@ -675,6 +744,68 @@ export function renderControlPlaneCapabilities(
   );
 }
 
+function renderTacticalCalendar(els, goals = []) {
+  if (!els?.calendarTimelineList) return;
+  els.calendarTimelineList.innerHTML = "";
+
+  const scheduledGoals = goals.filter((g) =>
+    Boolean(g.enabled) && ["fixed_time", "cron"].includes(String(g.schedule_type).trim().toLowerCase())
+  );
+
+  if (scheduledGoals.length === 0) {
+    const emptyLi = document.createElement("li");
+    emptyLi.className = "card";
+    emptyLi.style.listStyle = "none";
+    emptyLi.innerHTML = `<p class="panel-hint" style="text-align:center;margin:0;">No upcoming tactical events.</p>`;
+    els.calendarTimelineList.appendChild(emptyLi);
+    return;
+  }
+
+  scheduledGoals.forEach((g) => {
+    const card = document.createElement("li");
+    card.className = "card";
+    card.style.listStyle = "none";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.gap = "0.5rem";
+
+    const title = document.createElement("strong");
+    title.textContent = g.name || g.id || "Unnamed Goal";
+
+    const badgeWrapper = document.createElement("div");
+    badgeWrapper.style.display = "flex";
+    badgeWrapper.style.gap = "0.5rem";
+
+    const typeChip = document.createElement("span");
+    typeChip.className = "chip pending";
+    const stype = String(g.schedule_type).trim().toLowerCase();
+    typeChip.textContent = stype === "cron" ? "RECURRING (CRON)" : "FIXED TIME";
+
+    const timeChip = document.createElement("span");
+    timeChip.className = "chip ok";
+    if (stype === "cron") {
+      timeChip.textContent = String(g.cron_expression || "invalid cron").toUpperCase();
+    } else {
+      let t = String(g.scheduled_at || "invalid time").toUpperCase();
+      timeChip.textContent = t;
+    }
+
+    badgeWrapper.appendChild(typeChip);
+    badgeWrapper.appendChild(timeChip);
+
+    const desc = document.createElement("p");
+    desc.className = "panel-hint";
+    desc.style.margin = "0";
+    desc.textContent = g.prompt || "No prompt configured.";
+
+    card.appendChild(title);
+    card.appendChild(badgeWrapper);
+    card.appendChild(desc);
+
+    els.calendarTimelineList.appendChild(card);
+  });
+}
+
 export function renderControlPlaneState(payload, els) {
   const safePayload = payload && typeof payload === "object" ? payload : {};
   const config = safePayload.config || {};
@@ -706,6 +837,8 @@ export function renderControlPlaneState(payload, els) {
   if (!asArray(config.goals).length) {
     appendGoalCard(els, {}, 0);
   }
+
+  renderTacticalCalendar(els, asArray(config.goals));
 
   renderControlPlaneCapabilities(
     els,
