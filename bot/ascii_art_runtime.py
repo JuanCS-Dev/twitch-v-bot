@@ -120,54 +120,72 @@ async def _download_image(url: str) -> bytes | None:
         return None
 
 
-def _generate_ascii_fallback(image_bytes: bytes, width: int = 60) -> list[str]:
-    """Gera ASCII art usando Pillow (fallback quando ascii-magic não disponível)."""
+def _generate_twitch_braille_true(image_bytes: bytes, width: int = 24) -> list[str]:
+    """Gera ASCII usando matriz Braille 2x4 (Verdadeira silhueta detalhada)."""
     try:
-        from PIL import Image
+        from PIL import Image, ImageChops, ImageStat
 
-        img = Image.open(BytesIO(image_bytes))
-        # Converte para RGB se necessário
-        if img.mode != "RGB":
-            img = img.convert("RGB")
+        img = Image.open(BytesIO(image_bytes)).convert("RGBA")
 
-        # Calcula altura mantendo proporção (caracteres são ~2x mais altos que largos)
+        # Fundo branco para garantir que PNGs transparentes não fiquem invertidos
+        bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        img = Image.alpha_composite(bg, img).convert("L")
+
+        # Corta espaços em branco (Auto-crop)
+        inv = Image.eval(img, lambda p: 255 - p)
+        bbox = inv.getbbox()
+        if bbox:
+            img = img.crop(bbox)
+
+        pixel_width = width * 2
+        # Fator 0.75 para lidar com a altura de linha do chat da Twitch (que achata a arte)
         aspect_ratio = img.height / img.width
-        height = int(width * aspect_ratio * 0.55)
-        height = min(height, ASCII_ART_MAX_LINES)
+        pixel_height = int(pixel_width * aspect_ratio * 0.75)
 
-        img = img.resize((width, height))
+        img = img.resize((pixel_width, pixel_height), Image.Resampling.LANCZOS)
+
+        # Calcula um threshold dinâmico para pegar tons médios também
+        stat = ImageStat.Stat(img)
+        mean = stat.mean[0]
+        threshold = min(200, max(50, mean - 20))
+
+        braille_map = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]]
 
         lines = []
-        for y in range(height):
+        char_height = pixel_height // 4 + (1 if pixel_height % 4 != 0 else 0)
+
+        for y in range(min(char_height, ASCII_ART_MAX_LINES)):
             line = ""
             for x in range(width):
-                r, g, b = img.getpixel((x, y))
-                # Calcula luminância
-                luminance = int(0.299 * r + 0.587 * g + 0.114 * b)
-                # Mapeia para caractere ASCII
-                char_index = int(luminance / 255 * (len(ASCII_CHARS) - 1))
-                line += ASCII_CHARS[char_index]
-            lines.append(line)
+                char_val = 0
+                for dy in range(4):
+                    for dx in range(2):
+                        px = x * 2 + dx
+                        py = y * 4 + dy
+                        if px < pixel_width and py < pixel_height:
+                            if img.getpixel((px, py)) < threshold:
+                                char_val += braille_map[dy][dx]
 
-        return lines[:ASCII_ART_MAX_LINES]
+                # Se não tem ponto nenhum, usa espaço comum para evitar glitches de layout
+                if char_val == 0:
+                    line += " "
+                else:
+                    line += chr(0x2800 + char_val)
+            lines.append(line.rstrip())
+
+        # Filtra linhas vazias
+        final_lines = [ln for ln in lines if ln.strip()]
+        return final_lines[:ASCII_ART_MAX_LINES]
+
     except Exception as e:
-        logger.warning("Erro no fallback ASCII Pillow: %s", e)
+        logger.warning("Erro no gerador Braille ASCII: %s", e)
         return []
 
 
-def _generate_ascii_with_lib(image_bytes: bytes, width: int = 60) -> list[str]:
-    """Tenta gerar ASCII usando ascii-magic biblioteca."""
-    try:
-        from ascii_magic import AsciiArt
-
-        art = AsciiArt.from_image(BytesIO(image_bytes))
-        # Gera ASCII sem cores, com largura específica
-        ascii_str = art.to_ascii(columns=width)
-        lines = [line for line in ascii_str.split("\n") if line.strip()]
-        return lines[:ASCII_ART_MAX_LINES]
-    except Exception as e:
-        logger.debug("ascii-magic falhou, usando fallback: %s", e)
-        return []
+def _generate_ascii_with_lib(image_bytes: bytes, width: int = 24) -> list[str]:
+    # Removido ascii_magic porque ele engasga com nulos e a renderização do Braille é infinitamente superior.
+    # Redirecionamos para a nossa própria engine de rendering nativa.
+    return _generate_twitch_braille_true(image_bytes, width)
 
 
 def _sanitize_ascii_lines(lines: list[str]) -> list[str]:
@@ -231,18 +249,17 @@ async def generate_ascii_art(
             error_message="Erro ao baixar imagem. Tente novamente!",
         )
 
-    # Gera ASCII (tenta biblioteca primeiro, depois fallback)
-    lines = _generate_ascii_with_lib(image_bytes, width=60)
-    if not lines:
-        lines = _generate_ascii_fallback(image_bytes, width=60)
+    # Gera ASCII usando a nova engine de silhueta Braille (Fase 23 Upgrade)
+    # Largura padrão para chat Twitch é idealmente entre 24 e 28 chars
+    lines = _generate_ascii_with_lib(image_bytes, width=28)
 
     if not lines:
         return AsciiArtResult(
             lines=[],
-            source="",
+            source=image_url,
             subject=subject,
             success=False,
-            error_message="Não consegui gerar a arte. Tente outra imagem!",
+            error_message="Não consegui converter a imagem em arte ASCII.",
         )
 
     # Sanitiza e marca uso
@@ -288,9 +305,11 @@ async def handle_ascii_art_prompt(
     # Envia arte linha por linha preservando formatação
     header = f"@{author_name} Arte ASCII: {result.subject}"
     await reply_raw_fn(header)
+    await asyncio.sleep(0.45)  # Throttle inicial
 
     for line in result.lines:
         await reply_raw_fn(line)
+        await asyncio.sleep(0.45)  # Throttle entre linhas para evitar rate-limit
 
     # Fonte em linha separada
     if result.source:
