@@ -290,6 +290,63 @@ def _handle_revenue_conversion(handler: Any) -> None:
         )
 
 
+def _handle_chat_send(handler: Any) -> None:
+    """Process a chat message through the full AI pipeline and return replies."""
+    payload = require_auth_and_read_payload(handler)
+    if payload is None:
+        return
+
+    text = str(payload.get("text", "") or "").strip()
+    if not text:
+        send_invalid_request(handler, "text is required")
+        return
+
+    channel_id = str(payload.get("channel_id", "") or "").strip().lower() or None
+
+    import asyncio
+    import logging
+
+    from bot.prompt_runtime import handle_byte_prompt_text
+
+    logger = logging.getLogger("byte.cli_chat")
+    replies: list[str] = []
+
+    async def collect_reply(reply_text: str) -> None:
+        replies.append(reply_text)
+
+    try:
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(
+                handle_byte_prompt_text(
+                    text,
+                    "cli_operator",
+                    collect_reply,
+                    channel_id=channel_id,
+                )
+            )
+        finally:
+            loop.close()
+    except Exception as error:
+        logger.error("Chat send pipeline error: %s", error)
+        handler._send_json(
+            {"ok": False, "error": "pipeline_error", "message": str(error)},
+            status_code=500,
+        )
+        return
+
+    handler._send_json(
+        {
+            "ok": True,
+            "text": text,
+            "replies": replies,
+            "reply_count": len(replies),
+            "mode": TWITCH_CHAT_MODE,
+        },
+        status_code=200,
+    )
+
+
 _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/channel-control": _handle_channel_control_post,
     "/api/autonomy/tick": _handle_autonomy_tick,
@@ -299,4 +356,5 @@ _POST_ROUTE_HANDLERS: dict[str, Callable[[Any], None]] = {
     "/api/vision/ingest": _handle_vision_ingest,
     "/api/observability/conversion": _handle_revenue_conversion,
     "/api/webhooks/test": _handle_test_webhook,
+    "/api/chat/send": _handle_chat_send,
 }
