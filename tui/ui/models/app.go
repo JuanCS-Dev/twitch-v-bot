@@ -128,6 +128,14 @@ func (m AppModel) fetchAPI(cmdId string) tea.Cmd {
 			return apiRespMsg{Menu: cmdId, Data: fmt.Sprintf("Error: %v", err)}
 		}
 
+		// Humanize Status response
+		if cmdId == "status" {
+			if data["status"] == "AGENT_ONLINE" {
+				return apiRespMsg{Menu: cmdId, Data: "✅ AGENTE ONLINE\n\nTodos os sistemas operacionais.\nAguardando interações via Twitch/API."}
+			}
+		}
+
+		// Fallback to formatted JSON for complex objects, but readable
 		jsonBytes, _ := json.MarshalIndent(data, "", "  ")
 		return apiRespMsg{Menu: cmdId, Data: string(jsonBytes)}
 	}

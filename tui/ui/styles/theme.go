@@ -23,14 +23,7 @@ var (
  ██████╔╝ ╚████╔╝     ██║    █████╗
  ██╔══██╗  ╚██╔╝      ██║    ██╔══╝
  ██████╔╝   ██║       ██║    ███████╗
- ╚═════╝    ╚═╝       ╚═╝    ╚══════╝
-
-        ╔═══════════════════════════════════════════════════╗
-        ║  🤖 Byte Agent TUI Control Interface             ║
-        ║  ─────────────────────────────────────────────    ║
-        ║  ↑/↓ Navigate  │  Enter Select  │  Esc Back    ║
-        ║  a Approve     │  r Reject      │  q Quit       ║
-        ╚═══════════════════════════════════════════════════╝`
+ ╚═════╝    ╚═╝       ╚═╝    ╚══════╝`
 
 	BannerSmall = `
 ╔═══════════════════════════════════════════════════════════╗
@@ -55,13 +48,8 @@ var (
 			Border(lipgloss.DoubleBorder())
 
 	// Text styles
-	Title = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-
-	Subtitle = lipgloss.NewStyle().
-			Foreground(ColorSecondary)
-
+	Title = lipgloss.NewStyle(). Bold(true). Foreground(ColorPrimary)
+	Subtitle = lipgloss.NewStyle(). Foreground(ColorSecondary)
 	SuccessText = lipgloss.NewStyle().Foreground(ColorSuccess)
 	ErrorText   = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 	DimText     = lipgloss.NewStyle().Foreground(ColorDim)
