@@ -53,19 +53,25 @@ func (c *Client) doRequest(method, path string, body io.Reader) (*http.Response,
 	if err != nil {
 		return nil, err
 	}
-	// Note: body is not closed here intentionally to let caller handle if they want raw
 
 	if resp.StatusCode >= 400 {
-		defer resp.Body.Close()
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
 		var respBody map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&respBody)
+		json.Unmarshal(bodyBytes, &respBody)
+
 		detail := ""
 		if d, ok := respBody["detail"].(string); ok {
 			detail = d
+		} else if m, ok := respBody["message"].(string); ok {
+			detail = m
 		}
+
 		if detail == "" {
-			detail = resp.Status
+			detail = fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 		}
+
 		return nil, &APIError{StatusCode: resp.StatusCode, Message: detail}
 	}
 	return resp, nil
@@ -78,23 +84,27 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 	}
 	defer resp.Body.Close()
 
-	// Try to decode as JSON, but handle plain text responses (like /health)
+	// Read entire body first to avoid stream exhaustion issues when decoding
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+	bodyStr := strings.TrimSpace(string(bodyBytes))
+
+	// Handle /health endpoint which returns plain text
+	if bodyStr == "AGENT_ONLINE" {
+		return map[string]interface{}{"ok": true, "status": "AGENT_ONLINE"}, nil
+	}
+
+	// Try to decode as JSON
 	var data map[string]interface{}
-	decoder := json.NewDecoder(resp.Body)
-	if err := decoder.Decode(&data); err != nil {
-		// If decode fails, try to read as plain text
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyStr := string(bodyBytes)
-		// Handle /health endpoint which returns plain text
-		if bodyStr == "AGENT_ONLINE" {
-			return map[string]interface{}{"ok": true, "status": "AGENT_ONLINE"}, nil
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		// Return error with a snippet of the non-JSON content
+		maxLen := 100
+		if len(bodyStr) < maxLen {
+			maxLen = len(bodyStr)
 		}
-		// Return error with the text content
-		maxLen := 200
-		if len(bodyBytes) < maxLen {
-			maxLen = len(bodyBytes)
-		}
-		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes[:maxLen])))
+		return nil, fmt.Errorf("invalid JSON response: %s", bodyStr[:maxLen])
 	}
 	return data, nil
 }
@@ -107,9 +117,13 @@ func (c *Client) Post(path string, payload map[string]interface{}) (map[string]i
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
 	var data map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes)))
 	}
 	return data, nil
@@ -123,9 +137,13 @@ func (c *Client) Put(path string, payload map[string]interface{}) (map[string]in
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
 	var data map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes)))
 	}
 	return data, nil

@@ -14,7 +14,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/common-nighthawk/go-figure"
 )
 
 type AppModel struct {
@@ -75,9 +74,8 @@ func NewAppModel(client *api.Client) AppModel {
 	vp := viewport.New(80, 20)
 	vp.SetContent("Loading...")
 
-	// Header Banner using go-figure
-	ascii := figure.NewFigure("Byte", "slant", true)
-	header := "\n" + ascii.String() + "\nBYTE AGENT TUI CONTROL PANEL\n"
+	// Header Banner - custom ASCII art
+	header := styles.Banner
 
 	return AppModel{
 		client:     client,
