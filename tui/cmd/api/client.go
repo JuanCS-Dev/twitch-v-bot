@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/JuanCS-Dev/byte-tui/cmd/config"
@@ -77,9 +78,25 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 	}
 	defer resp.Body.Close()
 
+	// Try to decode as JSON, but handle plain text responses (like /health)
 	var data map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	return data, err
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&data); err != nil {
+		// If decode fails, try to read as plain text
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyStr := string(bodyBytes)
+		// Handle /health endpoint which returns plain text
+		if bodyStr == "AGENT_ONLINE" {
+			return map[string]interface{}{"ok": true, "status": "AGENT_ONLINE"}, nil
+		}
+		// Return error with the text content
+		maxLen := 200
+		if len(bodyBytes) < maxLen {
+			maxLen = len(bodyBytes)
+		}
+		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes[:maxLen])))
+	}
+	return data, nil
 }
 
 func (c *Client) Post(path string, payload map[string]interface{}) (map[string]interface{}, error) {
@@ -91,7 +108,10 @@ func (c *Client) Post(path string, payload map[string]interface{}) (map[string]i
 	defer resp.Body.Close()
 
 	var data map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&data)
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes)))
+	}
 	return data, nil
 }
 
@@ -104,7 +124,10 @@ func (c *Client) Put(path string, payload map[string]interface{}) (map[string]in
 	defer resp.Body.Close()
 
 	var data map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&data)
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("invalid JSON response: %s", strings.TrimSpace(string(bodyBytes)))
+	}
 	return data, nil
 }
 
