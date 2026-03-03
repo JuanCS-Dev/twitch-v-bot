@@ -147,6 +147,28 @@ func TestClientErrorHandling500(t *testing.T) {
 	}
 }
 
+func TestClientHealthPlaintext(t *testing.T) {
+	cfg := config.Config{ApiUrl: "http://test.com"}
+	client := NewClient(cfg)
+
+	client.HTTPClient = NewTestClient(func(req *http.Request) *http.Response {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(bytes.NewBufferString("AGENT_ONLINE")),
+			Header:     make(http.Header),
+		}
+	})
+
+	res, err := client.Get("/health")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res["status"] != "AGENT_ONLINE" || res["ok"] != true {
+		t.Errorf("Expected {ok: true, status: AGENT_ONLINE}, got %v", res)
+	}
+}
+
 func TestClientPutAndDelete(t *testing.T) {
 	cfg := config.Config{ApiUrl: "http://test.com"}
 	client := NewClient(cfg)
