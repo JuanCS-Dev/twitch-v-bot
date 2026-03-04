@@ -84,15 +84,21 @@ class StreamContext:
             "last_byte_reply": self.last_byte_reply,
         }
 
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(persistence.save_channel_state(self.channel_id, state_snapshot))
-        except RuntimeError:
-            if context_manager._main_loop and context_manager._main_loop.is_running():
-                asyncio.run_coroutine_threadsafe(
-                    persistence.save_channel_state(self.channel_id, state_snapshot),
-                    context_manager._main_loop,
-                )
+        # CURA DEFINITIVA: Sempre usa o loop principal para agendar tarefas em background.
+        # Isso evita que tarefas sejam atreladas a loops temporários de requisições do Dashboard.
+        main_loop = context_manager._main_loop
+        if main_loop and main_loop.is_running():
+            asyncio.run_coroutine_threadsafe(
+                persistence.save_channel_state(self.channel_id, state_snapshot),
+                main_loop,
+            )
+        else:
+            try:
+                # Tenta o loop da thread atual se o principal não existir (geralmente durante startup)
+                loop = asyncio.get_running_loop()
+                loop.create_task(persistence.save_channel_state(self.channel_id, state_snapshot))
+            except RuntimeError:
+                pass
 
     def update_content(self, content_type: str, description: str) -> bool:
         normalized_type = content_type.strip().lower()

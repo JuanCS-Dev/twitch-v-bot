@@ -306,6 +306,7 @@ def _handle_chat_send(handler: Any) -> None:
     import asyncio
     import logging
 
+    from bot.logic import context_manager
     from bot.prompt_runtime import handle_byte_prompt_text
 
     logger = logging.getLogger("byte.cli_chat")
@@ -314,21 +315,49 @@ def _handle_chat_send(handler: Any) -> None:
     async def collect_reply(reply_text: str) -> None:
         replies.append(reply_text)
 
+    # Use the main loop if available to avoid loop-per-request overhead and background task crashes
+    main_loop = getattr(context_manager, "_main_loop", None)
+    logger.info(
+        "Chat request received: '%s' (channel=%s). Main loop running: %s",
+        text,
+        channel_id,
+        bool(main_loop and main_loop.is_running()),
+    )
+
     try:
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(
+        if main_loop and main_loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
                 handle_byte_prompt_text(
                     text,
                     "cli_operator",
                     collect_reply,
                     channel_id=channel_id,
-                )
+                ),
+                main_loop,
             )
-        finally:
-            loop.close()
+            # Wait for result with a generous timeout
+            future.result(timeout=120.0)
+            logger.info("Chat request success: '%s' -> %d replies", text, len(replies))
+        else:
+            logger.warning("Main loop not found or not running. Falling back to temporary loop.")
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    handle_byte_prompt_text(
+                        text,
+                        "cli_operator",
+                        collect_reply,
+                        channel_id=channel_id,
+                    )
+                )
+            finally:
+                # Close only temporary loops
+                loop.close()
     except Exception as error:
         logger.error("Chat send pipeline error: %s", error)
+        import traceback
+
+        logger.error(traceback.format_exc())
         handler._send_json(
             {"ok": False, "error": "pipeline_error", "message": str(error)},
             status_code=500,

@@ -12,6 +12,12 @@ import argparse
 import sys
 from typing import Final
 
+from rich.columns import Columns
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+
 from cli import __version__
 from cli.client import (
     AuthenticationError,
@@ -25,144 +31,100 @@ from cli.config import CLIConfig, load_config
 from cli.formatters import print_error
 
 PROG_NAME: Final[str] = "bytecli"
-DESCRIPTION: Final[str] = """\
-Byte Agent CLI — Full control over the Byte Twitch Agent.
 
-All commands communicate with the agent's Dashboard HTTP API
-(default: http://localhost:7860). Authentication is via admin token.
+DESCRIPTION: Final[str] = """
+[bold magenta]Byte Agent CLI[/bold magenta] [bold cyan]v{version}[/bold cyan] 🤖
+[italic white]Controle total sobre o seu Agente Byte no Twitch.[/italic white]
 """
 
-EPILOG: Final[str] = """\
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  COMMAND CHEAT-SHEET (43 commands)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ---------------------------------------------------------------------------
+# Rich Help Formatter
+# ---------------------------------------------------------------------------
 
-  LIFECYCLE & STATUS
-    status                          Agent health, mode, key metrics
-    agent suspend [--reason R]      Suspend the agent
-    agent resume  [--reason R]      Resume the agent
-    agent tick    [--force]         Force an autonomy tick
-    agent config                    Show control plane config
-    agent config set <key> <val>    Update a config key
 
-  OBSERVABILITY
-    observe                         Telemetry snapshot (counters, cost)
-    observe sentiment               Chat sentiment scores + vibe
-    observe history [--limit N]     Observability snapshot timeline
+def print_rich_help(parser: argparse.ArgumentParser) -> None:
+    """Print a beautiful help screen using Rich."""
+    console = Console()
 
-  GOALS
-    goals list                      List all goals with status
-    goals show  <goal_id>           Detailed view of a single goal
-    goals add   --id X --name Y ... Create a new goal
-    goals enable  <goal_id>         Enable a goal
-    goals disable <goal_id>         Disable a goal
-    goals remove  <goal_id>         Remove a goal permanently
+    # Header / Description
+    console.print(
+        Panel(DESCRIPTION.format(version=__version__), border_style="magenta", expand=False)
+    )
 
-  ACTION QUEUE
-    actions list    [--status S]    List queued actions
-    actions pending                 Shortcut: pending actions only
-    actions approve <id> [--note N] Approve an action
-    actions reject  <id> [--note N] Reject an action
+    # Commands Section
+    console.print("\n[bold yellow]🚀 COMANDOS PRINCIPAIS[/bold yellow]")
 
-  CHANNEL
-    channel context                 Full channel context (game, vibe, etc.)
-    channel config                  Show channel configuration
-    channel config set <key> <val>  Update channel config key
-    channel notes                   Show agent notes
-    channel notes set <text>        Update agent notes
-    channel join  <login>           Join an IRC channel
-    channel part  <login>           Leave an IRC channel
-    channel list                    List connected channels
+    # Categorized Command Table
+    def create_cmd_table(title: str, color: str) -> Table:
+        table = Table(
+            title=f"[bold {color}]{title}[/bold {color}]",
+            show_header=True,
+            header_style=f"bold {color}",
+            box=None,
+            padding=(0, 2),
+        )
+        table.add_column("Comando", style="cyan", width=25)
+        table.add_column("Descrição", style="white")
+        return table
 
-  MEMORY
-    memory list   [--limit N]       List semantic memory entries
-    memory search <query>           Search memory by text query
-    memory add    <text> [--tags T] Add a memory entry
+    # Lifecycle & Status
+    t_life = create_cmd_table("🛸 CICLO DE VIDA & STATUS", "green")
+    t_life.add_row("status", "Saúde do agente, modo e métricas")
+    t_life.add_row("agent suspend", "Suspende o agente (ex: --reason maintenance)")
+    t_life.add_row("agent resume", "Retoma as atividades")
+    t_life.add_row("agent tick", "Força um ciclo de autonomia")
+    t_life.add_row("agent config", "Ver/Alterar configurações do Control Plane")
 
-  PERSONA
-    persona show                    Show persona profile
-    persona update [--name/--tone]  Update persona profile
+    # Observability & Goals
+    t_obs = create_cmd_table("📊 MONITORAMENTO & METAS", "blue")
+    t_obs.add_row("observe", "Snapshot de telemetria e custos")
+    t_obs.add_row("observe sentiment", "Vibe e sentimentos do chat")
+    t_obs.add_row("goals list", "Listar todas as metas ativas")
+    t_obs.add_row("actions list", "Ver fila de ações pendentes")
 
-  CLIPS & VISION
-    clips jobs                      List clip pipeline jobs
-    clips vision                    Vision pipeline status
+    # Channel & Memory
+    t_chan = create_cmd_table("🧠 CANAL & MEMÓRIA", "magenta")
+    t_chan.add_row("channel context", "Contexto atual do canal (jogo, vibe)")
+    t_chan.add_row("channel notes", "Notas persistentes do agente")
+    t_chan.add_row("memory search", "Busca na memória semântica")
+    t_chan.add_row("persona show", "Perfil e tom de voz da persona")
 
-  PLAYBOOKS
-    playbooks list                  List ops playbooks with status
-    playbooks trigger <id> [--force] Trigger a playbook manually
+    # Others (Clips, Playbooks, Webhooks)
+    t_others = create_cmd_table("🛠️ FERRAMENTAS & OPS", "yellow")
+    t_others.add_row("clips jobs", "Status do pipeline de clips")
+    t_others.add_row("playbooks list", "Lista playbooks de operação")
+    t_others.add_row("webhooks list", "Gerenciar webhooks de saída")
+    t_others.add_row("report generate", "Gerar relatório pós-stream")
 
-  WEBHOOKS
-    webhooks list                   List registered webhooks
-    webhooks add  <url> [--events]  Register a new webhook
-    webhooks test <id>              Send a test event
+    # Render Tables in Columns
+    console.print(Columns([t_life, t_obs, t_chan, t_others], equal=True, expand=True))
 
-  REPORTS
-    report show                     Show latest post-stream report
-    report generate                 Generate a new report
+    # Global Options Section
+    console.print("\n[bold white]⚙️ OPÇÕES GLOBAIS[/bold white]")
+    opt_table = Table(box=None, show_header=False, padding=(0, 2))
+    opt_table.add_column("Flag", style="bold cyan")
+    opt_table.add_column("Descrição", style="dim")
+    opt_table.add_row("--json", "Saída em JSON bruto para automação")
+    opt_table.add_row("--url URL", "Sobrescreve a URL da API (ou BYTE_API_URL)")
+    opt_table.add_row("--token TK", "Token de admin (ou BYTE_ADMIN_TOKEN)")
+    opt_table.add_row("--channel CH", "Nome do canal alvo (default: 'default')")
+    console.print(opt_table)
 
-  CHAT
-    chat <message>                  Send message through AI pipeline
+    # Usage Example
+    console.print(
+        Panel(
+            "[bold cyan]Exemplo rápido:[/bold cyan]\n"
+            "[white]python -m cli [bold green]status[/bold green][/white]\n"
+            '[white]python -m cli [bold magenta]chat[/bold magenta] [italic]"Oi Byte, faz um ASCII do Goku"[/italic][/white]',
+            title="[bold yellow]💡 DICA[/bold yellow]",
+            border_style="yellow",
+            expand=False,
+        )
+    )
 
-  REVENUE / CONVERSIONS
-    conversions list [--limit N]    List revenue conversions
-    conversions add --event E --value V   Register a conversion
-    revenue list                    Alias for conversions list
-    revenue add                     Alias for conversions add
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  CONFIGURATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Config is resolved in priority order (highest wins):
-    1. CLI flags:   --url, --token, --hf-token, --channel
-    2. Env vars:    BYTE_API_URL, BYTE_ADMIN_TOKEN, HF_TOKEN
-    3. Config file: ~/.byterc (INI format)
-    4. Defaults:    http://localhost:7860, no token, channel=default
-
-  ~/.byterc example:
-    [default]
-    url = http://localhost:7860
-    token = my-admin-token
-    hf_token = hf_123xyz
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  USAGE EXAMPLES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  # Check if agent is online
-  bytecli status
-
-  # Send a chat message through the AI pipeline
-  bytecli chat "faz um ASCII do Goku"
-
-  # List goals in JSON format
-  bytecli --json goals list
-
-  # Approve an action with a note
-  bytecli actions approve abc123 --note "Looks good"
-
-  # Suspend agent on a specific channel
-  bytecli --channel xqcow agent suspend --reason "maintenance"
-
-  # Search semantic memory
-  bytecli memory search "favorite game"
-
-  # Use a remote agent
-  bytecli --url http://agent.example.com:7860 --token sk-xxx status
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  EXIT CODES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  0   Success
-  1   No command specified / unknown command
-  2   Authentication error (invalid token)
-  3   Connection error (agent unreachable)
-  4   Not found (endpoint does not exist)
-  5   Server error (agent returned 5xx)
-  6   Other API error
-  130 Interrupted (Ctrl+C)
-"""
+    console.print(
+        f"\n[dim white]Use 'bytecli <comando> --help' para detalhes. [bold magenta]Byte Agent v{__version__}[/bold magenta][/dim white]"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -213,8 +175,6 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser with all subcommands."""
     parser = argparse.ArgumentParser(
         prog=PROG_NAME,
-        description=DESCRIPTION,
-        epilog=EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -332,10 +292,14 @@ def _run(args: argparse.Namespace, config: CLIConfig) -> int:
 def main(argv: list[str] | None = None) -> None:
     """CLI entry point."""
     parser = build_parser()
+
+    # Override standard help to use our colorful Rich version
+    parser.print_help = lambda file=None: print_rich_help(parser)
+
     args = parser.parse_args(argv)
 
     if args.command is None:
-        parser.print_help()
+        print_rich_help(parser)
         sys.exit(0)
 
     config = _resolve_config(args)

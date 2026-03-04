@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Any, ClassVar
 
 from bot.channel_control import is_dashboard_admin_authorized, parse_terminal_command
@@ -258,4 +258,4 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 def run_server() -> None:
     port = int(os.environ.get("PORT", "8080"))
-    HTTPServer(("0.0.0.0", port), HealthHandler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), HealthHandler).serve_forever()
