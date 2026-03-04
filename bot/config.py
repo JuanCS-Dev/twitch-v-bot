@@ -108,14 +108,14 @@ class ConfigManager:
 
         # Dashboard
         self.BYTE_DASHBOARD_ADMIN_TOKEN = _env_text("BYTE_DASHBOARD_ADMIN_TOKEN")
-        if self.BYTE_DASHBOARD_ADMIN_TOKEN:
+        if self.BYTE_DASHBOARD_ADMIN_TOKEN and len(self.BYTE_DASHBOARD_ADMIN_TOKEN.strip()) >= 8:
             logger.info(
-                "Configuracao: Dashboard Admin Token ativo (comprimento: %d)",
+                "Configuracao: Dashboard Admin Auth habilitado (comprimento: %d)",
                 len(self.BYTE_DASHBOARD_ADMIN_TOKEN),
             )
         else:
-            logger.warning(
-                "Configuracao: Dashboard Admin Token NAO definido. Dashboard operando sem seguranca!"
+            logger.error(
+                "CRITICAL SECURITY ALERT: BYTE_DASHBOARD_ADMIN_TOKEN is missing or too short. Dashboard is DISABLED for security reasons."
             )
 
         # Metadata Cache

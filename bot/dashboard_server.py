@@ -73,8 +73,9 @@ class HealthHandler(BaseHTTPRequestHandler):
         self._send_bytes(text.encode("utf-8"), "text/plain; charset=utf-8", status_code=status_code)
 
     def _dashboard_authorized(self) -> bool:
-        if not BYTE_DASHBOARD_ADMIN_TOKEN:
-            return True
+        if not BYTE_DASHBOARD_ADMIN_TOKEN or len(BYTE_DASHBOARD_ADMIN_TOKEN.strip()) < 8:
+            self._logger.error("DASHBOARD_AUTH_CRITICAL: BYTE_DASHBOARD_ADMIN_TOKEN is missing or too short. Denying all access for security.")
+            return False
         authorized = is_dashboard_admin_authorized(self.headers, BYTE_DASHBOARD_ADMIN_TOKEN)
         if not authorized:
             import hmac

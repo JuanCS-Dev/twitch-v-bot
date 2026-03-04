@@ -492,9 +492,9 @@ def _dashboard_asset_route(handler: Any, route: str) -> bool:
 
 
 def handle_get_config_js(handler: Any) -> None:
-    from bot.runtime_config import BYTE_DASHBOARD_ADMIN_TOKEN
-
-    payload = f"window.BYTE_CONFIG = {{ adminToken: '{BYTE_DASHBOARD_ADMIN_TOKEN}' }};"
+    # CURA: Removido vazamento de token administrativo via JS injetado.
+    # O frontend deve solicitar o token ao usuario.
+    payload = "window.BYTE_CONFIG = { adminToken: null };"
     handler._send_bytes(
         payload.encode("utf-8"), content_type="application/javascript; charset=utf-8"
     )
